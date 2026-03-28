@@ -5,10 +5,12 @@ import { fetchAssets } from '../api/assets'
 import { fetchAnomalies, fetchAnomalyStats } from '../api/anomalies'
 import { fetchHealth } from '../api/system'
 import { generateReport } from '../api/reports'
+import { fetchLivePrices, type LivePriceItem } from '../api/live'
 import type { AssetListItem, AnomalyEvent, AnomalyStats, HealthResponse } from '../types/api'
 import { fmtPrice, timeAgo } from '../utils/format'
 import PriceChange from '../components/PriceChange.vue'
 import SeverityBadge from '../components/SeverityBadge.vue'
+import FreshnessBadge from '../components/FreshnessBadge.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ErrorBox from '../components/ErrorBox.vue'
 
@@ -21,7 +23,26 @@ const recentAnomalies = ref<AnomalyEvent[]>([])
 const anomalyStats = ref<AnomalyStats | null>(null)
 const health = ref<HealthResponse | null>(null)
 const lastRefresh = ref<Date | null>(null)
+const livePrices = ref<Map<string, LivePriceItem>>(new Map())
+const liveStatus = ref<string>('loading')
 let refreshTimer: ReturnType<typeof setInterval>
+let liveTimer: ReturnType<typeof setInterval>
+
+async function refreshLive() {
+  try {
+    const res = await fetchLivePrices()
+    const map = new Map<string, LivePriceItem>()
+    for (const item of res.items) {
+      map.set(item.symbol, item)
+    }
+    livePrices.value = map
+    liveStatus.value = res.live > 0 ? 'live' : 'delayed'
+  } catch { /* silent */ }
+}
+
+function getLivePrice(symbol: string): LivePriceItem | undefined {
+  return livePrices.value.get(symbol)
+}
 
 async function loadDashboard() {
   try {
@@ -58,10 +79,15 @@ async function genSummary() {
 
 onMounted(() => {
   loadDashboard()
+  refreshLive()
   refreshTimer = setInterval(loadDashboard, 60_000)
+  liveTimer = setInterval(refreshLive, 15_000)
 })
 
-onUnmounted(() => clearInterval(refreshTimer))
+onUnmounted(() => {
+  clearInterval(refreshTimer)
+  clearInterval(liveTimer)
+})
 </script>
 
 <template>
@@ -74,6 +100,7 @@ onUnmounted(() => clearInterval(refreshTimer))
           :disabled="generatingSummary"
           @click="genSummary"
         >{{ generatingSummary ? 'Generowanie...' : 'Market Summary AI' }}</button>
+        <FreshnessBadge :status="liveStatus" />
         <span v-if="lastRefresh" class="text-xs text-gray-600">
           {{ lastRefresh.toLocaleTimeString('pl-PL') }}
         </span>
@@ -135,10 +162,10 @@ onUnmounted(() => clearInterval(refreshTimer))
                   </RouterLink>
                 </td>
                 <td class="px-4 py-2.5 text-right tabular-nums text-gray-300">
-                  ${{ a.latest_price ? fmtPrice(a.latest_price.close) : '—' }}
+                  ${{ getLivePrice(a.symbol)?.price ? fmtPrice(getLivePrice(a.symbol)!.price!) : (a.latest_price ? fmtPrice(a.latest_price.close) : '—') }}
                 </td>
                 <td class="px-4 py-2.5 text-right">
-                  <PriceChange :value="a.latest_price?.change_24h_pct" />
+                  <PriceChange :value="getLivePrice(a.symbol)?.change_24h_pct ?? a.latest_price?.change_24h_pct" />
                 </td>
               </tr>
             </tbody>

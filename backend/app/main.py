@@ -22,6 +22,7 @@ from app.alerts.router import router as alerts_router
 from app.watchlists.router import router as watchlists_router
 from app.recommendations.router import router as recommendations_router
 from app.portfolio.router import router as portfolio_router
+from app.live.router import router as live_router
 
 
 @asynccontextmanager
@@ -38,8 +39,32 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     start_scheduler()
 
+    # Start live price pollers
+    try:
+        from app.live.poller import start_pollers, stop_pollers
+        from app.database import async_session
+        from sqlalchemy import select
+        from app.assets.models import Asset
+
+        async with async_session() as db:
+            result = await db.execute(
+                select(Asset.symbol, Asset.provider_symbol, Asset.asset_class)
+                .where(Asset.is_active.is_(True))
+            )
+            rows = result.all()
+            crypto = [(r.symbol, r.provider_symbol) for r in rows if r.asset_class == "crypto"]
+            stocks = [(r.symbol, r.provider_symbol) for r in rows if r.asset_class == "stock"]
+
+        await start_pollers(crypto, stocks)
+    except Exception as e:
+        log.error("live_prices.init_error", error=str(e))
+
     yield
 
+    try:
+        stop_pollers()
+    except Exception:
+        pass
     stop_scheduler()
     log.info("app.shutdown_complete")
 
@@ -47,7 +72,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 def create_app() -> FastAPI:
     app = FastAPI(
         title="MarketPulse AI",
-        description="Crypto market anomaly detection platform",
+        description="Multi-asset market intelligence platform",
         version="0.1.0",
         lifespan=lifespan,
     )
@@ -78,6 +103,7 @@ def create_app() -> FastAPI:
     app.include_router(watchlists_router)
     app.include_router(recommendations_router)
     app.include_router(portfolio_router)
+    app.include_router(live_router)
 
     return app
 
