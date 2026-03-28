@@ -8,8 +8,12 @@ import {
 import type { Watchlist, WatchlistAsset } from '../types/api'
 import { fmtPrice, fmtTime } from '../utils/format'
 import PriceChange from '../components/PriceChange.vue'
+import FreshnessBadge from '../components/FreshnessBadge.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ErrorBox from '../components/ErrorBox.vue'
+import { useLivePrices } from '../composables/useLivePrices'
+
+const { getPrice, getChange, getFreshness } = useLivePrices(20_000)
 
 const loading = ref(true)
 const error = ref('')
@@ -211,10 +215,10 @@ onMounted(loadWatchlists)
                       >{{ a.asset_class }}</span>
                     </td>
                     <td class="px-4 py-3 text-right tabular-nums text-gray-300">
-                      {{ a.latest_price ? '$' + fmtPrice(a.latest_price) : '--' }}
+                      {{ getPrice(a.symbol) ? '$' + fmtPrice(getPrice(a.symbol)!) : (a.latest_price ? '$' + fmtPrice(a.latest_price) : '--') }}
                     </td>
                     <td class="px-4 py-3 text-right">
-                      <PriceChange :value="a.change_24h_pct" />
+                      <PriceChange :value="getChange(a.symbol) ?? a.change_24h_pct" />
                     </td>
                     <td class="px-4 py-3 text-center">
                       <span v-if="a.rec_type" class="text-xs" :class="recTypeColors[a.rec_type] || 'text-gray-500'">
@@ -224,7 +228,8 @@ onMounted(loadWatchlists)
                       <span v-else class="text-xs text-gray-600">--</span>
                     </td>
                     <td class="px-4 py-3 text-center">
-                      <span v-if="a.in_portfolio" class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium border text-purple-400 bg-purple-500/10 border-purple-500/30">OPEN</span>
+                      <span v-if="a.in_portfolio" class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium border text-purple-400 bg-purple-500/10 border-purple-500/30 mr-1">OPEN</span>
+                      <FreshnessBadge :status="getFreshness(a.symbol)" />
                     </td>
                     <td class="px-4 py-3 text-right">
                       <button class="text-xs text-red-400 hover:text-red-300" @click="removeAsset(a.asset_id)">Usun</button>

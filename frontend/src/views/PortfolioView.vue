@@ -5,9 +5,13 @@ import { fetchPortfolio, triggerEvaluation } from '../api/portfolio'
 import { fetchWatchlists, addAssetToWatchlist } from '../api/watchlists'
 import type { Watchlist } from '../types/api'
 import { fmtPrice, fmtTime, timeAgo } from '../utils/format'
+import FreshnessBadge from '../components/FreshnessBadge.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ErrorBox from '../components/ErrorBox.vue'
 import api from '../api/client'
+import { useLivePrices } from '../composables/useLivePrices'
+
+const { getPrice, getFreshness, status: liveStatus } = useLivePrices(15_000)
 
 const loading = ref(true)
 const error = ref('')
@@ -71,6 +75,22 @@ async function addToWl(wlId: string, assetId: string) {
   wlMenuForId.value = null
 }
 
+// Live price helpers for positions
+function liveCurrentPrice(p: any): number {
+  return getPrice(p.asset_symbol) ?? p.current_price ?? p.entry_price
+}
+function liveValue(p: any): number {
+  return liveCurrentPrice(p) * p.quantity
+}
+function liveUnrealizedUsd(p: any): number {
+  return +(liveValue(p) - p.entry_value_usd).toFixed(2)
+}
+function liveUnrealizedPct(p: any): number {
+  const entry = p.entry_price
+  if (!entry || entry <= 0) return 0
+  return +((liveCurrentPrice(p) / entry - 1) * 100).toFixed(2)
+}
+
 function pnlClass(val: number | null | undefined): string {
   if (val == null) return 'text-gray-500'
   return val >= 0 ? 'text-green-400' : 'text-red-400'
@@ -107,6 +127,7 @@ const reasonLabels: Record<string, string> = {
         :disabled="evaluating"
         @click="evaluate"
       >{{ evaluating ? 'Evaluating...' : 'Evaluate Now' }}</button>
+      <FreshnessBadge :status="liveStatus" />
     </div>
     <div class="text-[10px] text-gray-600 mb-4">Paper trading only — not real money. Results are simulated.</div>
 
@@ -171,14 +192,15 @@ const reasonLabels: Record<string, string> = {
               >{{ b.replace('_', ' ') }}</span>
             </div>
 
-            <!-- PnL -->
+            <!-- PnL (live overlay) -->
             <div class="ml-auto flex items-center gap-4 text-xs">
-              <span class="text-gray-500">{{ p.hours_open }}h open</span>
-              <span class="tabular-nums" :class="pnlClass(p.unrealized_pnl_pct)">
-                {{ pnlPrefix(p.unrealized_pnl_pct) }}{{ p.unrealized_pnl_pct?.toFixed(2) }}%
+              <FreshnessBadge :status="getFreshness(p.asset_symbol)" />
+              <span class="text-gray-500">{{ p.hours_open }}h</span>
+              <span class="tabular-nums" :class="pnlClass(liveUnrealizedPct(p))">
+                {{ pnlPrefix(liveUnrealizedPct(p)) }}{{ liveUnrealizedPct(p).toFixed(2) }}%
               </span>
-              <span class="tabular-nums" :class="pnlClass(p.unrealized_pnl_usd)">
-                {{ pnlPrefix(p.unrealized_pnl_usd) }}${{ Math.abs(p.unrealized_pnl_usd).toFixed(2) }}
+              <span class="tabular-nums" :class="pnlClass(liveUnrealizedUsd(p))">
+                {{ pnlPrefix(liveUnrealizedUsd(p)) }}${{ Math.abs(liveUnrealizedUsd(p)).toFixed(2) }}
               </span>
               <button
                 class="px-2 py-0.5 text-[10px] bg-gray-700 hover:bg-gray-600 text-gray-300 rounded disabled:opacity-50"
@@ -197,7 +219,7 @@ const reasonLabels: Record<string, string> = {
               </div>
               <div>
                 <div class="text-gray-500">Current</div>
-                <div class="font-medium tabular-nums">${{ fmtPrice(p.current_price) }}</div>
+                <div class="font-medium tabular-nums">${{ fmtPrice(liveCurrentPrice(p)) }}</div>
               </div>
               <div>
                 <div class="text-gray-500">Stop (-8%)</div>
@@ -219,7 +241,7 @@ const reasonLabels: Record<string, string> = {
               </div>
               <div>
                 <div class="text-gray-500">Value</div>
-                <div class="tabular-nums">${{ p.current_value_usd.toFixed(2) }}</div>
+                <div class="tabular-nums">${{ liveValue(p).toFixed(2) }}</div>
               </div>
               <div>
                 <div class="text-gray-500">Opened</div>

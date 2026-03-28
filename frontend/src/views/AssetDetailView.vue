@@ -10,8 +10,12 @@ import type { AssetDetail, PriceBar, AnomalyEvent, Watchlist, Recommendation } f
 import { fmtPrice, fmtPriceDetail, fmtVol, fmtTime } from '../utils/format'
 import PriceChange from '../components/PriceChange.vue'
 import SeverityBadge from '../components/SeverityBadge.vue'
+import FreshnessBadge from '../components/FreshnessBadge.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ErrorBox from '../components/ErrorBox.vue'
+import { useLivePrices } from '../composables/useLivePrices'
+
+const { getPrice, getChange, getFreshness } = useLivePrices(15_000)
 
 const route = useRoute()
 const router = useRouter()
@@ -155,8 +159,11 @@ const sparkData = computed(() => {
             {{ generatingReport ? 'Generowanie...' : 'Generuj AI Brief' }}
           </button>
           <div class="text-right">
-            <div class="text-2xl font-bold tabular-nums">${{ asset.latest_price ? fmtPrice(asset.latest_price.close) : '—' }}</div>
-            <PriceChange :value="asset.latest_price?.change_24h_pct" />
+            <div class="text-2xl font-bold tabular-nums">${{ getPrice(asset.symbol) ? fmtPrice(getPrice(asset.symbol)!) : (asset.latest_price ? fmtPrice(asset.latest_price.close) : '—') }}</div>
+            <div class="flex items-center gap-2 justify-end">
+              <PriceChange :value="getChange(asset.symbol) ?? asset.latest_price?.change_24h_pct" />
+              <FreshnessBadge :status="getFreshness(asset.symbol)" />
+            </div>
           </div>
         </div>
       </div>
