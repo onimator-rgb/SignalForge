@@ -57,10 +57,36 @@ async def evaluate_portfolio(db: AsyncSession) -> dict:
     return {"closed": closed, "opened": opened}
 
 
+async def manual_close_position(db: AsyncSession, position_id: uuid.UUID) -> dict:
+    """Manually close a demo position at current market price."""
+    portfolio = await get_or_create_portfolio(db)
+    now = datetime.now(timezone.utc)
+
+    result = await db.execute(
+        select(PortfolioPosition).where(
+            PortfolioPosition.id == position_id,
+            PortfolioPosition.portfolio_id == portfolio.id,
+            PortfolioPosition.status == "open",
+        )
+    )
+    pos = result.scalar_one_or_none()
+    if not pos:
+        raise ValueError("Position not found or already closed")
+
+    price_data = await get_latest_price(db, pos.asset_id)
+    if not price_data:
+        raise ValueError("Cannot get current price for this asset")
+
+    await _close_position(db, portfolio, pos, price_data.close, "manual", now)
+    await db.commit()
+
+    log.info("portfolio.manual_close_done", position_id=str(position_id))
+    return {"status": "closed", "exit_price": price_data.close}
+
+
 # ── Exit logic ────────────────────────────────────
 
 async def _check_exits(db: AsyncSession, portfolio: Portfolio, now: datetime) -> int:
-    """Check all open positions for exit conditions. Returns count closed."""
     result = await db.execute(
         select(PortfolioPosition).where(
             PortfolioPosition.portfolio_id == portfolio.id,
@@ -79,7 +105,6 @@ async def _check_exits(db: AsyncSession, portfolio: Portfolio, now: datetime) ->
         pnl_pct = (current_price - float(pos.entry_price)) / float(pos.entry_price)
         reason = None
 
-        # Priority: stop > target > max_hold
         if pnl_pct <= STOP_LOSS_PCT:
             reason = "stop_hit"
         elif pnl_pct >= TAKE_PROFIT_PCT:
@@ -98,7 +123,6 @@ async def _close_position(
     db: AsyncSession, portfolio: Portfolio, pos: PortfolioPosition,
     exit_price: float, reason: str, now: datetime,
 ) -> None:
-    """Close a position and record the transaction."""
     qty = float(pos.quantity)
     exit_value = round(exit_price * qty, 2)
     entry_value = float(pos.entry_value_usd)
@@ -127,10 +151,8 @@ async def _close_position(
     )
     db.add(tx)
 
-    # Fetch symbol for logging
     asset_res = await db.execute(select(Asset.symbol).where(Asset.id == pos.asset_id))
     symbol = asset_res.scalar_one_or_none() or "?"
-
     log.info(
         "portfolio.position_closed",
         symbol=symbol, reason=reason,
@@ -142,8 +164,6 @@ async def _close_position(
 # ── Entry logic ───────────────────────────────────
 
 async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) -> int:
-    """Check active recommendations for entry opportunities. Returns count opened."""
-    # Count open positions
     open_count_res = await db.execute(
         select(func.count()).where(
             PortfolioPosition.portfolio_id == portfolio.id,
@@ -154,7 +174,6 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
     if open_count >= MAX_OPEN_POSITIONS:
         return 0
 
-    # Get open asset IDs (can't open duplicate)
     open_assets_res = await db.execute(
         select(PortfolioPosition.asset_id).where(
             PortfolioPosition.portfolio_id == portfolio.id,
@@ -163,7 +182,6 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
     )
     open_asset_ids = set(r[0] for r in open_assets_res.all())
 
-    # Get recently closed asset IDs (cooldown)
     cooldown_since = now - timedelta(hours=COOLDOWN_HOURS)
     cooldown_res = await db.execute(
         select(PortfolioPosition.asset_id).where(
@@ -173,10 +191,8 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
         )
     )
     cooldown_asset_ids = set(r[0] for r in cooldown_res.all())
-
     blocked_ids = open_asset_ids | cooldown_asset_ids
 
-    # Get eligible recommendations
     recs_res = await db.execute(
         select(Recommendation)
         .where(
@@ -199,19 +215,16 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
         if open_count + opened >= MAX_OPEN_POSITIONS:
             break
 
-        # Check cash reserve
         reserve = float(portfolio.initial_capital) * MIN_CASH_RESERVE_PCT
         available = float(portfolio.current_cash) - reserve
         if available < MIN_POSITION_USD:
             break
 
-        # Position sizing
         max_size = equity * MAX_POSITION_PCT
         size_usd = min(max_size, available)
         if size_usd < MIN_POSITION_USD:
             break
 
-        # Get current price
         price_data = await get_latest_price(db, rec.asset_id)
         if not price_data:
             continue
@@ -226,10 +239,10 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
             entry_price=price,
             quantity=quantity,
             entry_value_usd=round(size_usd, 2),
-            opened_at=now,
+            opened_at=datetime.now(timezone.utc),
             stop_loss_price=round(price * (1 + STOP_LOSS_PCT), 8),
             take_profit_price=round(price * (1 + TAKE_PROFIT_PCT), 8),
-            max_hold_until=now + timedelta(hours=MAX_HOLD_HOURS),
+            max_hold_until=datetime.now(timezone.utc) + timedelta(hours=MAX_HOLD_HOURS),
         )
         db.add(pos)
         await db.flush()
@@ -242,7 +255,7 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
             price=price,
             quantity=quantity,
             value_usd=round(size_usd, 2),
-            executed_at=now,
+            executed_at=datetime.now(timezone.utc),
         )
         db.add(tx)
 
@@ -252,7 +265,6 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
 
         asset_res = await db.execute(select(Asset.symbol).where(Asset.id == rec.asset_id))
         symbol = asset_res.scalar_one_or_none() or "?"
-
         log.info(
             "portfolio.position_opened",
             symbol=symbol, price=price,
@@ -266,7 +278,6 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
 # ── Query helpers ─────────────────────────────────
 
 async def _compute_equity(db: AsyncSession, portfolio: Portfolio) -> float:
-    """Cash + current value of open positions."""
     result = await db.execute(
         select(PortfolioPosition).where(
             PortfolioPosition.portfolio_id == portfolio.id,
@@ -284,14 +295,36 @@ async def _compute_equity(db: AsyncSession, portfolio: Portfolio) -> float:
     return float(portfolio.current_cash) + positions_value
 
 
-async def get_portfolio_summary(db: AsyncSession) -> dict:
-    """Build full portfolio summary for the API."""
-    portfolio = await get_or_create_portfolio(db)
+def _position_badges(pnl_pct: float, dist_stop_pct: float, dist_target_pct: float, hours_remaining: float) -> list[str]:
+    """Compute state badges for an open position."""
+    badges = []
+    if pnl_pct > 0:
+        badges.append("in_profit")
+    elif pnl_pct < -1:
+        badges.append("in_loss")
+    if dist_stop_pct < 2:
+        badges.append("near_stop")
+    if dist_target_pct < 3:
+        badges.append("near_target")
+    if 0 < hours_remaining < 12:
+        badges.append("expiring_soon")
+    return badges
 
-    # Open positions with current prices
+
+async def get_portfolio_summary(db: AsyncSession) -> dict:
+    """Build full portfolio summary with rich position data."""
+    portfolio = await get_or_create_portfolio(db)
+    now = datetime.now(timezone.utc)
+
+    # Open positions with current prices + recommendation data
     open_res = await db.execute(
-        select(PortfolioPosition, Asset.symbol, Asset.asset_class)
+        select(PortfolioPosition, Asset.symbol, Asset.asset_class,
+               Recommendation.score.label("rec_score"),
+               Recommendation.recommendation_type.label("rec_type"),
+               Recommendation.rationale_summary.label("rec_rationale"),
+               Recommendation.scoring_version.label("rec_version"))
         .join(Asset, PortfolioPosition.asset_id == Asset.id)
+        .outerjoin(Recommendation, PortfolioPosition.recommendation_id == Recommendation.id)
         .where(
             PortfolioPosition.portfolio_id == portfolio.id,
             PortfolioPosition.status == "open",
@@ -305,28 +338,51 @@ async def get_portfolio_summary(db: AsyncSession) -> dict:
         price_data = await get_latest_price(db, pos.asset_id)
         current_price = price_data.close if price_data else float(pos.entry_price)
         current_value = current_price * float(pos.quantity)
+        entry_price = float(pos.entry_price)
         unrealized_pnl = round(current_value - float(pos.entry_value_usd), 2)
-        unrealized_pct = round((current_price / float(pos.entry_price) - 1) * 100, 4) if float(pos.entry_price) > 0 else 0
+        unrealized_pct = round((current_price / entry_price - 1) * 100, 4) if entry_price > 0 else 0
         positions_value += current_value
+
+        # Timing
+        hours_open = round((now - pos.opened_at).total_seconds() / 3600, 1)
+        hours_remaining = round((pos.max_hold_until - now).total_seconds() / 3600, 1) if pos.max_hold_until else 0
+
+        # Distances
+        stop_price = float(pos.stop_loss_price) if pos.stop_loss_price else 0
+        target_price = float(pos.take_profit_price) if pos.take_profit_price else 0
+        dist_stop_pct = round(abs((current_price - stop_price) / entry_price * 100), 2) if entry_price > 0 else 99
+        dist_target_pct = round(abs((target_price - current_price) / entry_price * 100), 2) if entry_price > 0 else 99
+
+        badges = _position_badges(unrealized_pct, dist_stop_pct, dist_target_pct, hours_remaining)
 
         open_positions.append({
             "id": pos.id, "asset_id": pos.asset_id, "asset_symbol": row.symbol,
-            "asset_class": row.asset_class, "recommendation_id": pos.recommendation_id,
-            "entry_price": float(pos.entry_price), "quantity": float(pos.quantity),
+            "asset_class": row.asset_class,
+            "entry_price": entry_price, "quantity": float(pos.quantity),
             "entry_value_usd": float(pos.entry_value_usd), "opened_at": pos.opened_at,
-            "exit_price": None, "exit_value_usd": None, "closed_at": None,
-            "close_reason": None, "realized_pnl_usd": None, "realized_pnl_pct": None,
-            "stop_loss_price": float(pos.stop_loss_price) if pos.stop_loss_price else None,
-            "take_profit_price": float(pos.take_profit_price) if pos.take_profit_price else None,
-            "max_hold_until": pos.max_hold_until, "status": pos.status,
             "current_price": current_price, "current_value_usd": round(current_value, 2),
             "unrealized_pnl_usd": unrealized_pnl, "unrealized_pnl_pct": unrealized_pct,
+            "stop_loss_price": stop_price, "take_profit_price": target_price,
+            "dist_stop_pct": dist_stop_pct, "dist_target_pct": dist_target_pct,
+            "max_hold_until": pos.max_hold_until,
+            "hours_open": hours_open, "hours_remaining": hours_remaining,
+            "badges": badges, "status": pos.status,
+            "recommendation": {
+                "id": str(pos.recommendation_id) if pos.recommendation_id else None,
+                "score": float(row.rec_score) if row.rec_score else None,
+                "type": row.rec_type,
+                "rationale": row.rec_rationale,
+                "scoring_version": row.rec_version,
+            } if pos.recommendation_id else None,
         })
 
     # Closed positions
     closed_res = await db.execute(
-        select(PortfolioPosition, Asset.symbol, Asset.asset_class)
+        select(PortfolioPosition, Asset.symbol, Asset.asset_class,
+               Recommendation.score.label("rec_score"),
+               Recommendation.recommendation_type.label("rec_type"))
         .join(Asset, PortfolioPosition.asset_id == Asset.id)
+        .outerjoin(Recommendation, PortfolioPosition.recommendation_id == Recommendation.id)
         .where(
             PortfolioPosition.portfolio_id == portfolio.id,
             PortfolioPosition.status == "closed",
@@ -337,20 +393,21 @@ async def get_portfolio_summary(db: AsyncSession) -> dict:
     closed_positions = []
     for row in closed_res.all():
         pos = row.PortfolioPosition
+        hold_hours = round((pos.closed_at - pos.opened_at).total_seconds() / 3600, 1) if pos.closed_at else None
         closed_positions.append({
             "id": pos.id, "asset_id": pos.asset_id, "asset_symbol": row.symbol,
-            "asset_class": row.asset_class, "recommendation_id": pos.recommendation_id,
-            "entry_price": float(pos.entry_price), "quantity": float(pos.quantity),
-            "entry_value_usd": float(pos.entry_value_usd), "opened_at": pos.opened_at,
+            "asset_class": row.asset_class,
+            "entry_price": float(pos.entry_price),
             "exit_price": float(pos.exit_price) if pos.exit_price else None,
+            "entry_value_usd": float(pos.entry_value_usd),
             "exit_value_usd": float(pos.exit_value_usd) if pos.exit_value_usd else None,
-            "closed_at": pos.closed_at, "close_reason": pos.close_reason,
             "realized_pnl_usd": float(pos.realized_pnl_usd) if pos.realized_pnl_usd else None,
             "realized_pnl_pct": float(pos.realized_pnl_pct) if pos.realized_pnl_pct else None,
-            "stop_loss_price": None, "take_profit_price": None,
-            "max_hold_until": None, "status": pos.status,
-            "current_price": None, "current_value_usd": None,
-            "unrealized_pnl_usd": None, "unrealized_pnl_pct": None,
+            "opened_at": pos.opened_at, "closed_at": pos.closed_at,
+            "hold_hours": hold_hours, "close_reason": pos.close_reason,
+            "status": pos.status,
+            "rec_score": float(row.rec_score) if row.rec_score else None,
+            "rec_type": row.rec_type,
         })
 
     # Transactions
@@ -376,6 +433,7 @@ async def get_portfolio_summary(db: AsyncSession) -> dict:
     # Stats
     cash = float(portfolio.current_cash)
     equity = cash + positions_value
+    unrealized_total = sum(p["unrealized_pnl_usd"] for p in open_positions)
     total_return_pct = round((equity / float(portfolio.initial_capital) - 1) * 100, 2)
 
     all_closed_res = await db.execute(
@@ -394,6 +452,7 @@ async def get_portfolio_summary(db: AsyncSession) -> dict:
             "initial_capital": float(portfolio.initial_capital),
             "current_cash": cash,
             "equity": round(equity, 2),
+            "unrealized_pnl": round(unrealized_total, 2),
             "total_return_pct": total_return_pct,
             "open_positions": len(open_positions),
             "closed_positions": len(all_closed),
