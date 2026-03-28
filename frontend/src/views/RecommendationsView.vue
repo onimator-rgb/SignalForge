@@ -2,7 +2,8 @@
 import { ref, onMounted, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { fetchActiveRecommendations } from '../api/recommendations'
-import type { Recommendation } from '../types/api'
+import { fetchWatchlists, addAssetToWatchlist } from '../api/watchlists'
+import type { Recommendation, Watchlist } from '../types/api'
 import { fmtPrice, fmtTime } from '../utils/format'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ErrorBox from '../components/ErrorBox.vue'
@@ -12,6 +13,8 @@ const error = ref('')
 const recs = ref<Recommendation[]>([])
 const filterClass = ref('')
 const expandedId = ref<string | null>(null)
+const watchlists = ref<Watchlist[]>([])
+const wlMenuForId = ref<string | null>(null)
 
 async function load() {
   loading.value = true
@@ -27,8 +30,18 @@ async function load() {
   }
 }
 
-onMounted(load)
+onMounted(() => {
+  load()
+  fetchWatchlists().then(wls => watchlists.value = wls).catch(() => {})
+})
 watch(filterClass, load)
+
+async function addToWl(wlId: string, assetId: string) {
+  try {
+    await addAssetToWatchlist(wlId, assetId)
+  } catch { /* duplicate or error — silently close */ }
+  wlMenuForId.value = null
+}
 
 function toggle(id: string) {
   expandedId.value = expandedId.value === id ? null : id
@@ -182,6 +195,23 @@ function scoreBarColor(score: number): string {
               <span>Horizon: {{ r.time_horizon }}</span>
               <span>Valid: {{ r.valid_until ? fmtTime(r.valid_until) : '—' }}</span>
               <span>Generated: {{ fmtTime(r.generated_at) }}</span>
+              <!-- Add to watchlist -->
+              <div class="relative ml-auto">
+                <button
+                  class="text-xs text-gray-500 hover:text-gray-300"
+                  @click.stop="wlMenuForId = wlMenuForId === r.id ? null : r.id"
+                >+ Watchlista</button>
+                <div
+                  v-if="wlMenuForId === r.id && watchlists.length > 0"
+                  class="absolute right-0 bottom-6 w-40 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-20 py-1"
+                >
+                  <button
+                    v-for="wl in watchlists" :key="wl.id"
+                    class="w-full text-left px-3 py-1 text-xs text-gray-300 hover:bg-gray-700"
+                    @click.stop="addToWl(wl.id, r.asset_id)"
+                  >{{ wl.name }}</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

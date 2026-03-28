@@ -36,3 +36,9 @@ class WatchlistAssetOut(BaseModel):
     asset_class: str
     image_url: str | None = None
     added_at: datetime
+    # Enriched fields (lightweight integrations)
+    latest_price: float | None = None
+    change_24h_pct: float | None = None
+    rec_type: str | None = None
+    rec_score: float | None = None
+    in_portfolio: bool = False

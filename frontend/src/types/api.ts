@@ -183,6 +183,11 @@ export interface WatchlistAsset {
   asset_class: string
   image_url: string | null
   added_at: string
+  latest_price: number | null
+  change_24h_pct: number | null
+  rec_type: string | null
+  rec_score: number | null
+  in_portfolio: boolean
 }
 
 export interface Recommendation {

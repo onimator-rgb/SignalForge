@@ -2,6 +2,8 @@
 import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { fetchPortfolio, triggerEvaluation } from '../api/portfolio'
+import { fetchWatchlists, addAssetToWatchlist } from '../api/watchlists'
+import type { Watchlist } from '../types/api'
 import { fmtPrice, fmtTime, timeAgo } from '../utils/format'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ErrorBox from '../components/ErrorBox.vue'
@@ -10,6 +12,8 @@ import api from '../api/client'
 const loading = ref(true)
 const error = ref('')
 const data = ref<any>(null)
+const watchlists = ref<Watchlist[]>([])
+const wlMenuForId = ref<string | null>(null)
 const evaluating = ref(false)
 const closingId = ref<string | null>(null)
 const expandedId = ref<string | null>(null)
@@ -55,7 +59,17 @@ function toggle(id: string) {
   expandedId.value = expandedId.value === id ? null : id
 }
 
-onMounted(load)
+onMounted(() => {
+  load()
+  fetchWatchlists().then(wls => watchlists.value = wls).catch(() => {})
+})
+
+async function addToWl(wlId: string, assetId: string) {
+  try {
+    await addAssetToWatchlist(wlId, assetId)
+  } catch { /* silent */ }
+  wlMenuForId.value = null
+}
 
 function pnlClass(val: number | null | undefined): string {
   if (val == null) return 'text-gray-500'
@@ -226,6 +240,26 @@ const reasonLabels: Record<string, string> = {
                 <span class="text-gray-400">Version: {{ p.recommendation.scoring_version }}</span>
               </div>
               <div v-if="p.recommendation.rationale" class="text-[10px] text-gray-500 mt-1">{{ p.recommendation.rationale }}</div>
+            </div>
+
+            <!-- Add to watchlist -->
+            <div class="border-t border-gray-800 pt-2 mt-2">
+              <div class="relative inline-block">
+                <button
+                  class="text-xs text-gray-500 hover:text-gray-300"
+                  @click.stop="wlMenuForId = wlMenuForId === p.id ? null : p.id"
+                >+ Dodaj do watchlisty</button>
+                <div
+                  v-if="wlMenuForId === p.id && watchlists.length > 0"
+                  class="absolute left-0 bottom-6 w-40 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-20 py-1"
+                >
+                  <button
+                    v-for="wl in watchlists" :key="wl.id"
+                    class="w-full text-left px-3 py-1 text-xs text-gray-300 hover:bg-gray-700"
+                    @click.stop="addToWl(wl.id, p.asset_id)"
+                  >{{ wl.name }}</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

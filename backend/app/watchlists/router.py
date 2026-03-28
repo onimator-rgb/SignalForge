@@ -123,8 +123,14 @@ async def delete_watchlist(watchlist_id: UUID, db: AsyncSession = Depends(get_db
 
 @router.get("/{watchlist_id}/assets", response_model=list[WatchlistAssetOut])
 async def list_watchlist_assets(watchlist_id: UUID, db: AsyncSession = Depends(get_db)):
-    """List assets in a watchlist."""
+    """List assets in a watchlist with enriched data (price, recommendation, portfolio)."""
     await _get_watchlist_or_404(db, watchlist_id)
+
+    from app.assets.service import get_latest_price
+    from app.recommendations.models import Recommendation
+    from app.portfolio.models import PortfolioPosition
+
+    # Base asset data
     result = await db.execute(
         select(
             WatchlistAsset.asset_id,
@@ -138,17 +144,43 @@ async def list_watchlist_assets(watchlist_id: UUID, db: AsyncSession = Depends(g
         .where(WatchlistAsset.watchlist_id == watchlist_id)
         .order_by(Asset.symbol)
     )
-    return [
-        WatchlistAssetOut(
-            asset_id=row.asset_id,
-            symbol=row.symbol,
-            name=row.name,
-            asset_class=row.asset_class,
-            image_url=row.metadata.get("image") if row.metadata else None,
-            added_at=row.added_at,
+    rows = result.all()
+
+    # Batch: active recommendations
+    asset_ids = [r.asset_id for r in rows]
+    rec_res = await db.execute(
+        select(Recommendation.asset_id, Recommendation.recommendation_type, Recommendation.score)
+        .where(Recommendation.asset_id.in_(asset_ids), Recommendation.status == "active")
+    )
+    rec_map = {r.asset_id: (r.recommendation_type, float(r.score)) for r in rec_res.all()}
+
+    # Batch: open portfolio positions
+    pos_res = await db.execute(
+        select(PortfolioPosition.asset_id)
+        .where(PortfolioPosition.asset_id.in_(asset_ids), PortfolioPosition.status == "open")
+    )
+    in_portfolio = set(r[0] for r in pos_res.all())
+
+    items = []
+    for row in rows:
+        price_data = await get_latest_price(db, row.asset_id)
+        rec = rec_map.get(row.asset_id)
+        items.append(
+            WatchlistAssetOut(
+                asset_id=row.asset_id,
+                symbol=row.symbol,
+                name=row.name,
+                asset_class=row.asset_class,
+                image_url=row.metadata.get("image") if row.metadata else None,
+                added_at=row.added_at,
+                latest_price=price_data.close if price_data else None,
+                change_24h_pct=price_data.change_24h_pct if price_data else None,
+                rec_type=rec[0] if rec else None,
+                rec_score=rec[1] if rec else None,
+                in_portfolio=row.asset_id in in_portfolio,
+            )
         )
-        for row in result.all()
-    ]
+    return items
 
 
 @router.post("/{watchlist_id}/assets", status_code=201)
