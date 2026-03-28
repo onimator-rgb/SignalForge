@@ -7,10 +7,11 @@ from pydantic import BaseModel
 
 
 class GenerateReportRequest(BaseModel):
-    report_type: str  # 'asset_brief', 'anomaly_explanation', 'market_summary'
+    report_type: str  # 'asset_brief', 'anomaly_explanation', 'market_summary', 'watchlist_summary'
     asset_id: UUID | None = None
     anomaly_event_id: UUID | None = None
     alert_event_id: UUID | None = None
+    watchlist_id: UUID | None = None
 
 
 class ReportOut(BaseModel):

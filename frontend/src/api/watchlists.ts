@@ -38,3 +38,13 @@ export async function addAssetToWatchlist(watchlistId: string, assetId: string):
 export async function removeAssetFromWatchlist(watchlistId: string, assetId: string): Promise<void> {
   await api.delete(`/watchlists/${watchlistId}/assets/${assetId}`)
 }
+
+export async function fetchWatchlistIntelligence(id: string): Promise<any> {
+  const { data } = await api.get(`/watchlists/${id}/intelligence`)
+  return data
+}
+
+export async function fetchWatchlistRecommendations(id: string): Promise<any[]> {
+  const { data } = await api.get(`/watchlists/${id}/recommendations`)
+  return data
+}

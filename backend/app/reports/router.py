@@ -45,6 +45,7 @@ async def generate(req: GenerateReportRequest, db: AsyncSession = Depends(get_db
             asset_id=req.asset_id,
             anomaly_event_id=req.anomaly_event_id,
             alert_event_id=req.alert_event_id,
+            watchlist_id=req.watchlist_id,
         )
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))

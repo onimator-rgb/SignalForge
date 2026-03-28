@@ -183,6 +183,123 @@ async def list_watchlist_assets(watchlist_id: UUID, db: AsyncSession = Depends(g
     return items
 
 
+# ── Intelligence / recommendations ────────────────
+
+@router.get("/{watchlist_id}/intelligence")
+async def watchlist_intelligence(watchlist_id: UUID, db: AsyncSession = Depends(get_db)):
+    """Quick intelligence summary for a watchlist."""
+    wl = await _get_watchlist_or_404(db, watchlist_id)
+
+    from app.recommendations.models import Recommendation
+    from app.portfolio.models import PortfolioPosition
+    from app.anomalies.models import AnomalyEvent
+
+    # Asset IDs in watchlist
+    wa_res = await db.execute(
+        select(WatchlistAsset.asset_id).where(WatchlistAsset.watchlist_id == watchlist_id)
+    )
+    asset_ids = [r[0] for r in wa_res.all()]
+    if not asset_ids:
+        return {"watchlist": wl.name, "total_assets": 0, "signals": {}, "strongest": [], "weakest": []}
+
+    # Class counts
+    class_res = await db.execute(
+        select(Asset.asset_class, func.count()).where(Asset.id.in_(asset_ids)).group_by(Asset.asset_class)
+    )
+    class_counts = dict(class_res.all())
+
+    # Recommendation counts
+    rec_res = await db.execute(
+        select(
+            Recommendation.asset_id, Recommendation.recommendation_type,
+            Recommendation.score, Asset.symbol,
+        )
+        .join(Asset, Recommendation.asset_id == Asset.id)
+        .where(Recommendation.asset_id.in_(asset_ids), Recommendation.status == "active")
+        .order_by(Recommendation.score.desc())
+    )
+    recs = rec_res.all()
+    rec_type_counts = {}
+    for r in recs:
+        rec_type_counts[r.recommendation_type] = rec_type_counts.get(r.recommendation_type, 0) + 1
+
+    # Portfolio overlap
+    pos_res = await db.execute(
+        select(func.count()).where(
+            PortfolioPosition.asset_id.in_(asset_ids), PortfolioPosition.status == "open"
+        )
+    )
+    open_positions = pos_res.scalar_one()
+
+    # Anomaly count
+    anom_res = await db.execute(
+        select(func.count()).where(
+            AnomalyEvent.asset_id.in_(asset_ids), AnomalyEvent.is_resolved.is_(False)
+        )
+    )
+    unresolved_anomalies = anom_res.scalar_one()
+
+    strongest = [{"symbol": r.symbol, "score": float(r.score), "type": r.recommendation_type} for r in recs[:3]]
+    weakest = [{"symbol": r.symbol, "score": float(r.score), "type": r.recommendation_type} for r in recs[-3:]] if len(recs) > 3 else []
+
+    log.info("watchlist.intelligence_fetch_done", watchlist_id=str(watchlist_id), assets=len(asset_ids))
+
+    return {
+        "watchlist": wl.name,
+        "total_assets": len(asset_ids),
+        "crypto_count": class_counts.get("crypto", 0),
+        "stock_count": class_counts.get("stock", 0),
+        "signals": rec_type_counts,
+        "candidate_buy_count": rec_type_counts.get("candidate_buy", 0),
+        "avoid_count": rec_type_counts.get("avoid", 0),
+        "open_positions": open_positions,
+        "unresolved_anomalies": unresolved_anomalies,
+        "strongest": strongest,
+        "weakest": weakest,
+    }
+
+
+@router.get("/{watchlist_id}/recommendations")
+async def watchlist_recommendations(watchlist_id: UUID, db: AsyncSession = Depends(get_db)):
+    """Active recommendations for assets in a watchlist."""
+    await _get_watchlist_or_404(db, watchlist_id)
+
+    from app.recommendations.models import Recommendation
+
+    wa_res = await db.execute(
+        select(WatchlistAsset.asset_id).where(WatchlistAsset.watchlist_id == watchlist_id)
+    )
+    asset_ids = [r[0] for r in wa_res.all()]
+    if not asset_ids:
+        return []
+
+    result = await db.execute(
+        select(
+            Recommendation.id, Recommendation.asset_id, Recommendation.recommendation_type,
+            Recommendation.score, Recommendation.confidence, Recommendation.risk_level,
+            Recommendation.rationale_summary, Recommendation.generated_at,
+            Asset.symbol, Asset.asset_class,
+        )
+        .join(Asset, Recommendation.asset_id == Asset.id)
+        .where(Recommendation.asset_id.in_(asset_ids), Recommendation.status == "active")
+        .order_by(Recommendation.score.desc())
+    )
+
+    log.info("watchlist.recommendations_fetch_done", watchlist_id=str(watchlist_id))
+
+    return [
+        {
+            "id": str(r.id), "asset_id": str(r.asset_id), "symbol": r.symbol,
+            "asset_class": r.asset_class, "recommendation_type": r.recommendation_type,
+            "score": float(r.score), "confidence": r.confidence, "risk_level": r.risk_level,
+            "rationale_summary": r.rationale_summary, "generated_at": r.generated_at,
+        }
+        for r in result.all()
+    ]
+
+
+# ── Asset membership ─────────────────────────────
+
 @router.post("/{watchlist_id}/assets", status_code=201)
 async def add_asset(
     watchlist_id: UUID, req: AddAssetRequest, db: AsyncSession = Depends(get_db)

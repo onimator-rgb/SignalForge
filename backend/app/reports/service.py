@@ -19,7 +19,7 @@ from app.reports.models import AnalysisReport
 
 log = get_logger(__name__)
 
-VALID_REPORT_TYPES = {"asset_brief", "anomaly_explanation", "market_summary"}
+VALID_REPORT_TYPES = {"asset_brief", "anomaly_explanation", "market_summary", "watchlist_summary"}
 MAX_REPORTS_PER_HOUR = 20
 
 
@@ -44,6 +44,7 @@ async def generate_report(
     asset_id: uuid.UUID | None = None,
     anomaly_event_id: uuid.UUID | None = None,
     alert_event_id: uuid.UUID | None = None,
+    watchlist_id: uuid.UUID | None = None,
 ) -> AnalysisReport:
     if report_type not in VALID_REPORT_TYPES:
         raise ValueError(f"Invalid report_type: {report_type}")
@@ -74,7 +75,7 @@ async def generate_report(
         report.status = "generating"
         await db.flush()
 
-        context = await _build_context(db, report_type, asset_id, anomaly_event_id)
+        context = await _build_context(db, report_type, asset_id, anomaly_event_id, watchlist_id)
         system_prompt, user_prompt, prompt_version = _get_prompts(report_type, context)
         report.context_data = context
         report.prompt_version = prompt_version
@@ -148,7 +149,7 @@ async def retry_report(db: AsyncSession, report_id: uuid.UUID) -> AnalysisReport
     )
 
 
-async def _build_context(db, report_type, asset_id, anomaly_event_id):
+async def _build_context(db, report_type, asset_id, anomaly_event_id, watchlist_id=None):
     if report_type == "asset_brief":
         if not asset_id:
             raise ValueError("asset_id required for asset_brief")
@@ -159,6 +160,10 @@ async def _build_context(db, report_type, asset_id, anomaly_event_id):
         return await _build_anomaly_context(db, anomaly_event_id)
     elif report_type == "market_summary":
         return await _build_market_context(db)
+    elif report_type == "watchlist_summary":
+        if not watchlist_id:
+            raise ValueError("watchlist_id required for watchlist_summary")
+        return await _build_watchlist_context(db, watchlist_id)
     raise ValueError(f"Unknown report_type: {report_type}")
 
 
@@ -282,6 +287,89 @@ async def _build_market_context(db: AsyncSession) -> dict:
     }
 
 
+async def _build_watchlist_context(db: AsyncSession, watchlist_id: uuid.UUID) -> dict:
+    """Build context for watchlist_summary report."""
+    from app.watchlists.models import Watchlist, WatchlistAsset
+    from app.recommendations.models import Recommendation
+    from app.portfolio.models import PortfolioPosition
+
+    wl_res = await db.execute(select(Watchlist).where(Watchlist.id == watchlist_id))
+    wl = wl_res.scalar_one_or_none()
+    if not wl:
+        raise ValueError(f"Watchlist {watchlist_id} not found")
+
+    wa_res = await db.execute(
+        select(WatchlistAsset.asset_id).where(WatchlistAsset.watchlist_id == watchlist_id)
+    )
+    asset_ids = [r[0] for r in wa_res.all()]
+    if not asset_ids:
+        return {"watchlist": {"name": wl.name, "total": 0}, "assets": [], "recommendations": [], "portfolio_overlap": [], "anomalies": []}
+
+    # Assets with prices
+    from sqlalchemy import func as sqlfunc
+    assets_res = await db.execute(
+        select(Asset).where(Asset.id.in_(asset_ids)).order_by(Asset.symbol)
+    )
+    assets_list = []
+    class_counts = {"crypto": 0, "stock": 0}
+    for asset in assets_res.scalars().all():
+        price_data = await get_latest_price(db, asset.id)
+        class_counts[asset.asset_class] = class_counts.get(asset.asset_class, 0) + 1
+        assets_list.append({
+            "symbol": asset.symbol, "asset_class": asset.asset_class,
+            "price": price_data.close if price_data else None,
+            "change_24h_pct": price_data.change_24h_pct if price_data else None,
+        })
+
+    # Recommendations
+    rec_res = await db.execute(
+        select(Recommendation.asset_id, Recommendation.recommendation_type,
+               Recommendation.score, Recommendation.confidence, Recommendation.risk_level,
+               Asset.symbol)
+        .join(Asset, Recommendation.asset_id == Asset.id)
+        .where(Recommendation.asset_id.in_(asset_ids), Recommendation.status == "active")
+        .order_by(Recommendation.score.desc())
+    )
+    recs_list = [
+        {"symbol": r.symbol, "type": r.recommendation_type, "score": float(r.score),
+         "confidence": r.confidence, "risk": r.risk_level}
+        for r in rec_res.all()
+    ]
+
+    # Portfolio overlap
+    pos_res = await db.execute(
+        select(PortfolioPosition.asset_id, PortfolioPosition.entry_price,
+               Asset.symbol)
+        .join(Asset, PortfolioPosition.asset_id == Asset.id)
+        .where(PortfolioPosition.asset_id.in_(asset_ids), PortfolioPosition.status == "open")
+    )
+    overlap = []
+    for r in pos_res.all():
+        price_data = await get_latest_price(db, r.asset_id)
+        pnl_pct = round((price_data.close / float(r.entry_price) - 1) * 100, 2) if price_data and float(r.entry_price) > 0 else 0
+        overlap.append({"symbol": r.symbol, "pnl_pct": pnl_pct})
+
+    # Anomalies
+    anom_res = await db.execute(
+        select(AnomalyEvent.anomaly_type, AnomalyEvent.severity, Asset.symbol)
+        .join(Asset, AnomalyEvent.asset_id == Asset.id)
+        .where(AnomalyEvent.asset_id.in_(asset_ids), AnomalyEvent.is_resolved.is_(False))
+        .order_by(AnomalyEvent.detected_at.desc()).limit(10)
+    )
+    anomalies_list = [
+        {"symbol": r.symbol, "type": r.anomaly_type, "severity": r.severity}
+        for r in anom_res.all()
+    ]
+
+    return {
+        "watchlist": {"name": wl.name, "total": len(asset_ids), "crypto": class_counts.get("crypto", 0), "stock": class_counts.get("stock", 0)},
+        "assets": assets_list,
+        "recommendations": recs_list,
+        "portfolio_overlap": overlap,
+        "anomalies": anomalies_list,
+    }
+
+
 def _get_prompts(report_type, context):
     if report_type == "asset_brief":
         return asset_brief.SYSTEM, asset_brief.build_user_prompt(context), asset_brief.VERSION
@@ -289,6 +377,9 @@ def _get_prompts(report_type, context):
         return anomaly_explanation.SYSTEM, anomaly_explanation.build_user_prompt(context), anomaly_explanation.VERSION
     elif report_type == "market_summary":
         return market_summary.SYSTEM, market_summary.build_user_prompt(context), market_summary.VERSION
+    elif report_type == "watchlist_summary":
+        from app.llm.prompts import watchlist_summary
+        return watchlist_summary.SYSTEM, watchlist_summary.build_user_prompt(context), watchlist_summary.VERSION
     raise ValueError(f"No prompts for: {report_type}")
 
 
@@ -301,4 +392,7 @@ def _generate_title(report_type, context):
         return f"Anomaly: {sym} — {atype}"
     elif report_type == "market_summary":
         return "Market Summary"
+    elif report_type == "watchlist_summary":
+        name = context.get("watchlist", {}).get("name", "Watchlist")
+        return f"Watchlist Summary: {name}"
     return "Report"
