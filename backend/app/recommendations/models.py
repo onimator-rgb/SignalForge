@@ -31,6 +31,13 @@ class Recommendation(Base, UUIDPrimaryKeyMixin):
     valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     invalidation_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
+    # Forward-return evaluation
+    price_after_24h: Mapped[float | None] = mapped_column(Numeric(24, 8), nullable=True)
+    price_after_72h: Mapped[float | None] = mapped_column(Numeric(24, 8), nullable=True)
+    return_24h_pct: Mapped[float | None] = mapped_column(Numeric(8, 4), nullable=True)
+    return_72h_pct: Mapped[float | None] = mapped_column(Numeric(8, 4), nullable=True)
+    evaluated_at_24h: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    evaluated_at_72h: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()"), nullable=False
     )

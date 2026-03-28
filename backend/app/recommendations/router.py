@@ -97,6 +97,13 @@ async def list_active(
     return [_rec_out(row.Recommendation, row.symbol, row.asset_class) for row in result.all()]
 
 
+@router.get("/performance")
+async def performance_metrics(db: AsyncSession = Depends(get_db)):
+    """Recommendation engine performance: accuracy by type, class, score bucket."""
+    from app.recommendations.evaluation import get_performance_metrics
+    return await get_performance_metrics(db)
+
+
 @router.get("/{recommendation_id}", response_model=RecommendationOut)
 async def get_recommendation(recommendation_id: UUID, db: AsyncSession = Depends(get_db)):
     """Get a single recommendation with full details."""

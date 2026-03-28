@@ -159,7 +159,20 @@ async def run_ingestion(
         except Exception as e:
             log.error("ingestion.recommendations_error", error=str(e))
 
-    # 3e. Post-ingestion: evaluate demo portfolio (entries + exits)
+    # 3e. Post-ingestion: evaluate recommendation forward returns
+    if ingested_assets:
+        try:
+            from app.recommendations.evaluation import evaluate_recommendations
+
+            eval_result = await evaluate_recommendations(db)
+            if eval_result.get("evaluated_24h") or eval_result.get("evaluated_72h"):
+                log.info("ingestion.rec_evaluation_done",
+                         eval_24h=eval_result.get("evaluated_24h", 0),
+                         eval_72h=eval_result.get("evaluated_72h", 0))
+        except Exception as e:
+            log.error("ingestion.rec_evaluation_error", error=str(e))
+
+    # 3f. Post-ingestion: evaluate demo portfolio (entries + exits)
     if ingested_assets:
         try:
             from app.portfolio.service import evaluate_portfolio

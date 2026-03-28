@@ -15,6 +15,7 @@ const navItems = [
   { to: '/alerts', label: 'Alerty', icon: '🔔', badge: true },
   { to: '/recommendations', label: 'Rekomendacje', icon: '📡', badge: false },
   { to: '/portfolio', label: 'Portfolio', icon: '💼', badge: false },
+  { to: '/performance', label: 'Performance', icon: '📈', badge: false },
   { to: '/watchlists', label: 'Watchlisty', icon: '📋', badge: false },
   { to: '/reports', label: 'Raporty AI', icon: '📄', badge: false },
 ]
