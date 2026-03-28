@@ -19,14 +19,35 @@ STALE_THRESHOLDS = {
     "1d": 1500,  # ~25 hours
 }
 
+# US market hours (Eastern Time = UTC-4 / UTC-5 depending on DST)
+# Simplified: Mon-Fri 13:30-20:00 UTC (covers both EST and EDT)
+US_MARKET_OPEN_UTC_HOUR = 13   # 9:00 AM ET (conservative, covers EDT)
+US_MARKET_CLOSE_UTC_HOUR = 21  # 5:00 PM ET (with buffer after close)
+
+
+def _is_us_market_expected_open(now_utc: datetime) -> bool:
+    """Check if US stock market is expected to have fresh data right now.
+
+    Returns True during trading hours (Mon-Fri ~9:30-16:00 ET) plus a buffer.
+    Returns False on weekends and outside hours — stocks are NOT stale then.
+    """
+    weekday = now_utc.weekday()  # 0=Mon, 6=Sun
+    if weekday >= 5:  # Saturday or Sunday
+        return False
+    hour = now_utc.hour
+    return US_MARKET_OPEN_UTC_HOUR <= hour < US_MARKET_CLOSE_UTC_HOUR
+
 
 @router.get("/sync")
 async def sync_freshness(db: AsyncSession = Depends(get_db)):
     """Per-asset, per-interval sync freshness. Answers: 'which assets have stale data?'"""
+    now_utc = datetime.now(timezone.utc)
+
     result = await db.execute(
         text("""
             SELECT
                 a.symbol,
+                a.asset_class,
                 ps.interval,
                 ps.last_bar_time,
                 ps.sync_status,
@@ -37,7 +58,7 @@ async def sync_freshness(db: AsyncSession = Depends(get_db)):
             FROM provider_sync_states ps
             JOIN assets a ON a.id = ps.asset_id
             WHERE a.is_active = true
-            ORDER BY a.market_cap_rank ASC NULLS LAST, ps.interval
+            ORDER BY a.asset_class, a.market_cap_rank ASC NULLS LAST, ps.interval
         """)
     )
     rows = result.fetchall()
@@ -52,12 +73,17 @@ async def sync_freshness(db: AsyncSession = Depends(get_db)):
         elif r.sync_status == "error":
             status = "error"
         elif minutes_ago is not None and minutes_ago > threshold:
-            status = "stale"
+            # For stocks: don't mark stale outside market hours
+            if r.asset_class == "stock" and not _is_us_market_expected_open(now_utc):
+                status = "fresh"  # Market closed — gap is expected
+            else:
+                status = "stale"
         else:
             status = "fresh"
 
         items.append({
             "symbol": r.symbol,
+            "asset_class": r.asset_class,
             "interval": r.interval,
             "last_bar_time": r.last_bar_time.isoformat() if r.last_bar_time else None,
             "minutes_ago": minutes_ago,

@@ -22,6 +22,7 @@ PRICE_INTERVAL = "1h"
 async def get_asset_list(
     db: AsyncSession,
     active_only: bool = True,
+    asset_class: str | None = None,
     sort_by: str = "market_cap_rank",
     sort_dir: str = "asc",
     limit: int = 50,
@@ -35,8 +36,12 @@ async def get_asset_list(
     Returns (items, total_count).
     """
     # Count total
-    count_where = Asset.is_active.is_(True) if active_only else True
-    total_res = await db.execute(select(func.count(Asset.id)).where(count_where))
+    count_q = select(func.count(Asset.id))
+    if active_only:
+        count_q = count_q.where(Asset.is_active.is_(True))
+    if asset_class:
+        count_q = count_q.where(Asset.asset_class == asset_class)
+    total_res = await db.execute(count_q)
     total = total_res.scalar_one()
 
     # Main query: assets + latest price data + anomaly counts via SQL
@@ -68,7 +73,7 @@ async def get_asset_list(
                 GROUP BY asset_id
             )
             SELECT
-                a.id, a.symbol, a.name, a.market_cap_rank, a.is_active,
+                a.id, a.symbol, a.name, a.asset_class, a.market_cap_rank, a.is_active,
                 a.metadata->>'image' AS image_url,
                 lb.latest_close, lb.bar_time,
                 b24.close_24h,
@@ -78,6 +83,7 @@ async def get_asset_list(
             LEFT JOIN bars_24h_ago b24 ON b24.asset_id = a.id
             LEFT JOIN anomaly_counts ac ON ac.asset_id = a.id
             WHERE (:active_only = false OR a.is_active = true)
+              AND (:filter_class = false OR a.asset_class = :asset_class)
             ORDER BY
                 CASE WHEN :sort_by = 'market_cap_rank' AND :sort_dir = 'asc'
                      THEN a.market_cap_rank END ASC NULLS LAST,
@@ -105,6 +111,8 @@ async def get_asset_list(
         {
             "interval": PRICE_INTERVAL,
             "active_only": active_only,
+            "filter_class": bool(asset_class),
+            "asset_class": asset_class or "",
             "sort_by": sort_by,
             "sort_dir": sort_dir,
             "limit": limit,
@@ -133,6 +141,7 @@ async def get_asset_list(
                 id=r.id,
                 symbol=r.symbol,
                 name=r.name,
+                asset_class=r.asset_class,
                 market_cap_rank=r.market_cap_rank,
                 is_active=r.is_active,
                 image_url=r.image_url,

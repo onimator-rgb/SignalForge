@@ -1,16 +1,18 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
-import { RouterLink } from 'vue-router'
+import { ref, onMounted, computed, watch } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
 import {
   fetchAlertRules, createAlertRule, deleteAlertRule, updateAlertRule,
   fetchAlertEvents, markEventRead, markAllRead, fetchAlertStats,
 } from '../api/alerts'
 import { fetchAssets } from '../api/assets'
+import { generateReport } from '../api/reports'
 import type { AlertRule, AlertEvent, AlertStats, AssetListItem } from '../types/api'
-import { fmtTime } from '../utils/format'
+import { fmtTime, timeAgo } from '../utils/format'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ErrorBox from '../components/ErrorBox.vue'
 
+const router = useRouter()
 const loading = ref(true)
 const error = ref('')
 const rules = ref<AlertRule[]>([])
@@ -18,6 +20,11 @@ const events = ref<AlertEvent[]>([])
 const eventsTotal = ref(0)
 const stats = ref<AlertStats | null>(null)
 const assets = ref<AssetListItem[]>([])
+
+// Filters
+const filterRead = ref<'unread' | 'all'>('unread')
+const filterRuleType = ref('')
+const filterAssetId = ref('')
 
 // Form state
 const showForm = ref(false)
@@ -29,12 +36,17 @@ const formSeverityMin = ref('high')
 const formCooldown = ref(60)
 const formSaving = ref(false)
 
+// Report generation per event
+const generatingForEvent = ref<Set<string>>(new Set())
+
 const ruleTypes = [
   { value: 'price_above', label: 'Cena powyzej' },
   { value: 'price_below', label: 'Cena ponizej' },
   { value: 'anomaly_detected', label: 'Anomalia wykryta' },
   { value: 'anomaly_severity_min', label: 'Anomalia min. severity' },
 ]
+
+const ruleTypeLabel = (rt: string) => ruleTypes.find(t => t.value === rt)?.label ?? rt.replace(/_/g, ' ')
 
 const isPriceRule = computed(() => ['price_above', 'price_below'].includes(formType.value))
 const isSeverityRule = computed(() => formType.value === 'anomaly_severity_min')
@@ -43,23 +55,38 @@ async function loadAll() {
   loading.value = true
   error.value = ''
   try {
-    const [rulesRes, eventsRes, statsRes, assetsRes] = await Promise.all([
+    const [rulesRes, statsRes, assetsRes] = await Promise.all([
       fetchAlertRules(),
-      fetchAlertEvents({ limit: 30 }),
       fetchAlertStats(),
       fetchAssets({ limit: 50 }),
     ])
     rules.value = rulesRes
-    events.value = eventsRes.items
-    eventsTotal.value = eventsRes.total
     stats.value = statsRes
     assets.value = assetsRes.items
+    await loadEvents()
   } catch (e: any) {
     error.value = e.response?.data?.detail || e.message
   } finally {
     loading.value = false
   }
 }
+
+async function loadEvents() {
+  try {
+    const params: Record<string, unknown> = { limit: 50 }
+    if (filterRead.value === 'unread') params.is_read = false
+    if (filterRuleType.value) params.rule_type = filterRuleType.value
+    if (filterAssetId.value) params.asset_id = filterAssetId.value
+
+    const eventsRes = await fetchAlertEvents(params as any)
+    events.value = eventsRes.items
+    eventsTotal.value = eventsRes.total
+  } catch (e: any) {
+    error.value = e.response?.data?.detail || e.message
+  }
+}
+
+watch([filterRead, filterRuleType, filterAssetId], () => loadEvents())
 
 async function submitRule() {
   formSaving.value = true
@@ -99,12 +126,53 @@ async function removeRule(id: string) {
 
 async function markRead(id: string) {
   await markEventRead(id)
-  await loadAll()
+  const statsRes = await fetchAlertStats()
+  stats.value = statsRes
+  await loadEvents()
 }
 
 async function markAllEventsRead() {
   await markAllRead()
-  await loadAll()
+  const statsRes = await fetchAlertStats()
+  stats.value = statsRes
+  await loadEvents()
+}
+
+function isAnomalyAlert(e: AlertEvent): boolean {
+  const rt = e.details?.rule_type as string | undefined
+  return rt === 'anomaly_detected' || rt === 'anomaly_severity_min' || !!e.anomaly_event_id
+}
+
+async function generateFromAlert(e: AlertEvent) {
+  generatingForEvent.value.add(e.id)
+  try {
+    const isAnomaly = isAnomalyAlert(e)
+    const params: Record<string, string> = { alert_event_id: e.id }
+    if (isAnomaly && e.anomaly_event_id) {
+      params.report_type = 'anomaly_explanation'
+      params.anomaly_event_id = e.anomaly_event_id
+    } else if (e.asset_id) {
+      params.report_type = 'asset_brief'
+      params.asset_id = e.asset_id
+    } else {
+      return
+    }
+    const report = await generateReport(params)
+    router.push(`/reports/${report.id}`)
+  } catch (err: any) {
+    alert(err.response?.data?.detail || err.message)
+  } finally {
+    generatingForEvent.value.delete(e.id)
+  }
+}
+
+function reportButtonLabel(e: AlertEvent): string {
+  if (generatingForEvent.value.has(e.id)) return 'Generowanie...'
+  return isAnomalyAlert(e) ? 'Wyjasnienie AI' : 'Asset Brief AI'
+}
+
+function canGenerateReport(e: AlertEvent): boolean {
+  return !!(e.anomaly_event_id || e.asset_id)
 }
 
 onMounted(loadAll)
@@ -134,9 +202,9 @@ onMounted(loadAll)
         </div>
       </div>
 
-      <div class="grid grid-cols-2 gap-6">
-        <!-- Left: Rules -->
-        <div>
+      <div class="grid grid-cols-5 gap-6">
+        <!-- Left: Rules (2 cols) -->
+        <div class="col-span-2">
           <div class="flex items-center justify-between mb-3">
             <h2 class="font-semibold text-sm">Reguly alertow</h2>
             <button
@@ -185,7 +253,7 @@ onMounted(loadAll)
               <div class="flex-1 min-w-0">
                 <div class="text-sm font-medium text-white truncate">{{ r.name }}</div>
                 <div class="text-xs text-gray-500">
-                  {{ r.rule_type.replace(/_/g, ' ') }}
+                  {{ ruleTypeLabel(r.rule_type) }}
                   <span v-if="r.asset_symbol"> · {{ r.asset_symbol }}</span>
                   <span v-if="r.condition.threshold"> · ${{ r.condition.threshold }}</span>
                   <span v-if="r.condition.severity_min"> · min: {{ r.condition.severity_min }}</span>
@@ -202,10 +270,13 @@ onMounted(loadAll)
           </div>
         </div>
 
-        <!-- Right: Events -->
-        <div>
+        <!-- Right: Events (3 cols) -->
+        <div class="col-span-3">
           <div class="flex items-center justify-between mb-3">
-            <h2 class="font-semibold text-sm">Ostatnie alerty</h2>
+            <h2 class="font-semibold text-sm">
+              Zdarzenia
+              <span class="text-gray-500 font-normal">({{ eventsTotal }})</span>
+            </h2>
             <button
               v-if="stats && stats.unread_events > 0"
               class="text-xs text-blue-400 hover:underline"
@@ -213,30 +284,101 @@ onMounted(loadAll)
             >Oznacz wszystkie jako przeczytane</button>
           </div>
 
-          <div v-if="events.length === 0" class="bg-gray-900 border border-gray-800 rounded-lg p-6 text-center text-sm text-gray-500">
-            Brak alertow. Alerty pojawia sie automatycznie.
+          <!-- Filters -->
+          <div class="flex gap-2 mb-3 flex-wrap">
+            <select
+              v-model="filterRead"
+              class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-300"
+            >
+              <option value="unread">Nieprzeczytane</option>
+              <option value="all">Wszystkie</option>
+            </select>
+            <select
+              v-model="filterRuleType"
+              class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-300"
+            >
+              <option value="">Wszystkie typy</option>
+              <option v-for="t in ruleTypes" :key="t.value" :value="t.value">{{ t.label }}</option>
+            </select>
+            <select
+              v-model="filterAssetId"
+              class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-300"
+            >
+              <option value="">Wszystkie aktywa</option>
+              <option v-for="a in assets" :key="a.id" :value="a.id">{{ a.symbol }}</option>
+            </select>
+          </div>
+
+          <!-- Events list -->
+          <div v-if="events.length === 0" class="bg-gray-900 border border-gray-800 rounded-lg p-8 text-center">
+            <div class="text-gray-600 text-2xl mb-2">
+              {{ filterRead === 'unread' ? '✅' : '🔔' }}
+            </div>
+            <div class="text-sm text-gray-500">
+              {{ filterRead === 'unread'
+                ? 'Brak nieprzeczytanych alertow.'
+                : 'Brak alertow pasujacych do filtrow.' }}
+            </div>
+            <div v-if="filterRead === 'unread'" class="text-xs text-gray-600 mt-1">
+              Przelacz na "Wszystkie" aby zobaczyc historie.
+            </div>
           </div>
           <div v-else class="space-y-2">
             <div
               v-for="e in events" :key="e.id"
-              class="bg-gray-900 border rounded-lg p-3 flex items-start gap-3"
+              class="bg-gray-900 border rounded-lg p-3"
               :class="e.is_read ? 'border-gray-800' : 'border-orange-500/30 bg-orange-500/5'"
             >
-              <div v-if="!e.is_read" class="w-2 h-2 rounded-full bg-orange-400 mt-1.5 shrink-0" />
-              <div class="flex-1 min-w-0">
-                <div class="text-sm text-gray-200">{{ e.message }}</div>
-                <div class="text-xs text-gray-500 mt-1">
-                  <span v-if="e.asset_symbol">
-                    <RouterLink :to="`/assets/${e.asset_id}`" class="text-blue-400 hover:underline">{{ e.asset_symbol }}</RouterLink> ·
-                  </span>
-                  {{ e.rule_name }} · {{ fmtTime(e.triggered_at) }}
+              <!-- Header row -->
+              <div class="flex items-start gap-2">
+                <div v-if="!e.is_read" class="w-2 h-2 rounded-full bg-orange-400 mt-1.5 shrink-0" />
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm text-gray-200">{{ e.message }}</div>
+                  <div class="text-xs text-gray-500 mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+                    <span>{{ e.rule_name }}</span>
+                    <span class="text-gray-600">{{ ruleTypeLabel((e.details?.rule_type as string) || '') }}</span>
+                    <span v-if="e.asset_symbol" class="text-gray-400">{{ e.asset_symbol }}</span>
+                    <span>{{ timeAgo(e.triggered_at) }}</span>
+                  </div>
                 </div>
+                <button
+                  v-if="!e.is_read"
+                  class="text-xs text-gray-500 hover:text-gray-300 shrink-0"
+                  @click="markRead(e.id)"
+                >Przeczytane</button>
               </div>
-              <button
-                v-if="!e.is_read"
-                class="text-xs text-gray-500 hover:text-gray-300 shrink-0"
-                @click="markRead(e.id)"
-              >Przeczytane</button>
+
+              <!-- Actions row -->
+              <div class="flex gap-2 mt-2 ml-4">
+                <RouterLink
+                  v-if="e.asset_id"
+                  :to="`/assets/${e.asset_id}`"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded
+                         bg-gray-800 border border-gray-700 text-gray-300 hover:text-white hover:border-gray-600"
+                >
+                  <span v-if="e.asset_symbol">{{ e.asset_symbol }}</span>
+                  <span v-else>Aktywo</span>
+                  <span class="text-gray-600">&rarr;</span>
+                </RouterLink>
+                <RouterLink
+                  v-if="e.anomaly_event_id"
+                  to="/anomalies"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded
+                         bg-gray-800 border border-gray-700 text-gray-300 hover:text-white hover:border-gray-600"
+                >
+                  Anomalie <span class="text-gray-600">&rarr;</span>
+                </RouterLink>
+                <button
+                  v-if="canGenerateReport(e)"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded
+                         bg-blue-600/20 border border-blue-500/30 text-blue-400 hover:bg-blue-600/30
+                         disabled:opacity-50"
+                  :disabled="generatingForEvent.has(e.id)"
+                  @click="generateFromAlert(e)"
+                >
+                  {{ reportButtonLabel(e) }}
+                </button>
+              </div>
             </div>
           </div>
         </div>

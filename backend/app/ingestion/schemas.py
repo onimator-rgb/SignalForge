@@ -8,7 +8,8 @@ from pydantic import BaseModel
 
 class TriggerIngestionRequest(BaseModel):
     interval: str = "1h"
-    asset_symbols: list[str] | None = None  # None = all active assets
+    asset_class: str = "crypto"  # 'crypto' or 'stock'
+    asset_symbols: list[str] | None = None  # None = all active assets of given class
 
 
 class TriggerIngestionResponse(BaseModel):

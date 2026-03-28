@@ -9,6 +9,7 @@ import type {
 
 export async function fetchAssets(params: {
   active_only?: boolean
+  asset_class?: string
   sort_by?: string
   sort_dir?: string
   limit?: number

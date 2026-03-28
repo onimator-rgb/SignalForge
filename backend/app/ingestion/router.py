@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.assets.models import Asset
 from app.database import get_db
 from app.ingestion.models import IngestionJob, ProviderSyncState
-from app.ingestion.providers.binance import BinanceProvider
 from app.ingestion.schemas import (
     IngestionJobOut,
     IngestionStatusResponse,
@@ -33,14 +32,20 @@ async def trigger_ingestion(
     """Manually trigger an ingestion cycle.
 
     Runs synchronously — waits for completion and returns the result.
-    For a quick test, pass a single symbol: {"asset_symbols": ["BTC"], "interval": "1h"}
+    Examples:
+      {"asset_class": "crypto", "interval": "1h"}
+      {"asset_class": "stock", "interval": "1h"}
+      {"asset_class": "crypto", "asset_symbols": ["BTC"], "interval": "1h"}
     """
-    provider = BinanceProvider()
+    from app.scheduler import _get_provider
+
+    provider = _get_provider(req.asset_class)
     job = await run_ingestion(
         db=db,
         provider=provider,
         interval=req.interval,
         asset_symbols=req.asset_symbols,
+        asset_class=req.asset_class,
     )
     return TriggerIngestionResponse(
         job_id=job.id,

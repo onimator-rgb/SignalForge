@@ -83,15 +83,16 @@ def filter_and_map_coins(coins: list[dict], limit: int = 25) -> list[dict]:
     result = []
     for coin in coins:
         cg_id = coin["id"]
-        binance_symbol = BINANCE_SYMBOL_MAP.get(cg_id)
-        if not binance_symbol:
+        provider_symbol = BINANCE_SYMBOL_MAP.get(cg_id)
+        if not provider_symbol:
             continue
 
         result.append(
             {
                 "symbol": coin["symbol"].upper(),
                 "name": coin["name"],
-                "binance_symbol": binance_symbol,
+                "provider_symbol": provider_symbol,
+                "asset_class": "crypto",
                 "coingecko_id": cg_id,
                 "market_cap_rank": coin.get("market_cap_rank"),
                 "is_active": True,
@@ -111,7 +112,7 @@ def filter_and_map_coins(coins: list[dict], limit: int = 25) -> list[dict]:
 
 async def seed_assets() -> None:
     """Main seed function."""
-    print("=== MarketPulse AI — Asset Seed ===\n")
+    print("=== MarketPulse AI — Crypto Asset Seed ===\n")
 
     # Fetch from CoinGecko
     try:
@@ -128,7 +129,8 @@ async def seed_assets() -> None:
             {
                 "symbol": sym.replace("USDT", ""),
                 "name": sym.replace("USDT", ""),
-                "binance_symbol": sym,
+                "provider_symbol": sym,
+                "asset_class": "crypto",
                 "coingecko_id": cg_id,
                 "market_cap_rank": idx + 1,
                 "is_active": True,
@@ -160,14 +162,14 @@ async def seed_assets() -> None:
             session.add(asset)
             print(
                 f"  ADD  {coin_data['symbol']:>8s} — {coin_data['name']}"
-                f" (Binance: {coin_data['binance_symbol']})"
+                f" (provider: {coin_data['provider_symbol']})"
             )
             inserted += 1
 
         await session.commit()
 
     print(f"\nDone: {inserted} inserted, {skipped} skipped")
-    print(f"Total assets with Binance pairs: {inserted + skipped}")
+    print(f"Total crypto assets: {inserted + skipped}")
 
 
 if __name__ == "__main__":

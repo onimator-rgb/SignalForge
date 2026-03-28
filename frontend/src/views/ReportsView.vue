@@ -88,8 +88,9 @@ const typeLabels: Record<string, string> = {
             <tr class="text-xs text-gray-500 uppercase tracking-wide border-b border-gray-800">
               <th class="px-4 py-3 text-left">Typ</th>
               <th class="px-4 py-3 text-left">Tytul</th>
+              <th class="px-4 py-3 text-left">Aktywo</th>
               <th class="px-4 py-3 text-center">Status</th>
-              <th class="px-4 py-3 text-right">Model</th>
+              <th class="px-4 py-3 text-center">Zrodlo</th>
               <th class="px-4 py-3 text-right">Tokens</th>
               <th class="px-4 py-3 text-right">Utworzono</th>
             </tr>
@@ -103,6 +104,10 @@ const typeLabels: Record<string, string> = {
             >
               <td class="px-4 py-3 text-gray-400 text-xs">{{ typeLabels[r.report_type] || r.report_type }}</td>
               <td class="px-4 py-3 text-white font-medium">{{ r.title || '—' }}</td>
+              <td class="px-4 py-3 text-xs">
+                <span v-if="r.asset_symbol" class="text-blue-400">{{ r.asset_symbol }}</span>
+                <span v-else class="text-gray-600">—</span>
+              </td>
               <td class="px-4 py-3 text-center">
                 <span
                   class="inline-flex px-2 py-0.5 rounded text-xs font-medium border"
@@ -111,7 +116,10 @@ const typeLabels: Record<string, string> = {
                   {{ r.status }}
                 </span>
               </td>
-              <td class="px-4 py-3 text-right text-xs text-gray-500">{{ r.llm_model || '—' }}</td>
+              <td class="px-4 py-3 text-center text-xs">
+                <span v-if="r.alert_event_id" class="text-orange-400">alert</span>
+                <span v-else class="text-gray-600">manual</span>
+              </td>
               <td class="px-4 py-3 text-right text-xs text-gray-500 tabular-nums">
                 {{ r.token_usage ? `${(r.token_usage.input_tokens || 0) + (r.token_usage.output_tokens || 0)}` : '—' }}
               </td>

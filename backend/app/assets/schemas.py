@@ -26,6 +26,7 @@ class AssetListItem(BaseModel):
     id: UUID
     symbol: str
     name: str
+    asset_class: str = "crypto"
     market_cap_rank: int | None
     is_active: bool
     image_url: str | None = None
@@ -37,7 +38,10 @@ class AssetDetail(BaseModel):
     id: UUID
     symbol: str
     name: str
-    binance_symbol: str
+    provider_symbol: str
+    asset_class: str = "crypto"
+    exchange: str | None = None
+    currency: str = "USD"
     coingecko_id: str | None
     market_cap_rank: int | None
     is_active: bool

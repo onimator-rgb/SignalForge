@@ -5,6 +5,7 @@ export async function generateReport(params: {
   report_type: string
   asset_id?: string
   anomaly_event_id?: string
+  alert_event_id?: string
 }): Promise<AnalysisReport> {
   const { data } = await api.post('/reports/generate', params)
   return data

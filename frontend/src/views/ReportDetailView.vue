@@ -63,6 +63,11 @@ const durationSec = computed(() => {
   if (!ms) return null
   return (ms / 1000).toFixed(1)
 })
+
+const hasContext = computed(() => {
+  if (!report.value) return false
+  return !!(report.value.asset_id || report.value.anomaly_event_id || report.value.alert_event_id)
+})
 </script>
 
 <template>
@@ -91,6 +96,35 @@ const durationSec = computed(() => {
           <span v-if="totalTokens">Tokens: {{ totalTokens }}</span>
           <span v-if="durationSec">Czas: {{ durationSec }}s</span>
           <span v-if="report.prompt_version">Prompt: {{ report.prompt_version }}</span>
+        </div>
+
+        <!-- Context / origin bar -->
+        <div v-if="hasContext" class="flex items-center gap-3 mt-3 text-xs">
+          <span class="text-gray-600">Kontekst:</span>
+          <RouterLink
+            v-if="report.asset_id"
+            :to="`/assets/${report.asset_id}`"
+            class="inline-flex items-center gap-1 px-2 py-0.5 rounded
+                   bg-gray-800 border border-gray-700 text-gray-300 hover:text-white hover:border-gray-600"
+          >
+            {{ report.asset_symbol || 'Aktywo' }} <span class="text-gray-600">&rarr;</span>
+          </RouterLink>
+          <RouterLink
+            v-if="report.anomaly_event_id"
+            to="/anomalies"
+            class="inline-flex items-center gap-1 px-2 py-0.5 rounded
+                   bg-gray-800 border border-gray-700 text-gray-300 hover:text-white hover:border-gray-600"
+          >
+            Anomalia <span class="text-gray-600">&rarr;</span>
+          </RouterLink>
+          <RouterLink
+            v-if="report.alert_event_id"
+            to="/alerts"
+            class="inline-flex items-center gap-1 px-2 py-0.5 rounded
+                   bg-orange-500/10 border border-orange-500/30 text-orange-400 hover:bg-orange-500/20"
+          >
+            Z alertu <span class="text-gray-600">&rarr;</span>
+          </RouterLink>
         </div>
       </div>
 

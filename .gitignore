@@ -18,7 +18,7 @@ frontend/dist/
 .env.local
 .env.*.local
 
-# IDE
+# IDE / AI tools
 .vscode/
 .idea/
 *.swp
@@ -26,6 +26,7 @@ frontend/dist/
 *~
 .cursor/
 .claude/
+.agent/
 
 # OS
 .DS_Store

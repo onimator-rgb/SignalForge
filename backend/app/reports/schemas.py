@@ -10,6 +10,7 @@ class GenerateReportRequest(BaseModel):
     report_type: str  # 'asset_brief', 'anomaly_explanation', 'market_summary'
     asset_id: UUID | None = None
     anomaly_event_id: UUID | None = None
+    alert_event_id: UUID | None = None
 
 
 class ReportOut(BaseModel):
@@ -17,7 +18,9 @@ class ReportOut(BaseModel):
     report_type: str
     status: str
     asset_id: UUID | None
+    asset_symbol: str | None = None
     anomaly_event_id: UUID | None
+    alert_event_id: UUID | None = None
     title: str | None
     content_md: str | None
     llm_provider: str | None

@@ -17,6 +17,7 @@ export interface AssetListItem {
   id: string
   symbol: string
   name: string
+  asset_class: string
   market_cap_rank: number | null
   is_active: boolean
   image_url: string | null
@@ -49,7 +50,10 @@ export interface AssetDetail {
   id: string
   symbol: string
   name: string
-  binance_symbol: string
+  provider_symbol: string
+  asset_class: string
+  exchange: string | null
+  currency: string
   coingecko_id: string | null
   market_cap_rank: number | null
   is_active: boolean
@@ -149,7 +153,9 @@ export interface AnalysisReport {
   report_type: string
   status: string
   asset_id: string | null
+  asset_symbol: string | null
   anomaly_event_id: string | null
+  alert_event_id: string | null
   title: string | null
   content_md: string | null
   llm_provider: string | null

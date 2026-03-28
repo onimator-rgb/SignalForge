@@ -80,8 +80,21 @@ const sparkData = computed(() => {
       <div class="flex items-center gap-4 mb-6">
         <img v-if="asset.image_url" :src="asset.image_url" class="w-10 h-10 rounded-full" />
         <div>
-          <h1 class="text-2xl font-bold">{{ asset.symbol }} <span class="text-gray-500 font-normal text-lg">{{ asset.name }}</span></h1>
-          <div class="text-xs text-gray-500">Rank #{{ asset.market_cap_rank ?? '—' }} &middot; {{ asset.binance_symbol }}</div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-2xl font-bold">{{ asset.symbol }} <span class="text-gray-500 font-normal text-lg">{{ asset.name }}</span></h1>
+            <span
+              class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium border"
+              :class="asset.asset_class === 'stock'
+                ? 'text-green-400 bg-green-500/10 border-green-500/30'
+                : 'text-blue-400 bg-blue-500/10 border-blue-500/30'"
+            >{{ asset.asset_class }}</span>
+          </div>
+          <div class="text-xs text-gray-500">
+            <span v-if="asset.market_cap_rank">Rank #{{ asset.market_cap_rank }}</span>
+            <span v-if="asset.exchange"> &middot; {{ asset.exchange }}</span>
+            <span> &middot; {{ asset.provider_symbol }}</span>
+            <span> &middot; {{ asset.currency }}</span>
+          </div>
         </div>
         <div class="ml-auto flex items-center gap-4">
           <button

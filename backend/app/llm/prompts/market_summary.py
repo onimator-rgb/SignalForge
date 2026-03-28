@@ -1,10 +1,11 @@
-"""Market summary prompt template v1."""
+"""Market summary prompt template v2 — multi-asset aware."""
 
-VERSION = "v1.0"
+VERSION = "v2.0"
 
 SYSTEM = """\
-You are a crypto market analyst assistant for MarketPulse AI.
+You are a financial market analyst assistant for MarketPulse AI.
 Your job is to produce a concise market overview based ONLY on the data provided below.
+The platform monitors both cryptocurrencies and stocks.
 
 Rules:
 - Base your analysis ONLY on the provided context data.
@@ -28,18 +29,26 @@ def build_user_prompt(context: dict) -> str:
         lines = []
         for m in top_movers[:10]:
             chg = m.get('change_24h_pct', 'N/A')
-            lines.append(f"- {m['symbol']}: ${m['close']} ({'+' if isinstance(chg, (int,float)) and chg >= 0 else ''}{chg}%)")
+            class_tag = f"[{m.get('asset_class', '?')}]" if m.get('asset_class') else ""
+            lines.append(
+                f"- {m['symbol']} {class_tag}: ${m['close']} "
+                f"({'+' if isinstance(chg, (int, float)) and chg >= 0 else ''}{chg}%)"
+            )
         movers_text = "\n".join(lines)
 
     anomalies_text = "No active anomalies."
     if active_anomalies:
         lines = []
         for a in active_anomalies[:10]:
-            lines.append(f"- {a['asset_symbol']}: {a['anomaly_type']} (severity={a['severity']})")
+            class_tag = f"[{a.get('asset_class', '?')}]" if a.get('asset_class') else ""
+            lines.append(
+                f"- {a['asset_symbol']} {class_tag}: "
+                f"{a['anomaly_type']} (severity={a['severity']})"
+            )
         anomalies_text = "\n".join(lines)
 
     return f"""\
-Generate a market overview for the monitored crypto assets.
+Generate a market overview for all monitored assets (crypto and stocks).
 
 ## Market Scope
 - Tracked assets: {asset_count}
@@ -53,7 +62,7 @@ Generate a market overview for the monitored crypto assets.
 {anomalies_text}
 
 Write the summary with these sections:
-1. **Market Overview** — general state of the monitored assets
+1. **Market Overview** — general state of the monitored assets across crypto and stocks
 2. **Notable Movers** — which assets stand out and why
 3. **Anomaly Signals** — active anomalies and what they suggest
 4. **Market Outlook** — cautious interpretation of the signals

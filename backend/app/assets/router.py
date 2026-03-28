@@ -35,6 +35,7 @@ VALID_SORT_DIRS = {"asc", "desc"}
 @router.get("", response_model=PaginatedResponse[AssetListItem])
 async def list_assets(
     active_only: bool = Query(True, description="Filter to active assets only"),
+    asset_class: str | None = Query(None, description="Filter by asset_class: crypto, stock"),
     sort_by: str = Query("market_cap_rank", description="Sort field: market_cap_rank, symbol, latest_price, change_24h"),
     sort_dir: str = Query("asc", description="Sort direction: asc, desc"),
     limit: int = Query(50, ge=1, le=100),
@@ -56,6 +57,7 @@ async def list_assets(
     items, total = await get_asset_list(
         db=db,
         active_only=active_only,
+        asset_class=asset_class,
         sort_by=sort_by,
         sort_dir=sort_dir,
         limit=limit,
@@ -134,7 +136,10 @@ async def get_asset(
         id=asset.id,
         symbol=asset.symbol,
         name=asset.name,
-        binance_symbol=asset.binance_symbol,
+        provider_symbol=asset.provider_symbol,
+        asset_class=asset.asset_class,
+        exchange=asset.exchange,
+        currency=asset.currency,
         coingecko_id=asset.coingecko_id,
         market_cap_rank=asset.market_cap_rank,
         is_active=asset.is_active,

@@ -121,19 +121,29 @@ async def delete_rule(rule_id: UUID, db: AsyncSession = Depends(get_db)):
 @router.get("/events", response_model=PaginatedResponse[AlertEventOut])
 async def list_events(
     is_read: bool | None = Query(None),
+    rule_type: str | None = Query(None),
+    asset_id: UUID | None = Query(None),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    """List alert events, newest first."""
+    """List alert events, newest first. Filterable by is_read, rule_type, asset_id."""
     from sqlalchemy import and_
 
     conditions = []
     if is_read is not None:
         conditions.append(AlertEvent.is_read.is_(is_read))
+    if asset_id is not None:
+        conditions.append(AlertEvent.asset_id == asset_id)
+    if rule_type is not None:
+        conditions.append(AlertRule.rule_type == rule_type)
     where = and_(*conditions) if conditions else True
 
-    count_res = await db.execute(select(func.count(AlertEvent.id)).where(where))
+    # Count query — needs join if filtering by rule_type
+    count_q = select(func.count(AlertEvent.id))
+    if rule_type is not None:
+        count_q = count_q.join(AlertRule, AlertEvent.alert_rule_id == AlertRule.id)
+    count_res = await db.execute(count_q.where(where))
     total = count_res.scalar_one()
 
     result = await db.execute(

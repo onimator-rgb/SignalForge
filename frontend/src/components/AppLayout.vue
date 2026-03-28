@@ -44,7 +44,7 @@ onUnmounted(() => clearInterval(badgeTimer))
         <RouterLink to="/" class="text-lg font-bold text-white tracking-tight">
           MarketPulse<span class="text-blue-400">AI</span>
         </RouterLink>
-        <div class="text-xs text-gray-500 mt-0.5">Crypto Anomaly Detection</div>
+        <div class="text-xs text-gray-500 mt-0.5">Market Intelligence Platform</div>
       </div>
 
       <nav class="flex-1 p-3 space-y-1">

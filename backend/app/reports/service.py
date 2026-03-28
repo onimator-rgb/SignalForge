@@ -43,6 +43,7 @@ async def generate_report(
     report_type: str,
     asset_id: uuid.UUID | None = None,
     anomaly_event_id: uuid.UUID | None = None,
+    alert_event_id: uuid.UUID | None = None,
 ) -> AnalysisReport:
     if report_type not in VALID_REPORT_TYPES:
         raise ValueError(f"Invalid report_type: {report_type}")
@@ -54,6 +55,7 @@ async def generate_report(
         status="pending",
         asset_id=asset_id,
         anomaly_event_id=anomaly_event_id,
+        alert_event_id=alert_event_id,
     )
     db.add(report)
     await db.flush()
@@ -64,6 +66,7 @@ async def generate_report(
         report_type=report_type,
         asset_id=str(asset_id) if asset_id else None,
         anomaly_event_id=str(anomaly_event_id) if anomaly_event_id else None,
+        alert_event_id=str(alert_event_id) if alert_event_id else None,
     )
 
     t_start = _time.monotonic()
@@ -141,6 +144,7 @@ async def retry_report(db: AsyncSession, report_id: uuid.UUID) -> AnalysisReport
         report_type=original.report_type,
         asset_id=original.asset_id,
         anomaly_event_id=original.anomaly_event_id,
+        alert_event_id=original.alert_event_id,
     )
 
 
@@ -184,7 +188,12 @@ async def _build_asset_context(db: AsyncSession, asset_id: uuid.UUID) -> dict:
     ohlcv_row = ohlcv_result.fetchone()
 
     return {
-        "asset": {"symbol": asset.symbol, "name": asset.name, "market_cap_rank": asset.market_cap_rank},
+        "asset": {
+            "symbol": asset.symbol, "name": asset.name,
+            "market_cap_rank": asset.market_cap_rank,
+            "asset_class": asset.asset_class,
+            "exchange": asset.exchange, "currency": asset.currency,
+        },
         "latest_price": {
             "close": price_data.close if price_data else None,
             "change_24h_pct": price_data.change_24h_pct if price_data else None,
@@ -229,7 +238,7 @@ async def _build_anomaly_context(db: AsyncSession, anomaly_event_id: uuid.UUID) 
             "score": float(anomaly.score), "detected_at": str(anomaly.detected_at),
             "timeframe": anomaly.timeframe, "details": anomaly.details or {},
         },
-        "asset": {"symbol": asset.symbol, "name": asset.name},
+        "asset": {"symbol": asset.symbol, "name": asset.name, "asset_class": asset.asset_class},
         "latest_price": {
             "close": price_data.close if price_data else None,
             "change_24h_pct": price_data.change_24h_pct if price_data else None,
@@ -251,7 +260,7 @@ async def _build_market_context(db: AsyncSession) -> dict:
         select(func.count(AnomalyEvent.id)).where(AnomalyEvent.is_resolved.is_(False))
     )
     active_result = await db.execute(
-        select(AnomalyEvent, Asset.symbol)
+        select(AnomalyEvent, Asset.symbol, Asset.asset_class)
         .join(Asset, AnomalyEvent.asset_id == Asset.id)
         .where(AnomalyEvent.is_resolved.is_(False))
         .order_by(AnomalyEvent.detected_at.desc()).limit(10)
@@ -260,14 +269,15 @@ async def _build_market_context(db: AsyncSession) -> dict:
     return {
         "asset_count": total,
         "top_movers": [
-            {"symbol": a.symbol, "close": a.latest_price.close if a.latest_price else None,
+            {"symbol": a.symbol, "asset_class": a.asset_class,
+             "close": a.latest_price.close if a.latest_price else None,
              "change_24h_pct": a.latest_price.change_24h_pct if a.latest_price else None}
             for a in items
         ],
         "anomaly_stats": {"total": total_res.scalar_one(), "unresolved": unresolved_res.scalar_one()},
         "active_anomalies": [
-            {"asset_symbol": symbol, "anomaly_type": a.anomaly_type, "severity": a.severity}
-            for a, symbol in active_result.all()
+            {"asset_symbol": symbol, "asset_class": ac, "anomaly_type": a.anomaly_type, "severity": a.severity}
+            for a, symbol, ac in active_result.all()
         ],
     }
 

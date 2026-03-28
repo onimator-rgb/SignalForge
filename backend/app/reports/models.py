@@ -22,6 +22,9 @@ class AnalysisReport(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     anomaly_event_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("anomaly_events.id"), nullable=True
     )
+    alert_event_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("alert_events.id"), nullable=True
+    )
     title: Mapped[str | None] = mapped_column(String(300), nullable=True)
     content_md: Mapped[str | None] = mapped_column(Text, nullable=True)
     llm_provider: Mapped[str | None] = mapped_column(String(30), nullable=True)

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { fetchAssets } from '../api/assets'
 import type { AssetListItem } from '../types/api'
@@ -17,6 +17,7 @@ const sortBy = ref('market_cap_rank')
 const sortDir = ref('asc')
 const page = ref(0)
 const pageSize = 25
+const filterClass = ref('')
 
 async function load(isRefetch = false) {
   if (isRefetch) {
@@ -26,12 +27,14 @@ async function load(isRefetch = false) {
   }
   error.value = ''
   try {
-    const res = await fetchAssets({
+    const params: Record<string, unknown> = {
       sort_by: sortBy.value,
       sort_dir: sortDir.value,
       limit: pageSize,
       offset: page.value * pageSize,
-    })
+    }
+    if (filterClass.value) params.asset_class = filterClass.value
+    const res = await fetchAssets(params as any)
     items.value = res.items
     total.value = res.total
   } catch (e: any) {
@@ -43,6 +46,11 @@ async function load(isRefetch = false) {
 }
 
 onMounted(() => load(false))
+
+watch(filterClass, () => {
+  page.value = 0
+  load(true)
+})
 
 function setSort(field: string) {
   if (sortBy.value === field) {
@@ -57,18 +65,36 @@ function setSort(field: string) {
 
 function sortArrow(field: string): string {
   if (sortBy.value !== field) return ''
-  return sortDir.value === 'asc' ? ' ▲' : ' ▼'
+  return sortDir.value === 'asc' ? ' \u25B2' : ' \u25BC'
 }
 
 function goPage(p: number) {
   page.value = p
   load(true)
 }
+
+const classColors: Record<string, string> = {
+  crypto: 'text-blue-400 bg-blue-500/10 border-blue-500/30',
+  stock: 'text-green-400 bg-green-500/10 border-green-500/30',
+}
 </script>
 
 <template>
   <div>
-    <h1 class="text-2xl font-bold mb-5">Aktywa</h1>
+    <div class="flex items-center justify-between mb-5">
+      <h1 class="text-2xl font-bold">Aktywa</h1>
+      <div class="flex gap-1">
+        <button
+          v-for="opt in [{ value: '', label: 'Wszystkie' }, { value: 'crypto', label: 'Crypto' }, { value: 'stock', label: 'Stocks' }]"
+          :key="opt.value"
+          class="px-3 py-1 text-xs rounded-lg border transition-colors"
+          :class="filterClass === opt.value
+            ? 'bg-blue-600/20 border-blue-500/40 text-blue-400'
+            : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200'"
+          @click="filterClass = opt.value"
+        >{{ opt.label }}</button>
+      </div>
+    </div>
 
     <LoadingSpinner v-if="initialLoading" />
     <ErrorBox v-else-if="error" :message="error" />
@@ -78,7 +104,6 @@ function goPage(p: number) {
         class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden relative"
         :class="{ 'opacity-60 pointer-events-none': refetching }"
       >
-        <!-- Refetch indicator -->
         <div v-if="refetching" class="absolute inset-0 flex items-center justify-center z-10">
           <div class="w-6 h-6 border-2 border-gray-600 border-t-blue-400 rounded-full animate-spin" />
         </div>
@@ -92,6 +117,7 @@ function goPage(p: number) {
               <th class="px-4 py-3 text-left cursor-pointer hover:text-gray-300 select-none" @click="setSort('symbol')">
                 Aktywo{{ sortArrow('symbol') }}
               </th>
+              <th class="px-4 py-3 text-center">Typ</th>
               <th class="px-4 py-3 text-right cursor-pointer hover:text-gray-300 select-none" @click="setSort('latest_price')">
                 Cena{{ sortArrow('latest_price') }}
               </th>
@@ -103,7 +129,7 @@ function goPage(p: number) {
           </thead>
           <tbody>
             <tr v-if="items.length === 0">
-              <td colspan="5" class="px-4 py-8 text-center text-gray-500">Brak aktywow do wyswietlenia.</td>
+              <td colspan="6" class="px-4 py-8 text-center text-gray-500">Brak aktywow do wyswietlenia.</td>
             </tr>
             <tr
               v-for="a in items"
@@ -119,6 +145,12 @@ function goPage(p: number) {
                     <div class="text-xs text-gray-500">{{ a.name }}</div>
                   </div>
                 </RouterLink>
+              </td>
+              <td class="px-4 py-3 text-center">
+                <span
+                  class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium border"
+                  :class="classColors[a.asset_class] || classColors.crypto"
+                >{{ a.asset_class }}</span>
               </td>
               <td class="px-4 py-3 text-right tabular-nums text-gray-300">
                 {{ a.latest_price ? '$' + fmtPrice(a.latest_price.close) : '—' }}

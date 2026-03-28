@@ -24,6 +24,7 @@ async def run_ingestion(
     provider: BaseProvider,
     interval: str,
     asset_symbols: list[str] | None = None,
+    asset_class: str | None = None,
     backfill_days: int = DEFAULT_BACKFILL_DAYS,
 ) -> IngestionJob:
     """Run a full ingestion cycle for all (or selected) active assets.
@@ -63,7 +64,7 @@ async def run_ingestion(
     )
 
     # 2. Load assets
-    assets = await _load_assets(db, asset_symbols)
+    assets = await _load_assets(db, asset_symbols, asset_class)
     job.assets_total = len(assets)
 
     if not assets:
@@ -173,11 +174,14 @@ async def run_ingestion(
 async def _load_assets(
     db: AsyncSession,
     symbols: list[str] | None,
+    asset_class: str | None = None,
 ) -> list[Asset]:
-    """Load active assets, optionally filtered by symbol list."""
+    """Load active assets, optionally filtered by symbol list and/or asset_class."""
     stmt = select(Asset).where(Asset.is_active.is_(True))
     if symbols:
         stmt = stmt.where(Asset.symbol.in_([s.upper() for s in symbols]))
+    if asset_class:
+        stmt = stmt.where(Asset.asset_class == asset_class)
     stmt = stmt.order_by(Asset.market_cap_rank.asc().nulls_last())
     result = await db.execute(stmt)
     return list(result.scalars().all())
@@ -204,7 +208,7 @@ async def _ingest_asset(
 
     # Fetch from provider
     bars = await provider.fetch_ohlcv(
-        symbol=asset.binance_symbol,
+        symbol=asset.provider_symbol,
         interval=interval,
         start_time=start_time,
         end_time=now,

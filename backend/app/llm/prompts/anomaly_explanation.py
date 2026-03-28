@@ -1,9 +1,9 @@
-"""Anomaly explanation prompt template v1."""
+"""Anomaly explanation prompt template v2 — multi-asset aware."""
 
-VERSION = "v1.0"
+VERSION = "v2.0"
 
 SYSTEM = """\
-You are a crypto market analyst assistant for MarketPulse AI.
+You are a financial market analyst assistant for MarketPulse AI.
 Your job is to explain a specific market anomaly based ONLY on the data provided below.
 
 Rules:
@@ -14,6 +14,7 @@ Rules:
 - Write in clear, structured markdown.
 - Keep the explanation under 400 words.
 - Write in English.
+- Adapt your language to the asset class (cryptocurrency vs stock).
 """
 
 
@@ -23,15 +24,19 @@ def build_user_prompt(context: dict) -> str:
     price = context.get("latest_price", {})
     indicators = context.get("indicators", {})
 
+    asset_class = asset.get("asset_class", "crypto")
+    asset_type_label = "stock" if asset_class == "stock" else "cryptocurrency"
+
     details = anomaly.get("details", {})
     details_text = "\n".join(f"- {k}: {v}" for k, v in details.items())
 
     return f"""\
-Explain the following market anomaly.
+Explain the following market anomaly for a {asset_type_label}.
 
 ## Asset
 - Symbol: {asset['symbol']}
 - Name: {asset['name']}
+- Type: {asset_type_label}
 
 ## Anomaly
 - Type: {anomaly['anomaly_type']}

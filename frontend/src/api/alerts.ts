@@ -34,6 +34,8 @@ export async function deleteAlertRule(id: string): Promise<void> {
 
 export async function fetchAlertEvents(params: {
   is_read?: boolean
+  rule_type?: string
+  asset_id?: string
   limit?: number
   offset?: number
 } = {}): Promise<PaginatedResponse<AlertEvent>> {
