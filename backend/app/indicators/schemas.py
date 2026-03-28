@@ -1,0 +1,31 @@
+"""Pydantic schemas for indicator endpoints."""
+
+from datetime import datetime
+from uuid import UUID
+
+from pydantic import BaseModel
+
+
+class MACDOut(BaseModel):
+    macd: float
+    signal: float
+    histogram: float
+
+
+class BollingerOut(BaseModel):
+    upper: float
+    middle: float
+    lower: float
+    width: float
+
+
+class IndicatorSnapshot(BaseModel):
+    asset_id: UUID
+    asset_symbol: str
+    interval: str
+    bar_time: datetime  # timestamp of the bar these indicators are based on
+    close: float
+    rsi_14: float | None = None
+    macd: MACDOut | None = None
+    bollinger: BollingerOut | None = None
+    bars_available: int  # how many bars were used

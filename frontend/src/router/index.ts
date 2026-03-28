@@ -1,0 +1,16 @@
+import { createRouter, createWebHistory } from 'vue-router'
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes: [
+    { path: '/', name: 'dashboard', component: () => import('../views/DashboardView.vue') },
+    { path: '/assets', name: 'assets', component: () => import('../views/AssetsView.vue') },
+    { path: '/assets/:id', name: 'asset-detail', component: () => import('../views/AssetDetailView.vue') },
+    { path: '/anomalies', name: 'anomalies', component: () => import('../views/AnomaliesView.vue') },
+    { path: '/alerts', name: 'alerts', component: () => import('../views/AlertsView.vue') },
+    { path: '/reports', name: 'reports', component: () => import('../views/ReportsView.vue') },
+    { path: '/reports/:id', name: 'report-detail', component: () => import('../views/ReportDetailView.vue') },
+  ],
+})
+
+export default router
