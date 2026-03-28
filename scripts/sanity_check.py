@@ -94,6 +94,54 @@ async def main() -> None:
         else:
             print("  (none)")
 
+        # Recommendations
+        r = await db.execute(text(
+            "SELECT scoring_version, recommendation_type, count(*) as cnt, "
+            "round(avg(score)::numeric, 1) as avg_s "
+            "FROM recommendations WHERE status = 'active' "
+            "GROUP BY scoring_version, recommendation_type "
+            "ORDER BY scoring_version, recommendation_type"
+        ))
+        rows = r.fetchall()
+        print(f"\nActive recommendations:")
+        for row in rows:
+            print(f"  {row.scoring_version or 'v1':>3s} {row.recommendation_type:>14s}: {row.cnt:3d} (avg={row.avg_s})")
+
+        # Evaluation
+        r = await db.execute(text(
+            "SELECT count(*) as total, "
+            "count(evaluated_at_24h) as eval_24h, "
+            "count(evaluated_at_72h) as eval_72h, "
+            "round(avg(return_24h_pct)::numeric, 3) as avg_ret_24h "
+            "FROM recommendations"
+        ))
+        row = r.fetchone()
+        print(f"\nEvaluation: total={row.total} eval_24h={row.eval_24h} eval_72h={row.eval_72h} avg_ret_24h={row.avg_ret_24h}")
+
+        # Portfolio
+        r = await db.execute(text(
+            "SELECT status, count(*) as cnt FROM portfolio_positions GROUP BY status ORDER BY status"
+        ))
+        rows = r.fetchall()
+        print(f"\nPortfolio positions:")
+        for row in rows:
+            print(f"  {row.status}: {row.cnt}")
+        r = await db.execute(text(
+            "SELECT round(current_cash::numeric, 2) as cash, round(initial_capital::numeric, 2) as cap "
+            "FROM portfolios WHERE is_active LIMIT 1"
+        ))
+        row = r.fetchone()
+        if row:
+            print(f"  cash=${row.cash} / initial=${row.cap}")
+
+        # Live prices cache state
+        try:
+            from app.live.cache import get_all_prices
+            cache = get_all_prices()
+            print(f"\nLive price cache: {len(cache)} entries")
+        except Exception:
+            print(f"\nLive price cache: unavailable (backend not running?)")
+
         # Ingestion jobs (last 5)
         r = await db.execute(text(
             "SELECT provider, status, assets_success, assets_failed, "

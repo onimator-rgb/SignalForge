@@ -1,4 +1,4 @@
-# Stabilization Run — Mixed-Asset MVP
+# Stabilization Run — Full Platform
 
 ## Quick start
 
@@ -25,10 +25,13 @@ cd frontend && npm run dev
 
 ### 4. Verify startup
 
-After backend starts, look for these lines in logs:
-- `scheduler_started` — scheduler is active
+Look for in logs:
+- `scheduler_started` — scheduler active
+- `live_prices.stream_start` — live price pollers running
 - `scheduled_ingestion_done asset_class=crypto` — first crypto cycle
 - `scheduled_ingestion_done asset_class=stock` — first stock cycle
+- `recommendation.batch_done` — recommendations generated
+- `portfolio.evaluate_done` — portfolio checked
 
 ---
 
@@ -38,15 +41,11 @@ After backend starts, look for these lines in logs:
 cd backend && uv run python -m scripts.sanity_check
 ```
 
-Shows: assets count, price bars, anomalies, alerts, reports, ingestion jobs, sync errors.
-
 ## Smoke test (backend must be running)
 
 ```bash
 python scripts/smoke_test.py
 ```
-
-Covers: health, crypto+stock assets, OHLCV, indicators, anomalies, alerts, reports, diagnostics.
 
 ---
 
@@ -61,32 +60,52 @@ curl -s http://localhost:8000/api/v1/diagnostics/errors | python -m json.tool
 curl -s http://localhost:8000/api/v1/diagnostics/config | python -m json.tool
 ```
 
-### Assets (filtered)
+### Dashboard overview (aggregate)
 
 ```bash
-# All
-curl -s "http://localhost:8000/api/v1/assets?limit=5" | python -m json.tool
-# Crypto only
-curl -s "http://localhost:8000/api/v1/assets?asset_class=crypto&limit=5" | python -m json.tool
-# Stocks only
-curl -s "http://localhost:8000/api/v1/assets?asset_class=stock&limit=5" | python -m json.tool
+curl -s http://localhost:8000/api/v1/dashboard/overview | python -m json.tool
 ```
 
-### Manual ingestion trigger
+### Assets
+
+```bash
+curl -s "http://localhost:8000/api/v1/assets?asset_class=crypto&limit=3" | python -m json.tool
+curl -s "http://localhost:8000/api/v1/assets?asset_class=stock&limit=3" | python -m json.tool
+```
+
+### Manual ingestion
 
 ```bash
 # Crypto
 curl -s -X POST http://localhost:8000/api/v1/ingestion/trigger \
-  -H "Content-Type: application/json" \
-  -d '{"asset_class": "crypto", "interval": "1h"}' | python -m json.tool
+  -H "Content-Type: application/json" -d '{"asset_class": "crypto", "interval": "1h"}'
 
 # Stocks
 curl -s -X POST http://localhost:8000/api/v1/ingestion/trigger \
-  -H "Content-Type: application/json" \
-  -d '{"asset_class": "stock", "interval": "1h"}' | python -m json.tool
+  -H "Content-Type: application/json" -d '{"asset_class": "stock", "interval": "1h"}'
 ```
 
-### Anomalies & alerts
+### Recommendations & performance
+
+```bash
+curl -s http://localhost:8000/api/v1/recommendations/active | python -m json.tool
+curl -s http://localhost:8000/api/v1/recommendations/performance | python -m json.tool
+```
+
+### Portfolio
+
+```bash
+curl -s http://localhost:8000/api/v1/portfolio | python -m json.tool
+curl -s -X POST http://localhost:8000/api/v1/portfolio/evaluate | python -m json.tool
+```
+
+### Live prices
+
+```bash
+curl -s http://localhost:8000/api/v1/live/prices | python -m json.tool
+```
+
+### Alerts & anomalies
 
 ```bash
 curl -s http://localhost:8000/api/v1/anomalies/stats | python -m json.tool
@@ -95,33 +114,57 @@ curl -s http://localhost:8000/api/v1/alerts/stats | python -m json.tool
 
 ---
 
-## Quick validation checklist
+## Monitoring checklist (during 24-72h run)
 
-After 1 hour of running, verify:
+### Every 1 hour
+- [ ] Health OK
+- [ ] Ingestion jobs completing (check logs)
+- [ ] No persistent sync errors
 
-- [ ] `GET /health` → `200 ok`
-- [ ] `GET /diagnostics/config` → `scheduler_enabled: true`
-- [ ] `GET /assets?asset_class=crypto` → has prices
-- [ ] `GET /assets?asset_class=stock` → has prices
-- [ ] `GET /anomalies/stats` → `total > 0`
-- [ ] `GET /diagnostics/errors` → `total_buffered < 10`
-- [ ] Frontend dashboard loads — mixed data visible
-- [ ] AssetsView filter (All/Crypto/Stocks) works
+### Every 4 hours
+- [ ] Dashboard overview — equity, signals, anomalies reasonable
+- [ ] Price bars growing for both crypto and stocks
+- [ ] Recommendations regenerating (superseding old ones)
+
+### Every 12 hours
+- [ ] Portfolio: check open positions PnL
+- [ ] Evaluation: check if 24h evaluations started appearing
+- [ ] Live prices: check cache vs fallback ratio
+- [ ] Frontend: all views load without errors
+
+### After 24 hours
+- [ ] Evaluation: `evaluated_24h > 0` in performance endpoint
+- [ ] Portfolio: at least some position activity (open/close)
+- [ ] Recommendation accuracy: first forward-return data available
+
+### After 72 hours
+- [ ] Evaluation: `evaluated_72h > 0`
+- [ ] Score calibration review: v1 vs v2 comparison possible
+- [ ] Portfolio: meaningful win/loss data
+
+---
 
 ## Red flags
 
-- `scheduler_disabled` in startup logs → check `.env`
-- `assets_fail > 5` in ingestion logs → provider issue
-- `consecutive_errors > 3` in sync states → check that symbol
-- Stock assets `stale` during market hours → diagnostics bug
-- `500` errors on asset detail → check backend logs
+- `scheduler_disabled` in logs → check .env
+- `assets_fail > 5` → provider issue
+- `consecutive_errors > 3` → check that symbol
+- Stock stale during market hours → diagnostics bug
+- `500` errors on any endpoint → check backend logs
+- Portfolio equity drops below $800 → review positions
+- 0 recommendations after ingestion → scoring bug
+- Live prices all "fallback" → poller not working
 
-## Exit criteria (ready for push)
+---
 
-- [ ] Backend stable 12h+ without crashes
-- [ ] 20+ crypto ingestion cycles, 10+ stock cycles
+## Exit criteria (ready for next phase)
+
+- [ ] Backend stable 24h+ without crashes
+- [ ] 50+ ingestion cycles completed (crypto + stock)
 - [ ] Health OK, errors < 10
-- [ ] Prices visible for both crypto and stocks
-- [ ] Anomalies detected for both classes
+- [ ] Recommendations: evaluated_24h count > 0
+- [ ] Portfolio: at least 1 open + 1 closed position
+- [ ] Live prices: >50% from cache (not fallback)
+- [ ] Dashboard loads with all widgets populated
 - [ ] Smoke test passes
-- [ ] Frontend works: dashboard, assets, detail, anomalies, alerts
+- [ ] No persistent sync errors
