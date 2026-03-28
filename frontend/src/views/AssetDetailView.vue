@@ -4,7 +4,9 @@ import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { fetchAssetDetail, fetchOHLCV } from '../api/assets'
 import { fetchAnomalies } from '../api/anomalies'
 import { generateReport } from '../api/reports'
-import type { AssetDetail, PriceBar, AnomalyEvent } from '../types/api'
+import { fetchWatchlists, addAssetToWatchlist } from '../api/watchlists'
+import { fetchAssetRecommendation } from '../api/recommendations'
+import type { AssetDetail, PriceBar, AnomalyEvent, Watchlist, Recommendation } from '../types/api'
 import { fmtPrice, fmtPriceDetail, fmtVol, fmtTime } from '../utils/format'
 import PriceChange from '../components/PriceChange.vue'
 import SeverityBadge from '../components/SeverityBadge.vue'
@@ -22,8 +24,16 @@ const bars = ref<PriceBar[]>([])
 const anomalies = ref<AnomalyEvent[]>([])
 const generatingReport = ref(false)
 const interval = ref('1h')
+const watchlists = ref<Watchlist[]>([])
+const showWatchlistMenu = ref(false)
+const watchlistAdding = ref(false)
+const recommendation = ref<Recommendation | null>(null)
 
-onMounted(() => loadAll())
+onMounted(() => {
+  loadAll()
+  fetchWatchlists().then(wls => watchlists.value = wls).catch(() => {})
+  fetchAssetRecommendation(assetId.value).then(r => recommendation.value = r).catch(() => {})
+})
 
 async function loadAll() {
   loading.value = true
@@ -53,6 +63,24 @@ async function genAssetBrief() {
     alert(e.response?.data?.detail || e.message || 'Report generation failed')
   } finally {
     generatingReport.value = false
+  }
+}
+
+async function addToWatchlist(watchlistId: string) {
+  watchlistAdding.value = true
+  try {
+    await addAssetToWatchlist(watchlistId, assetId.value)
+    showWatchlistMenu.value = false
+  } catch (e: any) {
+    const msg = e.response?.data?.detail || e.message
+    if (msg.includes('already')) {
+      // silently close — already in watchlist
+    } else {
+      alert(msg)
+    }
+  } finally {
+    watchlistAdding.value = false
+    showWatchlistMenu.value = false
   }
 }
 
@@ -97,6 +125,28 @@ const sparkData = computed(() => {
           </div>
         </div>
         <div class="ml-auto flex items-center gap-4">
+          <!-- Watchlist dropdown -->
+          <div class="relative">
+            <button
+              class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded-lg"
+              @click="showWatchlistMenu = !showWatchlistMenu"
+            >+ Watchlista</button>
+            <div
+              v-if="showWatchlistMenu"
+              class="absolute right-0 mt-1 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-20 py-1"
+            >
+              <div v-if="watchlists.length === 0" class="px-3 py-2 text-xs text-gray-500">
+                Brak watchlist.
+                <RouterLink to="/watchlists" class="text-blue-400 hover:underline" @click="showWatchlistMenu = false">Utworz pierwsza</RouterLink>
+              </div>
+              <button
+                v-for="wl in watchlists" :key="wl.id"
+                class="w-full text-left px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-700 hover:text-white disabled:opacity-50"
+                :disabled="watchlistAdding"
+                @click="addToWatchlist(wl.id)"
+              >{{ wl.name }} <span class="text-gray-500">({{ wl.asset_count }})</span></button>
+            </div>
+          </div>
           <button
             class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-lg disabled:opacity-50"
             :disabled="generatingReport"
@@ -274,6 +324,49 @@ const sparkData = computed(() => {
                 <span class="ml-auto text-gray-500">{{ fmtTime(a.detected_at) }}</span>
               </div>
             </div>
+          </div>
+
+          <!-- Recommendation -->
+          <div v-if="recommendation" class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+            <h2 class="text-sm font-semibold mb-3">Rekomendacja</h2>
+            <div class="flex items-center gap-2 mb-2">
+              <span
+                class="text-lg font-bold tabular-nums"
+                :class="{
+                  'text-green-400': recommendation.score >= 70,
+                  'text-yellow-400': recommendation.score >= 55 && recommendation.score < 70,
+                  'text-gray-400': recommendation.score >= 40 && recommendation.score < 55,
+                  'text-red-400': recommendation.score < 40,
+                }"
+              >{{ recommendation.score.toFixed(0) }}</span>
+              <span
+                class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium border"
+                :class="{
+                  'text-green-400 bg-green-500/10 border-green-500/30': recommendation.recommendation_type === 'candidate_buy',
+                  'text-yellow-400 bg-yellow-500/10 border-yellow-500/30': recommendation.recommendation_type === 'watch_only',
+                  'text-gray-400 bg-gray-500/10 border-gray-500/30': recommendation.recommendation_type === 'neutral',
+                  'text-red-400 bg-red-500/10 border-red-500/30': recommendation.recommendation_type === 'avoid',
+                }"
+              >{{ recommendation.recommendation_type.replace(/_/g, ' ').toUpperCase() }}</span>
+            </div>
+            <div class="h-1.5 bg-gray-800 rounded-full overflow-hidden mb-3">
+              <div
+                class="h-full rounded-full"
+                :class="{
+                  'bg-green-400': recommendation.score >= 70,
+                  'bg-yellow-400': recommendation.score >= 55,
+                  'bg-gray-500': recommendation.score >= 40,
+                  'bg-red-400': recommendation.score < 40,
+                }"
+                :style="{ width: Math.max(recommendation.score, 2) + '%' }"
+              />
+            </div>
+            <div class="text-xs text-gray-400 mb-2">{{ recommendation.rationale_summary }}</div>
+            <div class="flex gap-3 text-xs text-gray-500">
+              <span>Conf: <span :class="{ 'text-green-400': recommendation.confidence === 'high', 'text-yellow-400': recommendation.confidence === 'medium' }">{{ recommendation.confidence }}</span></span>
+              <span>Risk: <span :class="{ 'text-red-400': recommendation.risk_level === 'high', 'text-yellow-400': recommendation.risk_level === 'medium' }">{{ recommendation.risk_level }}</span></span>
+            </div>
+            <div class="text-[10px] text-gray-600 mt-2">Technical signal — not investment advice.</div>
           </div>
         </div>
       </div>

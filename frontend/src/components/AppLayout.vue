@@ -13,6 +13,9 @@ const navItems = [
   { to: '/assets', label: 'Aktywa', icon: '💰', badge: false },
   { to: '/anomalies', label: 'Anomalie', icon: '⚠️', badge: false },
   { to: '/alerts', label: 'Alerty', icon: '🔔', badge: true },
+  { to: '/recommendations', label: 'Rekomendacje', icon: '📡', badge: false },
+  { to: '/portfolio', label: 'Portfolio', icon: '💼', badge: false },
+  { to: '/watchlists', label: 'Watchlisty', icon: '📋', badge: false },
   { to: '/reports', label: 'Raporty AI', icon: '📄', badge: false },
 ]
 

@@ -148,6 +148,30 @@ async def run_ingestion(
         except Exception as e:
             log.error("ingestion.alerts_error", error=str(e))
 
+    # 3d. Post-ingestion: generate recommendations
+    if ingested_assets:
+        try:
+            from app.recommendations.service import generate_recommendations_batch
+
+            rec_count = await generate_recommendations_batch(db, ingested_assets, interval)
+            if rec_count:
+                log.info("ingestion.recommendations_done", count=rec_count)
+        except Exception as e:
+            log.error("ingestion.recommendations_error", error=str(e))
+
+    # 3e. Post-ingestion: evaluate demo portfolio (entries + exits)
+    if ingested_assets:
+        try:
+            from app.portfolio.service import evaluate_portfolio
+
+            pf_result = await evaluate_portfolio(db)
+            if pf_result.get("opened") or pf_result.get("closed"):
+                log.info("ingestion.portfolio_done",
+                         opened=pf_result.get("opened", 0),
+                         closed=pf_result.get("closed", 0))
+        except Exception as e:
+            log.error("ingestion.portfolio_error", error=str(e))
+
     # 4. Finalize job
     job.records_inserted = total_inserted
     job.status = "completed" if not errors else ("completed" if job.assets_success > 0 else "failed")

@@ -166,3 +166,92 @@ export interface AnalysisReport {
   created_at: string
   completed_at: string | null
 }
+
+export interface Watchlist {
+  id: string
+  name: string
+  description: string | null
+  asset_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface WatchlistAsset {
+  asset_id: string
+  symbol: string
+  name: string
+  asset_class: string
+  image_url: string | null
+  added_at: string
+}
+
+export interface Recommendation {
+  id: string
+  asset_id: string
+  asset_symbol: string | null
+  asset_class: string | null
+  generated_at: string
+  recommendation_type: string
+  score: number
+  confidence: string
+  risk_level: string
+  rationale_summary: string
+  signal_breakdown: Record<string, { score: number; weight: number; detail: string }>
+  entry_price_snapshot: number | null
+  time_horizon: string
+  valid_until: string | null
+  status: string
+  created_at: string
+}
+
+export interface PortfolioPosition {
+  id: string
+  asset_id: string
+  asset_symbol: string | null
+  asset_class: string | null
+  entry_price: number
+  quantity: number
+  entry_value_usd: number
+  opened_at: string
+  exit_price: number | null
+  close_reason: string | null
+  realized_pnl_usd: number | null
+  realized_pnl_pct: number | null
+  status: string
+  current_price: number | null
+  current_value_usd: number | null
+  unrealized_pnl_usd: number | null
+  unrealized_pnl_pct: number | null
+}
+
+export interface PortfolioStats {
+  initial_capital: number
+  current_cash: number
+  equity: number
+  total_return_pct: number
+  open_positions: number
+  closed_positions: number
+  total_trades: number
+  win_rate: number | null
+  avg_return_pct: number | null
+  best_trade_pct: number | null
+  worst_trade_pct: number | null
+  total_realized_pnl: number
+}
+
+export interface PortfolioTransaction {
+  id: string
+  tx_type: string
+  asset_symbol: string | null
+  price: number
+  quantity: number
+  value_usd: number
+  executed_at: string
+}
+
+export interface PortfolioSummary {
+  stats: PortfolioStats
+  open_positions: PortfolioPosition[]
+  recent_closed: PortfolioPosition[]
+  recent_transactions: PortfolioTransaction[]
+}

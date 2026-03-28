@@ -151,3 +151,44 @@ async def get_asset(
         created_at=asset.created_at,
         updated_at=asset.updated_at,
     )
+
+
+@router.get("/{asset_id}/recommendation")
+async def get_asset_recommendation(
+    asset_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the active recommendation for an asset (if any)."""
+    from app.recommendations.models import Recommendation
+    from app.recommendations.schemas import RecommendationOut
+
+    result = await db.execute(
+        select(Recommendation, Asset.symbol, Asset.asset_class)
+        .join(Asset, Recommendation.asset_id == Asset.id)
+        .where(Recommendation.asset_id == asset_id, Recommendation.status == "active")
+        .order_by(Recommendation.generated_at.desc())
+        .limit(1)
+    )
+    row = result.one_or_none()
+    if not row:
+        return None
+
+    rec = row.Recommendation
+    return RecommendationOut(
+        id=rec.id,
+        asset_id=rec.asset_id,
+        asset_symbol=row.symbol,
+        asset_class=row.asset_class,
+        generated_at=rec.generated_at,
+        recommendation_type=rec.recommendation_type,
+        score=float(rec.score),
+        confidence=rec.confidence,
+        risk_level=rec.risk_level,
+        rationale_summary=rec.rationale_summary,
+        signal_breakdown=rec.signal_breakdown,
+        entry_price_snapshot=float(rec.entry_price_snapshot) if rec.entry_price_snapshot else None,
+        time_horizon=rec.time_horizon,
+        valid_until=rec.valid_until,
+        status=rec.status,
+        created_at=rec.created_at,
+    )

@@ -19,6 +19,9 @@ from app.indicators.router import router as indicators_router
 from app.anomalies.router import router as anomalies_router
 from app.reports.router import router as reports_router
 from app.alerts.router import router as alerts_router
+from app.watchlists.router import router as watchlists_router
+from app.recommendations.router import router as recommendations_router
+from app.portfolio.router import router as portfolio_router
 
 
 @asynccontextmanager
@@ -72,6 +75,9 @@ def create_app() -> FastAPI:
     app.include_router(anomalies_router)
     app.include_router(reports_router)
     app.include_router(alerts_router)
+    app.include_router(watchlists_router)
+    app.include_router(recommendations_router)
+    app.include_router(portfolio_router)
 
     return app
 
