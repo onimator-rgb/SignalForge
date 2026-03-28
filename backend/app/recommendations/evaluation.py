@@ -152,6 +152,9 @@ async def get_performance_metrics(db: AsyncSession) -> dict:
     # Accuracy by score bucket
     by_bucket = await _accuracy_by_score_bucket(db)
 
+    # By scoring version
+    by_version = await _accuracy_by_version(db)
+
     return {
         "summary": {
             "total_recommendations": total,
@@ -161,6 +164,7 @@ async def get_performance_metrics(db: AsyncSession) -> dict:
             "avg_return_24h_pct": round(float(avg_return_24h), 4) if avg_return_24h else None,
             "avg_return_72h_pct": round(float(avg_return_72h), 4) if avg_return_72h else None,
         },
+        "by_version": by_version,
         "by_type": by_type,
         "by_asset_class": by_class,
         "by_score_bucket": by_bucket,
@@ -251,6 +255,35 @@ async def _accuracy_by_score_bucket(db: AsyncSession) -> list[dict]:
     return [
         {
             "bucket": row.bucket,
+            "total": row.total,
+            "evaluated": row.evaluated,
+            "avg_return_24h_pct": round(float(row.avg_return_24h), 4) if row.avg_return_24h else None,
+            "avg_return_72h_pct": round(float(row.avg_return_72h), 4) if row.avg_return_72h else None,
+            "accuracy_24h_pct": round(int(row.positive_24h) / row.evaluated * 100, 1) if row.evaluated else None,
+        }
+        for row in result.all()
+    ]
+
+
+async def _accuracy_by_version(db: AsyncSession) -> list[dict]:
+    """Accuracy grouped by scoring_version — for before/after calibration comparison."""
+    result = await db.execute(
+        select(
+            func.coalesce(Recommendation.scoring_version, "v1").label("version"),
+            func.count().label("total"),
+            func.count(Recommendation.return_24h_pct).label("evaluated"),
+            func.avg(Recommendation.return_24h_pct).label("avg_return_24h"),
+            func.avg(Recommendation.return_72h_pct).label("avg_return_72h"),
+            func.sum(case(
+                (Recommendation.return_24h_pct > 0, 1), else_=0
+            )).label("positive_24h"),
+        )
+        .group_by(func.coalesce(Recommendation.scoring_version, "v1"))
+        .order_by(func.coalesce(Recommendation.scoring_version, "v1"))
+    )
+    return [
+        {
+            "version": row.version,
             "total": row.total,
             "evaluated": row.evaluated,
             "avg_return_24h_pct": round(float(row.avg_return_24h), 4) if row.avg_return_24h else None,

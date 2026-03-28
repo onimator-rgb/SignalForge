@@ -9,6 +9,14 @@ export interface PerformanceMetrics {
     avg_return_24h_pct: number | null
     avg_return_72h_pct: number | null
   }
+  by_version: Array<{
+    version: string
+    total: number
+    evaluated: number
+    avg_return_24h_pct: number | null
+    avg_return_72h_pct: number | null
+    accuracy_24h_pct: number | null
+  }>
   by_type: Array<{
     type: string
     total: number

@@ -14,7 +14,7 @@ from app.indicators.service import get_indicators
 from app.logging_config import get_logger
 from app.market_data.models import PriceBar
 from app.recommendations.models import Recommendation
-from app.recommendations.scoring import compute_recommendation
+from app.recommendations.scoring import SCORING_VERSION, compute_recommendation
 
 log = get_logger(__name__)
 
@@ -115,6 +115,7 @@ async def _generate_for_asset(
         time_horizon="24h-72h",
         valid_until=now + timedelta(hours=RECOMMENDATION_VALIDITY_HOURS),
         status="active",
+        scoring_version=SCORING_VERSION,
     )
     db.add(rec)
     await db.flush()

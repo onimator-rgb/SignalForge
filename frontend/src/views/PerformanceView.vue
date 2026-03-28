@@ -88,6 +88,28 @@ const typeLabels: Record<string, string> = {
         </div>
       </div>
 
+      <!-- By version (calibration tracking) -->
+      <div v-if="perf.by_version && perf.by_version.length > 0" class="mb-6">
+        <div class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+          <div class="px-4 py-3 border-b border-gray-800">
+            <h2 class="text-sm font-semibold">By Scoring Version</h2>
+          </div>
+          <div class="flex divide-x divide-gray-800">
+            <div v-for="v in perf.by_version" :key="v.version" class="flex-1 p-3 text-center">
+              <div class="text-xs text-gray-500 mb-1">{{ v.version }}</div>
+              <div class="text-sm font-bold">{{ v.total }} recs</div>
+              <div class="text-xs text-gray-400">{{ v.evaluated }} evaluated</div>
+              <div class="text-xs tabular-nums mt-1" :class="pctClass(v.avg_return_24h_pct)">
+                24h: {{ fmtPct(v.avg_return_24h_pct) }}
+              </div>
+              <div class="text-xs text-gray-500">
+                acc: {{ v.accuracy_24h_pct != null ? v.accuracy_24h_pct.toFixed(0) + '%' : '--' }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="grid grid-cols-3 gap-5 mb-6">
         <!-- By recommendation type -->
         <div class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">

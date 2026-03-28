@@ -2,7 +2,15 @@
 
 Each signal extractor returns a sub-score in [-1.0, +1.0].
 Composite score is weighted sum, normalized to 0-100.
+
+Scoring version history:
+  v1: Initial weights and thresholds (candidate_buy >= 70)
+  v2: Calibrated weights + lowered candidate_buy to 63
+      - MACD 0.20→0.15, volume 0.10→0.05 (weak signals)
+      - volatility 0.05→0.10, price_trend 0.15→0.20 (underweighted)
 """
+
+SCORING_VERSION = "v2"
 
 from dataclasses import dataclass
 
@@ -34,12 +42,12 @@ class ScoringResult:
 
 WEIGHTS = {
     "rsi": 0.25,
-    "macd": 0.20,
+    "macd": 0.15,
     "bollinger": 0.15,
-    "price_trend": 0.15,
-    "volume": 0.10,
+    "price_trend": 0.20,
+    "volume": 0.05,
     "anomaly": 0.10,
-    "volatility": 0.05,
+    "volatility": 0.10,
 }
 
 
@@ -218,8 +226,8 @@ def compute_recommendation(
     # Normalize to 0-100 (raw -1 → 0, raw 0 → 50, raw +1 → 100)
     composite = round(max(0.0, min(100.0, (raw + 1.0) * 50.0)), 2)
 
-    # Classification
-    if composite >= 70:
+    # Classification (v2: lowered candidate_buy from 70 to 63)
+    if composite >= 63:
         rec_type = "candidate_buy"
     elif composite >= 55:
         rec_type = "watch_only"
