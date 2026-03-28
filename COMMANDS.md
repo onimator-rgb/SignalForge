@@ -1,81 +1,65 @@
-# MarketPulse AI — Command Reference
+# SignalForge — Command Reference
 
-## Prerequisites check
+## Prerequisites
+
 ```bash
 python scripts/check_prerequisites.py
 ```
 
 ## Database (local PostgreSQL)
+
 ```bash
-# First-time setup (run as postgres superuser):
 psql -U postgres -c "CREATE USER marketpulse WITH PASSWORD 'marketpulse';"
 psql -U postgres -c "CREATE DATABASE marketpulse OWNER marketpulse;"
-
-# Verify connection:
-psql -U marketpulse -d marketpulse -c "SELECT 1;"
 ```
 
 ## Backend
+
 ```bash
-# Install dependencies
 cd backend
-uv sync
-
-# Run migrations
-cd backend
-uv run alembic upgrade head
-
-# Seed assets
-cd backend
-uv run python -m scripts.seed_assets
-
-# Start dev server
-cd backend
-uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-# Create new migration
-cd backend
-uv run alembic revision --autogenerate -m "description"
+uv sync                                            # Install dependencies
+uv run alembic upgrade head                        # Run migrations
+uv run python -m scripts.seed_assets               # Seed 25 crypto assets
+uv run python -m scripts.seed_stocks               # Seed 15 US stocks
+uv run uvicorn app.main:app --reload --port 8000   # Start backend
 ```
 
 ## Frontend
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-## Verification
-```bash
-# Health check
-curl http://localhost:8000/api/v1/health
-
-# Smoke test
-python scripts/smoke_test.py
-
-# API docs
-# Open: http://localhost:8000/docs
-```
-
 ## Ingestion
+
 ```bash
-# Manual trigger (single asset)
+# Crypto
 curl -X POST http://localhost:8000/api/v1/ingestion/trigger \
-  -H "Content-Type: application/json" \
-  -d '{"interval": "1h", "asset_symbols": ["BTC"]}'
+  -H "Content-Type: application/json" -d '{"asset_class":"crypto","interval":"1h"}'
 
-# Manual trigger (all assets)
+# Stocks
 curl -X POST http://localhost:8000/api/v1/ingestion/trigger \
-  -H "Content-Type: application/json" \
-  -d '{"interval": "1h"}'
-
-# Check status
-curl http://localhost:8000/api/v1/ingestion/status
+  -H "Content-Type: application/json" -d '{"asset_class":"stock","interval":"1h"}'
 ```
 
-## Diagnostics
+## Verification
+
 ```bash
-curl http://localhost:8000/api/v1/diagnostics/sync     # Data freshness
-curl http://localhost:8000/api/v1/diagnostics/config   # Current config
-curl http://localhost:8000/api/v1/diagnostics/errors   # Recent errors
+python scripts/smoke_test.py                       # API smoke test
+cd backend && uv run python -m scripts.sanity_check  # DB sanity check
+curl http://localhost:8000/api/v1/health             # Health check
+```
+
+## Key endpoints
+
+```bash
+curl http://localhost:8000/api/v1/dashboard/overview         # Dashboard aggregate
+curl http://localhost:8000/api/v1/recommendations/active     # Active signals
+curl http://localhost:8000/api/v1/recommendations/performance # Engine accuracy
+curl http://localhost:8000/api/v1/portfolio                   # Demo portfolio
+curl http://localhost:8000/api/v1/live/prices                 # Live/cached prices
+curl http://localhost:8000/api/v1/diagnostics/sync            # Data freshness
+curl http://localhost:8000/api/v1/diagnostics/errors          # Recent errors
 ```

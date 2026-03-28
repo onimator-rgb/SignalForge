@@ -1,8 +1,8 @@
 <p align="center">
   <h1 align="center">SignalForge</h1>
   <p align="center">
-    <strong>Multi-asset market intelligence platform</strong><br>
-    Crypto &amp; Stocks &bull; Anomaly detection &bull; Technical indicators &bull; AI-powered insights
+    <strong>Multi-asset market intelligence &amp; paper trading platform</strong><br>
+    Crypto &amp; Stocks &bull; Anomaly detection &bull; AI reports &bull; Recommendations &bull; Demo portfolio
   </p>
 </p>
 
@@ -19,43 +19,50 @@
 
 ## Overview
 
-SignalForge monitors **cryptocurrencies and US stocks** in near real-time, computes technical indicators, detects market anomalies using statistical models, and delivers actionable intelligence through a modern dashboard. It combines quantitative analysis with AI-generated explanations to help traders and analysts understand market behavior.
+SignalForge is a full-stack market intelligence platform that monitors **cryptocurrencies and US stocks**, detects anomalies, generates AI-powered reports, produces scored recommendations, and runs a demo paper trading portfolio — all through a modern dashboard.
 
-### Current Feature Set
+It combines quantitative technical analysis (RSI, MACD, Bollinger Bands, Z-score anomaly detection) with AI-generated insights (via Claude) to help analysts understand market behavior. The demo portfolio executes paper trades based on recommendation signals, with full performance tracking.
 
-- **Multi-asset support** — Crypto (via Binance) and US stocks (via Yahoo Finance) in a single system
-- **Live market data ingestion** — Automated OHLCV fetching with configurable intervals and backfill
-- **Technical indicators** — RSI-14, MACD(12,26,9), Bollinger Bands(20,2) computed on-the-fly
-- **Anomaly detection** — Z-score detectors for price spikes, volume surges, and RSI extremes with severity scoring
-- **Alert system** — Configurable rules (price thresholds, anomaly triggers) with cooldown and event tracking
-- **AI-powered reports** — Market summaries, asset briefs, and anomaly explanations via Claude API
-- **Alerts-reports integration** — Generate contextual AI reports directly from alert events
-- **Real-time dashboard** — Vue 3 SPA with asset class filtering, auto-refresh, and detailed views
-- **Diagnostics** — Sync freshness tracking, market-hours-aware staleness for stocks, error monitoring
+> **Paper trading only** — this is an educational/demo tool. Not investment advice. Past performance does not guarantee future results.
+
+---
+
+## Features
+
+| Module | Description |
+|--------|-------------|
+| **Multi-asset ingestion** | Automated OHLCV data from Binance (crypto) and Yahoo Finance (stocks) |
+| **Technical indicators** | RSI-14, MACD(12,26,9), Bollinger Bands(20,2) computed on-the-fly |
+| **Anomaly detection** | Z-score detectors for price spikes, volume surges, RSI extremes |
+| **Alert system** | Configurable rules with cooldown, event tracking, mark-as-read |
+| **AI reports** | Market summaries, asset briefs, anomaly explanations, watchlist summaries (Claude) |
+| **Recommendation engine** | 7-signal composite scoring (v2), candidate_buy / watch_only / neutral / avoid |
+| **Demo portfolio** | Paper trading with $1000 capital, rule-based entry/exit, PnL tracking |
+| **Performance evaluation** | Forward-return measurement at 24h/72h, accuracy by type/class/score bucket |
+| **Watchlists** | User-defined asset groups with intelligence overlays and AI summaries |
+| **Live prices** | Binance polling (10s) for crypto, Yahoo polling (60s) for stocks, in-memory cache |
+| **Dashboard** | Command center: portfolio, signals, anomalies, watchlists, live prices |
+| **Diagnostics** | Sync freshness, market-hours awareness, error monitoring, config view |
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────┐     ┌─────────────────────────────────┐     ┌──────────────┐
-│   Vue 3 Frontend    │────>│         FastAPI Backend          │────>│  PostgreSQL   │
-│   TailwindCSS v4    │     │                                 │     │              │
-│   :5173             │     │  Assets | Indicators | Anomalies│     │  :5432       │
-└─────────────────────┘     │  Reports | Alerts | Ingestion   │     └──────────────┘
-                            │  LLM | Scheduler | Diagnostics  │
-                            └──────────┬──────────┬───────────┘
-                                       │          │
-                            ┌──────────▼──┐  ┌────▼──────┐
-                            │ Binance API │  │ Yahoo     │
-                            │ (crypto)    │  │ Finance   │
-                            └─────────────┘  │ (stocks)  │
-                                             └───────────┘
-                                       │
-                              ┌────────▼──────┐
-                              │  Claude API   │
-                              │  (AI reports) │
-                              └───────────────┘
+┌─────────────────────┐     ┌──────────────────────────────────────┐     ┌──────────────┐
+│   Vue 3 Frontend    │────>│           FastAPI Backend            │────>│  PostgreSQL   │
+│   TailwindCSS v4    │     │                                    │     │              │
+│   :5173             │     │  Assets | Indicators | Anomalies   │     │  :5432       │
+└─────────────────────┘     │  Alerts | Reports | Recommendations│     └──────────────┘
+                            │  Portfolio | Watchlists | Live      │
+                            │  Scheduler | Diagnostics | Dashboard│
+                            └─────────┬──────────┬───────┬───────┘
+                                      │          │       │
+                           ┌──────────▼──┐  ┌────▼────┐  ┌▼──────────┐
+                           │ Binance API │  │ Yahoo   │  │ Claude    │
+                           │ (crypto)    │  │ Finance │  │ API       │
+                           └─────────────┘  │ (stocks)│  │ (reports) │
+                                            └─────────┘  └───────────┘
 ```
 
 ---
@@ -66,48 +73,11 @@ SignalForge monitors **cryptocurrencies and US stocks** in near real-time, compu
 |-------|-----------|
 | **Backend** | Python 3.12, FastAPI, SQLAlchemy 2.0 (async), Alembic, APScheduler |
 | **Frontend** | Vue 3, TypeScript, TailwindCSS v4, Vite, Vue Router, Axios |
-| **Database** | PostgreSQL 16 |
-| **Crypto Data** | Binance public API (OHLCV, no auth required) |
-| **Stock Data** | Yahoo Finance via `yfinance` (delayed ~15min) |
-| **AI/LLM** | Anthropic Claude API |
-| **Analysis** | pandas, Z-score anomaly detection, RSI, MACD, Bollinger Bands |
-
----
-
-## Project Structure
-
-```
-signalforge/
-├── backend/
-│   ├── app/
-│   │   ├── alerts/          # Alert rules, triggers, evaluation
-│   │   ├── anomalies/       # Detection engine & detectors
-│   │   │   └── detectors/   #   price_spike, volume_spike, rsi_extreme
-│   │   ├── assets/          # Asset registry (crypto + stocks)
-│   │   ├── core/            # Middleware, exceptions, error buffer
-│   │   ├── indicators/      # Technical indicator calculators
-│   │   │   └── calculators/ #   RSI, MACD, Bollinger Bands
-│   │   ├── ingestion/       # Data pipeline & providers
-│   │   │   └── providers/   #   Binance (crypto), Yahoo Finance (stocks)
-│   │   ├── llm/             # AI report generation
-│   │   │   ├── prompts/     #   multi-asset-aware prompt templates
-│   │   │   └── providers/   #   Claude integration
-│   │   ├── market_data/     # OHLCV storage & serving
-│   │   ├── reports/         # Report generation & history
-│   │   └── system/          # Health checks & diagnostics
-│   ├── alembic/             # Database migrations
-│   └── tests/
-├── frontend/
-│   └── src/
-│       ├── views/           # Dashboard, Assets, Anomalies, Reports, Alerts
-│       ├── components/      # Layout, SearchBar, badges, loaders
-│       ├── api/             # Typed API client (Axios)
-│       ├── types/           # TypeScript interfaces
-│       └── utils/           # Formatters, markdown helpers
-├── scripts/                 # Seed, smoke test, sanity check
-├── docs/                    # Debug checklist, stabilization guide
-└── infra/                   # Docker Compose (optional)
-```
+| **Database** | PostgreSQL 16 (10 tables, 10 migrations) |
+| **Crypto data** | Binance public API (OHLCV + 24hr ticker for live prices) |
+| **Stock data** | Yahoo Finance via `yfinance` (delayed ~15min) |
+| **AI/LLM** | Anthropic Claude API (4 report types) |
+| **Analysis** | pandas, Z-score anomaly detection, 7-signal recommendation scoring |
 
 ---
 
@@ -115,10 +85,7 @@ signalforge/
 
 ### Prerequisites
 
-- Python 3.12+
-- Node.js 18+
-- PostgreSQL 16+
-- [uv](https://docs.astral.sh/uv/) (Python package manager)
+- Python 3.12+, Node.js 18+, PostgreSQL 16+, [uv](https://docs.astral.sh/uv/)
 
 ### 1. Clone & configure
 
@@ -129,10 +96,9 @@ cp .env.example .env
 # Edit .env — set ANTHROPIC_API_KEY for AI reports
 ```
 
-### 2. Database setup
+### 2. Database
 
 ```sql
--- Run as PostgreSQL superuser:
 CREATE USER marketpulse WITH PASSWORD 'marketpulse';
 CREATE DATABASE marketpulse OWNER marketpulse;
 ```
@@ -141,107 +107,120 @@ CREATE DATABASE marketpulse OWNER marketpulse;
 
 ```bash
 cd backend
-uv sync                                            # Install dependencies
-uv run alembic upgrade head                        # Run migrations
-uv run python -m scripts.seed_assets               # Seed top 25 crypto assets
-uv run python -m scripts.seed_stocks               # Seed 15 US blue chip stocks
-uv run uvicorn app.main:app --reload --port 8000   # Start API server
+uv sync
+uv run alembic upgrade head
+uv run python -m scripts.seed_assets    # 25 crypto assets
+uv run python -m scripts.seed_stocks    # 15 US stocks
+uv run uvicorn app.main:app --reload --port 8000
 ```
 
 ### 4. Frontend
 
 ```bash
 cd frontend
-npm install        # Install dependencies
-npm run dev        # Start dev server on :5173
+npm install
+npm run dev
 ```
 
-### 5. Load market data
+### 5. Load data & verify
 
 ```bash
-# Trigger crypto ingestion:
+# Crypto ingestion
 curl -X POST http://localhost:8000/api/v1/ingestion/trigger \
-  -H "Content-Type: application/json" \
-  -d '{"asset_class": "crypto", "interval": "1h"}'
+  -H "Content-Type: application/json" -d '{"asset_class":"crypto","interval":"1h"}'
 
-# Trigger stock ingestion:
+# Stock ingestion
 curl -X POST http://localhost:8000/api/v1/ingestion/trigger \
-  -H "Content-Type: application/json" \
-  -d '{"asset_class": "stock", "interval": "1h"}'
-```
+  -H "Content-Type: application/json" -d '{"asset_class":"stock","interval":"1h"}'
 
-### 6. Verify
-
-| Service       | URL                                      |
-|---------------|------------------------------------------|
-| Dashboard     | http://localhost:5173                     |
-| API Docs      | http://localhost:8000/docs                |
-| Health Check  | http://localhost:8000/api/v1/health       |
-| Smoke Test    | `python scripts/smoke_test.py`           |
-| Sanity Check  | `cd backend && uv run python -m scripts.sanity_check` |
-
----
-
-## Useful Commands
-
-### Smoke test (requires running backend)
-
-```bash
+# Smoke test
 python scripts/smoke_test.py
-```
 
-22 checks covering: health, crypto assets, stock assets, OHLCV, indicators, anomalies, alerts, reports, diagnostics.
-
-### Sanity check (direct DB, no backend needed)
-
-```bash
+# Sanity check (DB-direct)
 cd backend && uv run python -m scripts.sanity_check
 ```
 
-Shows: assets per class, price bars, anomalies, alerts, reports, recent ingestion jobs, sync errors.
+### 6. Open
 
-### Ingestion triggers
+| URL | Description |
+|-----|-------------|
+| http://localhost:5173 | Dashboard |
+| http://localhost:8000/docs | API docs (Swagger) |
 
-```bash
-# Crypto
-curl -X POST http://localhost:8000/api/v1/ingestion/trigger \
-  -H "Content-Type: application/json" -d '{"asset_class": "crypto", "interval": "1h"}'
+### 7. Enable scheduler (optional)
 
-# Stocks
-curl -X POST http://localhost:8000/api/v1/ingestion/trigger \
-  -H "Content-Type: application/json" -d '{"asset_class": "stock", "interval": "1h"}'
-```
-
-### Enable automatic scheduler
-
-Set `SCHEDULER_ENABLED=true` in `.env` and restart backend. Crypto ingests every 5 min, stocks every 15 min.
+Set `SCHEDULER_ENABLED=true` in `.env` and restart backend. Crypto ingests every 5 min, stocks every 15 min. Recommendations, anomalies, alerts, and portfolio evaluate automatically after each cycle.
 
 ---
 
 ## API Reference
 
+### Assets & Market Data
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/v1/health` | System health |
-| `GET` | `/api/v1/assets` | Asset list (filterable by `asset_class`) |
+| `GET` | `/api/v1/assets` | List assets (filter: `asset_class`) |
 | `GET` | `/api/v1/assets/{id}` | Asset detail with indicators |
-| `GET` | `/api/v1/assets/search?q=` | Search assets |
 | `GET` | `/api/v1/assets/{id}/ohlcv` | OHLCV candlestick data |
 | `GET` | `/api/v1/assets/{id}/indicators` | Technical indicators |
-| `GET` | `/api/v1/anomalies` | Anomaly events (filterable) |
+| `GET` | `/api/v1/assets/{id}/recommendation` | Active recommendation |
+| `GET` | `/api/v1/assets/search?q=` | Search assets |
+| `GET` | `/api/v1/live/prices` | Live/cached prices for all assets |
+
+### Signals & Intelligence
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/anomalies` | Anomaly events |
 | `GET` | `/api/v1/anomalies/stats` | Anomaly statistics |
-| `POST` | `/api/v1/ingestion/trigger` | Trigger data ingestion |
-| `GET` | `/api/v1/ingestion/status` | Ingestion pipeline status |
-| `POST` | `/api/v1/reports/generate` | Generate AI report |
-| `GET` | `/api/v1/reports` | Report list |
+| `GET` | `/api/v1/recommendations/active` | Active recommendations |
+| `GET` | `/api/v1/recommendations/performance` | Engine accuracy metrics |
 | `GET` | `/api/v1/alerts/rules` | Alert rules |
 | `GET` | `/api/v1/alerts/events` | Alert events |
-| `GET` | `/api/v1/alerts/stats` | Alert statistics |
-| `GET` | `/api/v1/diagnostics/sync` | Per-asset data freshness |
-| `GET` | `/api/v1/diagnostics/config` | Current settings |
-| `GET` | `/api/v1/diagnostics/errors` | Recent error buffer |
 
-Full interactive documentation at `/docs` (Swagger UI).
+### Portfolio & Reports
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/portfolio` | Demo portfolio summary |
+| `POST` | `/api/v1/portfolio/evaluate` | Trigger portfolio evaluation |
+| `POST` | `/api/v1/portfolio/positions/{id}/close` | Manual close (paper) |
+| `POST` | `/api/v1/reports/generate` | Generate AI report |
+| `GET` | `/api/v1/reports` | Report list |
+
+### Watchlists
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/watchlists` | List watchlists |
+| `POST` | `/api/v1/watchlists` | Create watchlist |
+| `GET` | `/api/v1/watchlists/{id}/assets` | Watchlist assets (enriched) |
+| `GET` | `/api/v1/watchlists/{id}/intelligence` | Watchlist intelligence |
+| `GET` | `/api/v1/watchlists/{id}/recommendations` | Watchlist recommendations |
+
+### System
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/health` | Health check |
+| `GET` | `/api/v1/dashboard/overview` | Aggregate dashboard data |
+| `POST` | `/api/v1/ingestion/trigger` | Manual ingestion |
+| `GET` | `/api/v1/diagnostics/sync` | Data freshness |
+| `GET` | `/api/v1/diagnostics/errors` | Error buffer |
+
+---
+
+## Product Modules
+
+### Recommendation Engine (v2)
+7-signal composite scoring: RSI, MACD, Bollinger position, price trend, volume, anomaly context, volatility. Produces `candidate_buy` / `watch_only` / `neutral` / `avoid` with confidence and risk levels. Auto-generates after each ingestion cycle.
+
+### Demo Portfolio
+Paper trading with $1000 initial capital. Max 5 positions, 20% per position, -8% stop loss, +15% take profit, 72h max hold. Evaluates automatically. Manual close available.
+
+### Performance Evaluation
+Measures forward returns at 24h and 72h for every recommendation. Accuracy breakdown by type, asset class, score bucket, and scoring version (v1 vs v2).
+
+### Watchlist Intelligence
+User-defined asset groups with enriched data: live prices, recommendation signals, portfolio overlap, anomaly counts. AI-generated watchlist summaries via Claude.
+
+### Live Prices
+Binance 24hr ticker polling every 10s (crypto), Yahoo Finance polling every 60s (stocks, market-hours-aware). In-memory cache with DB fallback. Freshness indicators: live / recent / delayed / stale.
 
 ---
 
@@ -250,55 +229,36 @@ Full interactive documentation at `/docs` (Swagger UI).
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `DATABASE_URL` | `postgresql+asyncpg://...` | PostgreSQL connection |
-| `BINANCE_BASE_URL` | `https://api.binance.com` | Binance API |
-| `SCHEDULER_ENABLED` | `false` | Auto-ingestion scheduler |
+| `SCHEDULER_ENABLED` | `false` | Auto-ingestion + recommendations |
 | `INGESTION_INTERVAL_MINUTES` | `5` | Crypto ingestion frequency |
 | `ANOMALY_PRICE_ZSCORE_THRESHOLD` | `2.5` | Price spike sensitivity |
 | `ANOMALY_VOLUME_ZSCORE_THRESHOLD` | `3.0` | Volume spike sensitivity |
-| `ANOMALY_RSI_UPPER` / `_LOWER` | `80` / `20` | RSI thresholds |
-| `LLM_PROVIDER` | `claude` | AI provider |
 | `ANTHROPIC_API_KEY` | — | Required for AI reports |
 | `LLM_MODEL` | `claude-sonnet-4-20250514` | Claude model |
 | `LOG_LEVEL` | `INFO` | Logging verbosity |
 
 ---
 
-## Multi-Asset Support
-
-SignalForge supports two asset classes:
-
-| | Crypto | Stocks |
-|---|---|---|
-| **Provider** | Binance (public, no auth) | Yahoo Finance (delayed ~15min) |
-| **Market hours** | 24/7 | Mon-Fri 9:30-16:00 ET |
-| **Intervals** | 1h | 1h |
-| **Freshness** | Stale after 2h no data | Market-hours-aware |
-| **Anomaly detection** | Same Z-score engine | Same Z-score engine |
-| **AI reports** | Context-aware prompts | Context-aware prompts |
-
-Assets are distinguished by `asset_class` field (`crypto` or `stock`). The frontend allows filtering by class.
-
----
-
 ## Current Limitations
 
-- **No live/streaming prices** — batch ingestion only (delayed data)
-- **No authentication** — single-user, local-only
-- **Yahoo Finance is unofficial** — may rate-limit or change without notice
-- **Market hours simplified** — US market Mon-Fri, no holiday calendar
-- **Anomaly thresholds shared** — same Z-score thresholds for crypto and stocks
-- **No 1d auto-ingestion for stocks** — scheduler handles 1h only (manual trigger for 1d)
-- **No WebSocket** — frontend polls via REST
+- **No real trading** — paper/demo only
+- **No authentication** — single-user, local instance
+- **Stocks delayed ~15min** — Yahoo Finance unofficial API
+- **Crypto live-ish** — REST polling (10s), not WebSocket
+- **No holiday calendar** — simplified US market hours (Mon-Fri)
+- **Shared anomaly thresholds** — same Z-score for crypto and stocks
+- **No WebSocket to frontend** — REST polling every 15s
+- **yfinance unofficial** — may change without notice
 
 ---
 
 ## Documentation
 
-- [Stabilization Run Guide](docs/STABILIZATION_RUN.md) — operational checklist for running the system
-- [Debug Checklist](docs/DEBUG_CHECKLIST.md) — troubleshooting common issues
+- [Stabilization Run Guide](docs/STABILIZATION_RUN.md) — operational runbook
+- [Debug Checklist](docs/DEBUG_CHECKLIST.md) — troubleshooting
 
 ---
 
 ## License
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+MIT License. See [LICENSE](LICENSE).
