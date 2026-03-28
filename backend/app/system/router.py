@@ -30,3 +30,10 @@ async def health_check(db: AsyncSession = Depends(get_db)) -> HealthResponse:
         database=db_status,
         version="0.1.0",
     )
+
+
+@router.get("/dashboard/overview")
+async def dashboard_overview(db: AsyncSession = Depends(get_db)):
+    """Aggregate dashboard data: portfolio, signals, alerts, watchlists."""
+    from app.system.dashboard import get_dashboard_overview
+    return await get_dashboard_overview(db)
