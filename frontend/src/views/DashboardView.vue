@@ -9,6 +9,7 @@ import { fmtPrice, timeAgo } from '../utils/format'
 import PriceChange from '../components/PriceChange.vue'
 import SeverityBadge from '../components/SeverityBadge.vue'
 import FreshnessBadge from '../components/FreshnessBadge.vue'
+import LastRefreshHint from '../components/LastRefreshHint.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ErrorBox from '../components/ErrorBox.vue'
 import { useLivePrices } from '../composables/useLivePrices'
@@ -93,7 +94,7 @@ const recLabels: Record<string, string> = {
           @click="genSummary"
         >{{ generatingSummary ? 'Generowanie...' : 'Market Summary AI' }}</button>
         <FreshnessBadge :status="liveStatus" />
-        <span v-if="lastRefresh" class="text-xs text-gray-600">{{ lastRefresh.toLocaleTimeString('pl-PL') }}</span>
+        <LastRefreshHint />
       </div>
     </div>
 
@@ -232,7 +233,8 @@ const recLabels: Record<string, string> = {
               <SeverityBadge :severity="a.severity" />
               <span class="font-medium text-white">{{ a.asset_symbol }}</span>
               <span class="text-gray-400">{{ a.anomaly_type.replace(/_/g, ' ') }}</span>
-              <span class="ml-auto text-xs text-gray-500">{{ timeAgo(a.detected_at) }}</span>
+              <span v-if="getPrice(a.asset_symbol || '')" class="text-xs tabular-nums text-gray-300 ml-auto mr-2">${{ fmtPrice(getPrice(a.asset_symbol || '')!) }}</span>
+              <span class="text-xs text-gray-500" :class="{ 'ml-auto': !getPrice(a.asset_symbol || '') }">{{ timeAgo(a.detected_at) }}</span>
             </RouterLink>
           </div>
         </div>

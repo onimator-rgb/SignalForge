@@ -6,6 +6,7 @@ import { fetchWatchlists, addAssetToWatchlist } from '../api/watchlists'
 import type { Watchlist } from '../types/api'
 import { fmtPrice, fmtTime, timeAgo } from '../utils/format'
 import FreshnessBadge from '../components/FreshnessBadge.vue'
+import LastRefreshHint from '../components/LastRefreshHint.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ErrorBox from '../components/ErrorBox.vue'
 import api from '../api/client'
@@ -128,6 +129,7 @@ const reasonLabels: Record<string, string> = {
         @click="evaluate"
       >{{ evaluating ? 'Evaluating...' : 'Evaluate Now' }}</button>
       <FreshnessBadge :status="liveStatus" />
+      <LastRefreshHint />
     </div>
     <div class="text-[10px] text-gray-600 mb-4">Paper trading only — not real money. Results are simulated.</div>
 

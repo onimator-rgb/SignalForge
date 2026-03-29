@@ -5,8 +5,14 @@ import { fetchActiveRecommendations } from '../api/recommendations'
 import { fetchWatchlists, addAssetToWatchlist } from '../api/watchlists'
 import type { Recommendation, Watchlist } from '../types/api'
 import { fmtPrice, fmtTime } from '../utils/format'
+import FreshnessBadge from '../components/FreshnessBadge.vue'
+import PriceDelta from '../components/PriceDelta.vue'
+import LastRefreshHint from '../components/LastRefreshHint.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ErrorBox from '../components/ErrorBox.vue'
+import { useLivePrices } from '../composables/useLivePrices'
+
+const { getPrice, getFreshness, status: liveStatus } = useLivePrices(15_000)
 
 const loading = ref(true)
 const error = ref('')
@@ -100,7 +106,11 @@ function scoreBarColor(score: number): string {
 <template>
   <div>
     <div class="flex items-center justify-between mb-2">
-      <h1 class="text-2xl font-bold">Rekomendacje</h1>
+      <div class="flex items-center gap-3">
+        <h1 class="text-2xl font-bold">Rekomendacje</h1>
+        <FreshnessBadge :status="liveStatus" />
+        <LastRefreshHint />
+      </div>
       <div class="flex gap-1">
         <button
           v-for="opt in [{ value: '', label: 'Wszystkie' }, { value: 'crypto', label: 'Crypto' }, { value: 'stock', label: 'Stocks' }]"
@@ -168,11 +178,13 @@ function scoreBarColor(score: number): string {
               :class="classColors[r.asset_class || 'crypto']"
             >{{ r.asset_class }}</span>
 
-            <!-- Confidence + Risk -->
+            <!-- Live price + delta + Confidence + Risk -->
             <div class="ml-auto flex items-center gap-3 text-xs">
-              <span :class="confColors[r.confidence]">{{ r.confidence }} conf.</span>
-              <span :class="riskColors[r.risk_level]">{{ r.risk_level }} risk</span>
-              <span class="text-gray-600">{{ r.entry_price_snapshot ? '$' + fmtPrice(r.entry_price_snapshot) : '' }}</span>
+              <span v-if="getPrice(r.asset_symbol || '')" class="tabular-nums text-gray-300">${{ fmtPrice(getPrice(r.asset_symbol || '')!) }}</span>
+              <PriceDelta :entry-price="r.entry_price_snapshot" :current-price="getPrice(r.asset_symbol || '')" />
+              <FreshnessBadge :status="getFreshness(r.asset_symbol || '')" />
+              <span :class="confColors[r.confidence]">{{ r.confidence }}</span>
+              <span :class="riskColors[r.risk_level]">{{ r.risk_level }}</span>
             </div>
           </div>
 
@@ -190,8 +202,11 @@ function scoreBarColor(score: number): string {
               </div>
             </div>
 
-            <div class="flex gap-4 text-xs text-gray-500">
+            <div class="flex gap-4 text-xs text-gray-500 flex-wrap">
               <span>Entry: ${{ r.entry_price_snapshot ? fmtPrice(r.entry_price_snapshot) : '—' }}</span>
+              <span v-if="getPrice(r.asset_symbol || '')">Now: ${{ fmtPrice(getPrice(r.asset_symbol || '')!) }}
+                <PriceDelta :entry-price="r.entry_price_snapshot" :current-price="getPrice(r.asset_symbol || '')" />
+              </span>
               <span>Horizon: {{ r.time_horizon }}</span>
               <span>Valid: {{ r.valid_until ? fmtTime(r.valid_until) : '—' }}</span>
               <span>Generated: {{ fmtTime(r.generated_at) }}</span>
