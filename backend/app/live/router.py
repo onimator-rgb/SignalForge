@@ -1,7 +1,6 @@
-"""Live prices endpoints — REST snapshot + SSE push stream."""
+"""Live prices endpoints — REST snapshot + SSE push stream + diagnostics."""
 
 import asyncio
-import json
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
@@ -13,7 +12,7 @@ from app.assets.models import Asset
 from app.assets.service import get_latest_price
 from app.database import get_db
 from app.live.cache import (
-    LivePrice, get_all_prices, get_price,
+    get_all_prices, get_stats,
     subscribe, unsubscribe, subscriber_count,
 )
 from app.logging_config import get_logger
@@ -36,23 +35,11 @@ def _freshness(updated_at: datetime) -> str:
     return "stale"
 
 
-def _price_to_sse(p: LivePrice) -> str:
-    """Format a LivePrice as SSE data line."""
-    payload = json.dumps({
-        "symbol": p.symbol,
-        "asset_class": p.asset_class,
-        "price": p.price,
-        "change_24h_pct": p.change_24h_pct,
-        "source": p.source,
-        "freshness": _freshness(p.updated_at),
-        "updated_at": p.updated_at.isoformat(),
-    })
-    return f"data: {payload}\n\n"
-
+# ── SSE stream (batched) ─────────────────────────
 
 @router.get("/stream")
 async def live_stream():
-    """SSE stream of live price updates. Connect via EventSource."""
+    """SSE stream of batched live price updates. Connect via EventSource."""
 
     async def event_generator():
         q = subscribe()
@@ -60,10 +47,10 @@ async def live_stream():
         try:
             while True:
                 try:
-                    price = await asyncio.wait_for(q.get(), timeout=SSE_HEARTBEAT_SECONDS)
-                    yield _price_to_sse(price)
+                    # Queue now contains pre-formatted SSE strings from batch_broadcaster
+                    sse_data = await asyncio.wait_for(q.get(), timeout=SSE_HEARTBEAT_SECONDS)
+                    yield sse_data
                 except asyncio.TimeoutError:
-                    # Heartbeat to keep connection alive
                     yield ": heartbeat\n\n"
         except asyncio.CancelledError:
             pass
@@ -81,6 +68,8 @@ async def live_stream():
         },
     )
 
+
+# ── REST snapshot ─────────────────────────────────
 
 @router.get("/prices")
 async def live_prices(db: AsyncSession = Depends(get_db)):
@@ -138,12 +127,59 @@ async def live_prices(db: AsyncSession = Depends(get_db)):
                     "freshness": "unavailable",
                 })
 
-    if fallback_count > 0:
-        log.debug("live_prices.fallback_used", count=fallback_count)
-
     return {
         "count": len(items),
         "live": live_count,
         "fallback": fallback_count,
         "items": items,
+    }
+
+
+# ── Live diagnostics ─────────────────────────────
+
+@router.get("/diagnostics")
+async def live_diagnostics():
+    """Live layer health: WS status, SSE subscribers, cache quality, broadcast stats."""
+    now = datetime.now(timezone.utc)
+    cache = get_all_prices()
+    stats = get_stats()
+
+    # Cache quality breakdown
+    by_source: dict[str, int] = {}
+    by_freshness: dict[str, int] = {}
+    oldest_age = 0.0
+    latest_age = float("inf") if cache else 0.0
+
+    for p in cache.values():
+        by_source[p.source] = by_source.get(p.source, 0) + 1
+        f = _freshness(p.updated_at)
+        by_freshness[f] = by_freshness.get(f, 0) + 1
+        age = (now - p.updated_at).total_seconds()
+        oldest_age = max(oldest_age, age)
+        latest_age = min(latest_age, age) if age < latest_age else latest_age
+
+    ws_last = stats.get("ws_last_message_at")
+
+    return {
+        "websocket": {
+            "connected": stats.get("ws_connected", False),
+            "last_message_at": ws_last.isoformat() if ws_last else None,
+            "last_message_age_sec": round((now - ws_last).total_seconds(), 1) if ws_last else None,
+            "reconnect_count": stats.get("ws_reconnect_count", 0),
+        },
+        "sse": {
+            "subscribers": subscriber_count(),
+            "batches_sent": stats.get("batches_sent", 0),
+            "events_dropped": stats.get("events_dropped", 0),
+        },
+        "cache": {
+            "size": len(cache),
+            "by_source": by_source,
+            "by_freshness": by_freshness,
+            "oldest_age_sec": round(oldest_age, 1),
+            "latest_age_sec": round(latest_age, 1) if cache else None,
+        },
+        "stock_poller": {
+            "last_run": stats.get("stock_poller_last_run"),
+        },
     }

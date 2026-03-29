@@ -57,10 +57,18 @@ export function useLivePrices(_intervalMs = 15_000) {
 
     eventSource.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data) as LivePriceItem
-        prices.value.set(data.symbol, data)
-        // Trigger reactivity
-        prices.value = new Map(prices.value)
+        const msg = JSON.parse(event.data)
+        if (msg.type === 'price_batch' && Array.isArray(msg.items)) {
+          // Batch update
+          for (const item of msg.items as LivePriceItem[]) {
+            prices.value.set(item.symbol, item)
+          }
+          prices.value = new Map(prices.value)
+        } else if (msg.symbol) {
+          // Single update (backward compat)
+          prices.value.set(msg.symbol, msg as LivePriceItem)
+          prices.value = new Map(prices.value)
+        }
         if (status.value !== 'streaming') status.value = 'streaming'
       } catch {
         // Ignore parse errors

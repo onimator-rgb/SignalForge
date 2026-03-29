@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 import httpx
 
 from app.config import settings
-from app.live.cache import LivePrice, set_price
+from app.live.cache import LivePrice, set_price, update_stat, increment_stat, batch_broadcaster
 from app.logging_config import get_logger
 from app.system.diagnostics import _is_us_market_expected_open
 
@@ -38,6 +38,11 @@ async def start_pollers(crypto_symbols: list[tuple[str, str]],
         task = asyncio.create_task(_stock_poll_loop(stock_symbols))
         _tasks.append(task)
         log.info("live_prices.stream_start", source="yahoo_poll", symbols=len(stock_symbols))
+
+    # Start batch broadcaster for SSE
+    broadcaster = asyncio.create_task(batch_broadcaster())
+    _tasks.append(broadcaster)
+    log.info("live.batch_broadcaster_started")
 
 
 def stop_pollers() -> None:
@@ -65,7 +70,8 @@ async def _crypto_ws_loop(symbols: list[tuple[str, str]]) -> None:
         try:
             async with websockets.connect(ws_url, ping_interval=20, ping_timeout=10) as ws:
                 log.info("live.ws_connect_done", symbols=len(symbols), url="stream.binance.com")
-                reconnect_delay = WS_RECONNECT_DELAY  # reset on success
+                update_stat("ws_connected", True)
+                reconnect_delay = WS_RECONNECT_DELAY
                 update_count = 0
 
                 async for raw_msg in ws:
@@ -88,14 +94,16 @@ async def _crypto_ws_loop(symbols: list[tuple[str, str]]) -> None:
                         if open_price > 0:
                             change_pct = round((price - open_price) / open_price * 100, 2)
 
+                        now = datetime.now(timezone.utc)
                         set_price(our_symbol, LivePrice(
                             symbol=our_symbol,
                             asset_class="crypto",
                             price=price,
                             change_24h_pct=change_pct,
                             source="binance_ws",
-                            updated_at=datetime.now(timezone.utc),
+                            updated_at=now,
                         ))
+                        update_stat("ws_last_message_at", now)
 
                         update_count += 1
                         if update_count % 500 == 0:
@@ -105,9 +113,12 @@ async def _crypto_ws_loop(symbols: list[tuple[str, str]]) -> None:
                         log.debug("live.ws_message_error", error=str(e))
 
         except asyncio.CancelledError:
+            update_stat("ws_connected", False)
             log.info("live.ws_disconnect", reason="cancelled")
             return
         except Exception as e:
+            update_stat("ws_connected", False)
+            increment_stat("ws_reconnect_count")
             log.warning("live.ws_reconnect", error=str(e), delay=reconnect_delay)
             await asyncio.sleep(reconnect_delay)
             reconnect_delay = min(reconnect_delay * 2, WS_MAX_RECONNECT_DELAY)
@@ -129,6 +140,7 @@ async def _stock_poll_loop(symbols: list[tuple[str, str]]) -> None:
             prices = await asyncio.to_thread(_fetch_stock_prices, tickers_str)
 
             now = datetime.now(timezone.utc)
+            update_stat("stock_poller_last_run", now.isoformat())
             updated = 0
             symbol_map = {ps: s for s, ps in symbols}
             for ticker, data in prices.items():
