@@ -11,12 +11,12 @@ from app.assets.service import get_latest_price
 from app.logging_config import get_logger
 from app.portfolio.models import Portfolio, PortfolioPosition, PortfolioTransaction
 from app.portfolio.rules import (
-    ALLOWED_CONFIDENCE, BLOCKED_RISK, COOLDOWN_HOURS, INITIAL_CAPITAL,
-    MAX_HOLD_HOURS, MAX_OPEN_POSITIONS, MAX_POSITION_PCT,
-    MIN_CASH_RESERVE_PCT, MIN_POSITION_USD, MIN_SCORE_FOR_ENTRY,
-    STOP_LOSS_PCT, TAKE_PROFIT_PCT,
+    COOLDOWN_HOURS, INITIAL_CAPITAL, MAX_OPEN_POSITIONS,
+    MIN_CASH_RESERVE_PCT, MIN_POSITION_USD,
 )
 from app.recommendations.models import Recommendation
+from app.strategy.profiles import get_active_profile
+from app.strategy.regime import calculate_regime, get_regime_position_multiplier, get_regime_score_adjustment
 
 log = get_logger(__name__)
 
@@ -164,6 +164,22 @@ async def _close_position(
 # ── Entry logic ───────────────────────────────────
 
 async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) -> int:
+    # Load strategy profile + regime
+    profile = get_active_profile()
+    regime_data = await calculate_regime(db)
+    regime = regime_data["regime"]
+    score_adj = get_regime_score_adjustment(regime)
+    pos_mult = get_regime_position_multiplier(regime)
+
+    effective_threshold = profile.candidate_buy_threshold - score_adj
+    effective_position_pct = profile.max_position_pct * pos_mult
+    allowed_confidence = {"medium", "high"} if profile.min_confidence == "medium" else {"high"}
+    blocked_risk = set() if profile.allow_high_risk else {"high"}
+
+    log.debug("portfolio.profile_applied",
+              profile=profile.name, regime=regime,
+              threshold=effective_threshold, position_pct=round(effective_position_pct, 3))
+
     open_count_res = await db.execute(
         select(func.count()).where(
             PortfolioPosition.portfolio_id == portfolio.id,
@@ -198,9 +214,9 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
         .where(
             Recommendation.status == "active",
             Recommendation.recommendation_type == "candidate_buy",
-            Recommendation.score >= MIN_SCORE_FOR_ENTRY,
-            Recommendation.confidence.in_(ALLOWED_CONFIDENCE),
-            ~Recommendation.risk_level.in_(BLOCKED_RISK),
+            Recommendation.score >= effective_threshold,
+            Recommendation.confidence.in_(allowed_confidence),
+            ~Recommendation.risk_level.in_(blocked_risk) if blocked_risk else True,
         )
         .order_by(Recommendation.score.desc())
     )
@@ -220,7 +236,7 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
         if available < MIN_POSITION_USD:
             break
 
-        max_size = equity * MAX_POSITION_PCT
+        max_size = equity * effective_position_pct
         size_usd = min(max_size, available)
         if size_usd < MIN_POSITION_USD:
             break
@@ -240,9 +256,9 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
             quantity=quantity,
             entry_value_usd=round(size_usd, 2),
             opened_at=datetime.now(timezone.utc),
-            stop_loss_price=round(price * (1 + STOP_LOSS_PCT), 8),
-            take_profit_price=round(price * (1 + TAKE_PROFIT_PCT), 8),
-            max_hold_until=datetime.now(timezone.utc) + timedelta(hours=MAX_HOLD_HOURS),
+            stop_loss_price=round(price * (1 + profile.stop_loss_pct), 8),
+            take_profit_price=round(price * (1 + profile.take_profit_pct), 8),
+            max_hold_until=datetime.now(timezone.utc) + timedelta(hours=profile.max_hold_hours),
         )
         db.add(pos)
         await db.flush()

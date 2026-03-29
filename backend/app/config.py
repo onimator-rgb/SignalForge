@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
     LLM_MODEL: str = "claude-sonnet-4-20250514"
 
+    # Strategy
+    STRATEGY_PROFILE: str = "balanced"
+
     # App
     APP_ENV: str = "development"
     LOG_LEVEL: str = "INFO"

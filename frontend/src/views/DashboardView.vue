@@ -21,6 +21,7 @@ const { getPrice, getChange, status: liveStatus } = useLivePrices(15_000)
 const loading = ref(true)
 const error = ref('')
 const generatingSummary = ref(false)
+const strategy = ref<any>(null)
 const topMovers = ref<AssetListItem[]>([])
 const recentAnomalies = ref<AnomalyEvent[]>([])
 const overview = ref<any>(null)
@@ -29,14 +30,16 @@ let refreshTimer: ReturnType<typeof setInterval>
 
 async function loadDashboard() {
   try {
-    const [assetsRes, anomaliesRes, overviewRes] = await Promise.all([
+    const [assetsRes, anomaliesRes, overviewRes, strategyRes] = await Promise.all([
       fetchAssets({ sort_by: 'change_24h', sort_dir: 'desc', limit: 10 }),
       fetchAnomalies({ is_resolved: false, limit: 8 }),
       api.get('/dashboard/overview').then(r => r.data),
+      api.get('/strategy/summary').then(r => r.data).catch(() => null),
     ])
     topMovers.value = assetsRes.items
     recentAnomalies.value = anomaliesRes.items
     overview.value = overviewRes
+    strategy.value = strategyRes
     lastRefresh.value = new Date()
     error.value = ''
   } catch (e: any) {
@@ -93,6 +96,19 @@ const recLabels: Record<string, string> = {
           :disabled="generatingSummary"
           @click="genSummary"
         >{{ generatingSummary ? 'Generowanie...' : 'Market Summary AI' }}</button>
+        <template v-if="strategy">
+          <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium border bg-gray-800 border-gray-700 text-gray-300">
+            {{ strategy.profile.name }}
+          </span>
+          <span
+            class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium border"
+            :class="{
+              'text-green-400 bg-green-500/10 border-green-500/30': strategy.regime.regime === 'risk_on',
+              'text-gray-400 bg-gray-500/10 border-gray-500/30': strategy.regime.regime === 'neutral',
+              'text-red-400 bg-red-500/10 border-red-500/30': strategy.regime.regime === 'risk_off',
+            }"
+          >{{ strategy.regime.regime }}</span>
+        </template>
         <FreshnessBadge :status="liveStatus" />
         <LastRefreshHint />
       </div>
