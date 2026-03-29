@@ -1,19 +1,26 @@
 /**
- * Shared composable for live price polling.
- * Fetches /api/v1/live/prices at a given interval,
- * provides a reactive Map<symbol, LivePriceItem> and overall status.
- * Auto-cleans on unmount.
+ * Shared composable for live prices.
+ *
+ * Primary: SSE stream from /api/v1/live/stream (real-time push).
+ * Fallback: REST polling /api/v1/live/prices (if SSE disconnects).
+ * Initial: REST snapshot on mount, then SSE takes over.
  */
 
 import { ref, onMounted, onUnmounted } from 'vue'
 import { fetchLivePrices, type LivePriceItem } from '../api/live'
 
-export function useLivePrices(intervalMs = 15_000) {
-  const prices = ref<Map<string, LivePriceItem>>(new Map())
-  const status = ref<'loading' | 'live' | 'delayed' | 'error'>('loading')
-  let timer: ReturnType<typeof setInterval> | null = null
+const SSE_URL = '/api/v1/live/stream'
+const FALLBACK_POLL_MS = 30_000  // Slow fallback if SSE fails
 
-  async function refresh() {
+export function useLivePrices(_intervalMs = 15_000) {
+  const prices = ref<Map<string, LivePriceItem>>(new Map())
+  const status = ref<'loading' | 'live' | 'streaming' | 'delayed' | 'error'>('loading')
+  let eventSource: EventSource | null = null
+  let fallbackTimer: ReturnType<typeof setInterval> | null = null
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+
+  // ── REST snapshot (initial + fallback) ─────────
+  async function fetchSnapshot() {
     try {
       const res = await fetchLivePrices()
       const map = new Map<string, LivePriceItem>()
@@ -21,12 +28,66 @@ export function useLivePrices(intervalMs = 15_000) {
         map.set(item.symbol, item)
       }
       prices.value = map
-      status.value = res.live > 0 ? 'live' : 'delayed'
+      if (status.value === 'loading') {
+        status.value = res.live > 0 ? 'live' : 'delayed'
+      }
     } catch {
-      status.value = 'error'
+      if (status.value === 'loading') status.value = 'error'
     }
   }
 
+  // ── SSE stream ─────────────────────────────────
+  function connectSSE() {
+    if (eventSource) return
+
+    const baseUrl = window.location.hostname === 'localhost'
+      ? 'http://localhost:8000'
+      : ''
+
+    eventSource = new EventSource(baseUrl + SSE_URL)
+
+    eventSource.onopen = () => {
+      status.value = 'streaming'
+      // Stop fallback polling when SSE is active
+      if (fallbackTimer) {
+        clearInterval(fallbackTimer)
+        fallbackTimer = null
+      }
+    }
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data) as LivePriceItem
+        prices.value.set(data.symbol, data)
+        // Trigger reactivity
+        prices.value = new Map(prices.value)
+        if (status.value !== 'streaming') status.value = 'streaming'
+      } catch {
+        // Ignore parse errors
+      }
+    }
+
+    eventSource.onerror = () => {
+      // SSE disconnected — cleanup and start fallback
+      if (eventSource) {
+        eventSource.close()
+        eventSource = null
+      }
+      status.value = 'delayed'
+
+      // Start fallback polling
+      if (!fallbackTimer) {
+        fallbackTimer = setInterval(fetchSnapshot, FALLBACK_POLL_MS)
+      }
+
+      // Try reconnect after delay
+      reconnectTimer = setTimeout(() => {
+        connectSSE()
+      }, 5000)
+    }
+  }
+
+  // ── Helpers ────────────────────────────────────
   function get(symbol: string): LivePriceItem | undefined {
     return prices.value.get(symbol)
   }
@@ -43,14 +104,22 @@ export function useLivePrices(intervalMs = 15_000) {
     return prices.value.get(symbol)?.freshness ?? 'unavailable'
   }
 
-  onMounted(() => {
-    refresh()
-    timer = setInterval(refresh, intervalMs)
+  // ── Lifecycle ──────────────────────────────────
+  onMounted(async () => {
+    // 1. Initial REST snapshot
+    await fetchSnapshot()
+    // 2. Then connect SSE for push updates
+    connectSSE()
   })
 
   onUnmounted(() => {
-    if (timer) clearInterval(timer)
+    if (eventSource) {
+      eventSource.close()
+      eventSource = null
+    }
+    if (fallbackTimer) clearInterval(fallbackTimer)
+    if (reconnectTimer) clearTimeout(reconnectTimer)
   })
 
-  return { prices, status, refresh, get, getPrice, getChange, getFreshness }
+  return { prices, status, get, getPrice, getChange, getFreshness, refresh: fetchSnapshot }
 }
