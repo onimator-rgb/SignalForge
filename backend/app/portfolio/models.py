@@ -69,6 +69,22 @@ class ProtectionEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"), nullable=False)
 
 
+class EntryDecision(Base):
+    __tablename__ = "portfolio_entry_decisions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    asset_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("assets.id"), nullable=False)
+    recommendation_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(10), nullable=False)
+    stage: Mapped[str] = mapped_column(String(20), nullable=False)
+    reason_codes: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    reason_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    context_data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    regime: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    profile: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"), nullable=False)
+
+
 class PortfolioTransaction(Base, UUIDPrimaryKeyMixin):
     __tablename__ = "portfolio_transactions"
 

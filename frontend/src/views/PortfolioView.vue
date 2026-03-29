@@ -23,6 +23,7 @@ const evaluating = ref(false)
 const closingId = ref<string | null>(null)
 const expandedId = ref<string | null>(null)
 const protections = ref<any[]>([])
+const entryDecisions = ref<any[]>([])
 
 async function load() {
   loading.value = true
@@ -34,6 +35,10 @@ async function load() {
       const pRes = await api.get('/portfolio/protections')
       protections.value = pRes.data.active || []
     } catch { protections.value = [] }
+    try {
+      const dRes = await api.get('/portfolio/entry-decisions?limit=10')
+      entryDecisions.value = Array.isArray(dRes.data) ? dRes.data : []
+    } catch { entryDecisions.value = [] }
   } catch (e: any) {
     error.value = e.response?.data?.detail || e.message
   } finally {
@@ -175,6 +180,23 @@ const reasonLabels: Record<string, string> = {
         <div class="bg-gray-900 border border-gray-800 rounded-lg p-3">
           <div class="text-xs text-gray-500 uppercase">Win Rate</div>
           <div class="text-lg font-bold mt-1">{{ data.stats.win_rate != null ? data.stats.win_rate.toFixed(0) + '%' : '--' }}</div>
+        </div>
+      </div>
+
+      <!-- Entry Decisions -->
+      <div v-if="entryDecisions.length > 0" class="mb-5">
+        <h2 class="font-semibold text-sm mb-2">Recent Entry Decisions</h2>
+        <div class="flex gap-2 flex-wrap">
+          <div
+            v-for="d in entryDecisions.slice(0, 8)" :key="d.id"
+            class="px-2 py-1 rounded text-xs border"
+            :class="d.status === 'allowed'
+              ? 'bg-green-500/10 border-green-500/30 text-green-400'
+              : 'bg-red-500/10 border-red-500/30 text-red-400'"
+          >
+            <span class="font-medium">{{ d.symbol }}</span>
+            <span class="ml-1 opacity-70">{{ d.status === 'allowed' ? 'passed' : (d.reason_codes || []).join(', ') || d.stage }}</span>
+          </div>
         </div>
       </div>
 

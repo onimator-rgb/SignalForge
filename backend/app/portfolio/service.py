@@ -261,9 +261,42 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
             db, portfolio.id, rec.asset_id, ac, regime, now
         )
         if not allowed:
-            log.info("portfolio.entry_blocked", asset_id=str(rec.asset_id),
-                     protection=prot_type, reason=prot_reason)
+            await _record_decision(db, rec, ac, "blocked", "protections",
+                                   [prot_type], prot_reason, {}, regime, profile.name, now)
             continue
+
+        # Entry confirmations
+        from app.portfolio.confirmations import check_confirmations
+        from app.indicators.service import get_indicators
+        from app.recommendations.service import _get_volume_context
+
+        asset_sym_res = await db.execute(select(Asset.symbol).where(Asset.id == rec.asset_id))
+        asset_sym = asset_sym_res.scalar_one_or_none() or "?"
+        ind = await get_indicators(db, rec.asset_id, asset_sym, interval="1h")
+        price_data = await get_latest_price(db, rec.asset_id)
+        change_24h = price_data.change_24h_pct if price_data else None
+        avg_vol, latest_vol = await _get_volume_context(db, rec.asset_id, "1h")
+
+        conf = check_confirmations(
+            indicators=ind,
+            change_24h_pct=change_24h,
+            avg_volume=avg_vol,
+            latest_volume=latest_vol,
+            rec_generated_at=rec.generated_at,
+            asset_class=ac,
+            regime=regime,
+            now=now,
+        )
+        if not conf["allowed"]:
+            await _record_decision(db, rec, ac, "blocked", "confirmations",
+                                   conf["reason_codes"], conf["reason_text"],
+                                   conf["context"], regime, profile.name, now)
+            continue
+
+        # Record allowed decision
+        await _record_decision(db, rec, ac, "allowed", "confirmations",
+                               [], "All confirmations passed", conf["context"],
+                               regime, profile.name, now)
 
         reserve = float(portfolio.initial_capital) * MIN_CASH_RESERVE_PCT
         available = float(portfolio.current_cash) - reserve
@@ -326,6 +359,28 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
 
 
 # ── Query helpers ─────────────────────────────────
+
+async def _record_decision(
+    db: AsyncSession, rec, asset_class: str,
+    status: str, stage: str, reason_codes: list, reason_text: str,
+    context: dict, regime: str, profile_name: str, now: datetime,
+) -> None:
+    """Record entry decision for diagnostics."""
+    from app.portfolio.models import EntryDecision
+    decision = EntryDecision(
+        asset_id=rec.asset_id,
+        recommendation_id=rec.id,
+        status=status,
+        stage=stage,
+        reason_codes=reason_codes,
+        reason_text=reason_text,
+        context_data=context,
+        regime=regime,
+        profile=profile_name,
+    )
+    db.add(decision)
+    await db.flush()
+
 
 async def _compute_equity(db: AsyncSession, portfolio: Portfolio) -> float:
     result = await db.execute(

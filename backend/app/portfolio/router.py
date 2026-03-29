@@ -24,6 +24,43 @@ async def trigger_evaluation(db: AsyncSession = Depends(get_db)):
     return {"status": "ok", **result}
 
 
+@router.get("/entry-decisions")
+async def entry_decisions(
+    status: str | None = None,
+    limit: int = 20,
+    db: AsyncSession = Depends(get_db),
+):
+    """Recent entry decisions (allowed/blocked) with reasons."""
+    from sqlalchemy import select
+    from app.portfolio.models import EntryDecision
+    from app.assets.models import Asset
+
+    q = (
+        select(EntryDecision, Asset.symbol, Asset.asset_class)
+        .join(Asset, EntryDecision.asset_id == Asset.id)
+    )
+    if status:
+        q = q.where(EntryDecision.status == status)
+    q = q.order_by(EntryDecision.created_at.desc()).limit(limit)
+
+    result = await db.execute(q)
+    return [
+        {
+            "id": str(d.EntryDecision.id),
+            "symbol": d.symbol,
+            "asset_class": d.asset_class,
+            "status": d.EntryDecision.status,
+            "stage": d.EntryDecision.stage,
+            "reason_codes": d.EntryDecision.reason_codes,
+            "reason_text": d.EntryDecision.reason_text,
+            "regime": d.EntryDecision.regime,
+            "profile": d.EntryDecision.profile,
+            "created_at": d.EntryDecision.created_at.isoformat(),
+        }
+        for d in result.all()
+    ]
+
+
 @router.get("/protections")
 async def portfolio_protections(db: AsyncSession = Depends(get_db)):
     """Get active portfolio protection events."""
