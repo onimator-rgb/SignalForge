@@ -87,6 +87,12 @@ async def manual_close_position(db: AsyncSession, position_id: uuid.UUID) -> dic
 # ── Exit logic ────────────────────────────────────
 
 async def _check_exits(db: AsyncSession, portfolio: Portfolio, now: datetime) -> int:
+    from app.portfolio.exits import evaluate_exit, update_position_state
+
+    profile = get_active_profile()
+    regime_data = await calculate_regime(db)
+    regime = regime_data["regime"]
+
     result = await db.execute(
         select(PortfolioPosition).where(
             PortfolioPosition.portfolio_id == portfolio.id,
@@ -102,19 +108,32 @@ async def _check_exits(db: AsyncSession, portfolio: Portfolio, now: datetime) ->
             continue
 
         current_price = price_data.close
-        pnl_pct = (current_price - float(pos.entry_price)) / float(pos.entry_price)
-        reason = None
 
-        if pnl_pct <= STOP_LOSS_PCT:
-            reason = "stop_hit"
-        elif pnl_pct >= TAKE_PROFIT_PCT:
-            reason = "target_hit"
-        elif pos.max_hold_until and now >= pos.max_hold_until:
-            reason = "max_hold"
+        # Update position state (peak, trailing, break-even)
+        update_position_state(pos, current_price, profile, regime)
+
+        # Get current recommendation for signal deterioration check
+        rec_res = await db.execute(
+            select(Recommendation.score, Recommendation.recommendation_type)
+            .where(Recommendation.asset_id == pos.asset_id, Recommendation.status == "active")
+            .limit(1)
+        )
+        rec_row = rec_res.one_or_none()
+        rec_score = float(rec_row.score) if rec_row else None
+        rec_type = rec_row.recommendation_type if rec_row else None
+
+        # Evaluate exit rules
+        reason, exit_ctx = evaluate_exit(
+            pos, current_price, profile, regime,
+            rec_score=rec_score, rec_type=rec_type, now=now,
+        )
 
         if reason:
+            pos.exit_context = exit_ctx
             await _close_position(db, portfolio, pos, current_price, reason, now)
             closed += 1
+
+        await db.flush()
 
     return closed
 
@@ -382,6 +401,10 @@ async def get_portfolio_summary(db: AsyncSession) -> dict:
             "dist_stop_pct": dist_stop_pct, "dist_target_pct": dist_target_pct,
             "max_hold_until": pos.max_hold_until,
             "hours_open": hours_open, "hours_remaining": hours_remaining,
+            "peak_price": float(pos.peak_price) if pos.peak_price else None,
+            "peak_pnl_pct": float(pos.peak_pnl_pct) if pos.peak_pnl_pct else None,
+            "trailing_stop_price": float(pos.trailing_stop_price) if pos.trailing_stop_price else None,
+            "break_even_armed": pos.break_even_armed,
             "badges": badges, "status": pos.status,
             "recommendation": {
                 "id": str(pos.recommendation_id) if pos.recommendation_id else None,
@@ -421,6 +444,7 @@ async def get_portfolio_summary(db: AsyncSession) -> dict:
             "realized_pnl_pct": float(pos.realized_pnl_pct) if pos.realized_pnl_pct else None,
             "opened_at": pos.opened_at, "closed_at": pos.closed_at,
             "hold_hours": hold_hours, "close_reason": pos.close_reason,
+            "exit_context": pos.exit_context,
             "status": pos.status,
             "rec_score": float(row.rec_score) if row.rec_score else None,
             "rec_type": row.rec_type,

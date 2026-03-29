@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String, text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.models import UUIDPrimaryKeyMixin
@@ -45,6 +45,11 @@ class PortfolioPosition(Base, UUIDPrimaryKeyMixin):
     stop_loss_price: Mapped[float | None] = mapped_column(Numeric(24, 8), nullable=True)
     take_profit_price: Mapped[float | None] = mapped_column(Numeric(24, 8), nullable=True)
     max_hold_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    peak_price: Mapped[float | None] = mapped_column(Numeric(24, 8), nullable=True)
+    peak_pnl_pct: Mapped[float | None] = mapped_column(Numeric(8, 4), nullable=True)
+    trailing_stop_price: Mapped[float | None] = mapped_column(Numeric(24, 8), nullable=True)
+    break_even_armed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    exit_context: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     status: Mapped[str] = mapped_column(String(10), nullable=False, default="open")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"), nullable=False)
 

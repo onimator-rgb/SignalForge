@@ -112,7 +112,10 @@ const badgeColors: Record<string, string> = {
 
 const reasonLabels: Record<string, string> = {
   stop_hit: 'Stop Loss',
+  trailing_stop_hit: 'Trailing Stop',
   target_hit: 'Take Profit',
+  break_even_protect: 'Break-Even Protect',
+  signal_deterioration: 'Signal Deterioration',
   max_hold: 'Max Hold',
   manual: 'Manual Close',
   signal_invalid: 'Signal Invalid',
@@ -214,7 +217,7 @@ const reasonLabels: Record<string, string> = {
 
           <!-- Detail panel -->
           <div v-if="expandedId === p.id" class="border-t border-gray-800 px-4 py-3 bg-gray-950/50">
-            <div class="grid grid-cols-4 gap-4 text-xs mb-3">
+            <div class="grid grid-cols-5 gap-3 text-xs mb-3">
               <div>
                 <div class="text-gray-500">Entry</div>
                 <div class="font-medium tabular-nums">${{ fmtPrice(p.entry_price) }}</div>
@@ -224,17 +227,27 @@ const reasonLabels: Record<string, string> = {
                 <div class="font-medium tabular-nums">${{ fmtPrice(liveCurrentPrice(p)) }}</div>
               </div>
               <div>
-                <div class="text-gray-500">Stop (-8%)</div>
-                <div class="font-medium tabular-nums text-red-400">${{ fmtPrice(p.stop_loss_price) }}
-                  <span class="text-gray-600">({{ p.dist_stop_pct }}% away)</span>
+                <div class="text-gray-500">Peak</div>
+                <div class="font-medium tabular-nums text-blue-400">{{ p.peak_price ? '$' + fmtPrice(p.peak_price) : '--' }}
+                  <span v-if="p.peak_pnl_pct" class="text-gray-600">(+{{ p.peak_pnl_pct.toFixed(1) }}%)</span>
                 </div>
               </div>
               <div>
-                <div class="text-gray-500">Target (+15%)</div>
-                <div class="font-medium tabular-nums text-green-400">${{ fmtPrice(p.take_profit_price) }}
-                  <span class="text-gray-600">({{ p.dist_target_pct }}% away)</span>
-                </div>
+                <div class="text-gray-500">Stop</div>
+                <div class="font-medium tabular-nums text-red-400">${{ fmtPrice(p.stop_loss_price) }}</div>
               </div>
+              <div>
+                <div class="text-gray-500">Target</div>
+                <div class="font-medium tabular-nums text-green-400">${{ fmtPrice(p.take_profit_price) }}</div>
+              </div>
+            </div>
+            <div class="flex gap-3 text-xs mb-3">
+              <span v-if="p.trailing_stop_price" class="px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/30">
+                Trail: ${{ fmtPrice(p.trailing_stop_price) }}
+              </span>
+              <span v-if="p.break_even_armed" class="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/30">
+                BE armed
+              </span>
             </div>
             <div class="grid grid-cols-4 gap-4 text-xs mb-3">
               <div>

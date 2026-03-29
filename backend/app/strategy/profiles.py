@@ -15,12 +15,16 @@ log = get_logger(__name__)
 class StrategyProfile:
     name: str
     candidate_buy_threshold: float
-    min_confidence: str  # "low", "medium", "high"
+    min_confidence: str
     allow_high_risk: bool
     max_position_pct: float
     stop_loss_pct: float
     take_profit_pct: float
     max_hold_hours: int
+    # Exit engine v1
+    trailing_pct: float
+    trailing_arm_pct: float
+    break_even_arm_pct: float
 
 
 PROFILES: dict[str, StrategyProfile] = {
@@ -33,6 +37,9 @@ PROFILES: dict[str, StrategyProfile] = {
         stop_loss_pct=-0.05,
         take_profit_pct=0.10,
         max_hold_hours=48,
+        trailing_pct=0.03,
+        trailing_arm_pct=0.05,
+        break_even_arm_pct=0.03,
     ),
     "balanced": StrategyProfile(
         name="balanced",
@@ -43,6 +50,9 @@ PROFILES: dict[str, StrategyProfile] = {
         stop_loss_pct=-0.08,
         take_profit_pct=0.15,
         max_hold_hours=72,
+        trailing_pct=0.05,
+        trailing_arm_pct=0.06,
+        break_even_arm_pct=0.04,
     ),
     "aggressive": StrategyProfile(
         name="aggressive",
@@ -53,19 +63,19 @@ PROFILES: dict[str, StrategyProfile] = {
         stop_loss_pct=-0.12,
         take_profit_pct=0.22,
         max_hold_hours=96,
+        trailing_pct=0.07,
+        trailing_arm_pct=0.08,
+        break_even_arm_pct=0.05,
     ),
 }
 
 
 def get_active_profile() -> StrategyProfile:
-    """Get the currently active strategy profile."""
     name = getattr(settings, "STRATEGY_PROFILE", "balanced")
-    profile = PROFILES.get(name, PROFILES["balanced"])
-    return profile
+    return PROFILES.get(name, PROFILES["balanced"])
 
 
 def get_profile_dict(profile: StrategyProfile) -> dict:
-    """Convert profile to dict for API response."""
     return {
         "name": profile.name,
         "candidate_buy_threshold": profile.candidate_buy_threshold,
@@ -75,4 +85,7 @@ def get_profile_dict(profile: StrategyProfile) -> dict:
         "stop_loss_pct": profile.stop_loss_pct,
         "take_profit_pct": profile.take_profit_pct,
         "max_hold_hours": profile.max_hold_hours,
+        "trailing_pct": profile.trailing_pct,
+        "trailing_arm_pct": profile.trailing_arm_pct,
+        "break_even_arm_pct": profile.break_even_arm_pct,
     }
