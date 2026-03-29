@@ -104,6 +104,76 @@ async def performance_metrics(db: AsyncSession = Depends(get_db)):
     return await get_performance_metrics(db)
 
 
+@router.get("/evaluation-status")
+async def evaluation_status(db: AsyncSession = Depends(get_db)):
+    """Evaluation progress: eligible, evaluated, pending counts for 24h and 72h."""
+    from datetime import datetime, timedelta, timezone
+    now = datetime.now(timezone.utc)
+    cutoff_24h = now - timedelta(hours=24)
+    cutoff_72h = now - timedelta(hours=72)
+
+    # Totals by status
+    status_res = await db.execute(
+        select(Recommendation.status, func.count()).group_by(Recommendation.status)
+    )
+    status_counts = dict(status_res.all())
+
+    # 24h evaluation
+    eligible_24h = (await db.execute(
+        select(func.count()).where(
+            Recommendation.generated_at <= cutoff_24h,
+            Recommendation.entry_price_snapshot.isnot(None),
+        )
+    )).scalar_one()
+    evaluated_24h = (await db.execute(
+        select(func.count()).where(Recommendation.evaluated_at_24h.isnot(None))
+    )).scalar_one()
+    last_eval_24h = (await db.execute(
+        select(func.max(Recommendation.evaluated_at_24h))
+    )).scalar_one()
+
+    # 72h evaluation
+    eligible_72h = (await db.execute(
+        select(func.count()).where(
+            Recommendation.generated_at <= cutoff_72h,
+            Recommendation.entry_price_snapshot.isnot(None),
+        )
+    )).scalar_one()
+    evaluated_72h = (await db.execute(
+        select(func.count()).where(Recommendation.evaluated_at_72h.isnot(None))
+    )).scalar_one()
+    last_eval_72h = (await db.execute(
+        select(func.max(Recommendation.evaluated_at_72h))
+    )).scalar_one()
+
+    # Age
+    oldest = (await db.execute(select(func.min(Recommendation.generated_at)))).scalar_one()
+    oldest_age_h = round((now - oldest).total_seconds() / 3600, 1) if oldest else 0
+
+    return {
+        "totals": {
+            "total": sum(status_counts.values()),
+            **{k: v for k, v in status_counts.items()},
+        },
+        "evaluation_24h": {
+            "eligible": eligible_24h,
+            "evaluated": evaluated_24h,
+            "pending": eligible_24h - evaluated_24h,
+            "last_evaluated_at": last_eval_24h.isoformat() if last_eval_24h else None,
+        },
+        "evaluation_72h": {
+            "eligible": eligible_72h,
+            "evaluated": evaluated_72h,
+            "pending": eligible_72h - evaluated_72h,
+            "last_evaluated_at": last_eval_72h.isoformat() if last_eval_72h else None,
+        },
+        "age": {
+            "oldest_generated_at": oldest.isoformat() if oldest else None,
+            "oldest_age_hours": oldest_age_h,
+        },
+    }
+
+
 @router.get("/{recommendation_id}", response_model=RecommendationOut)
 async def get_recommendation(recommendation_id: UUID, db: AsyncSession = Depends(get_db)):
     """Get a single recommendation with full details."""
