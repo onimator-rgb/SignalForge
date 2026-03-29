@@ -246,17 +246,27 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
 
     from app.portfolio.protections import check_protections
 
+    # Phase 1: Filter candidates through protections + confirmations
+    from app.portfolio.confirmations import check_confirmations
+    from app.portfolio.ranking import compute_ranking
+    from app.indicators.service import get_indicators
+    from app.recommendations.service import _get_volume_context
+
+    viable = []  # [(rec, asset_class, symbol, indicators, price_data, ranking)]
+
     for rec in candidates:
         if rec.asset_id in blocked_ids:
             continue
-        if open_count + opened >= MAX_OPEN_POSITIONS:
-            break
 
-        # Get asset class for protection check
-        asset_res = await db.execute(select(Asset.asset_class).where(Asset.id == rec.asset_id))
-        ac = asset_res.scalar_one_or_none() or "crypto"
+        asset_info = await db.execute(
+            select(Asset.asset_class, Asset.symbol).where(Asset.id == rec.asset_id)
+        )
+        row = asset_info.one_or_none()
+        if not row:
+            continue
+        ac, sym = row.asset_class, row.symbol
 
-        # Check protections
+        # Protections
         allowed, prot_type, prot_reason = await check_protections(
             db, portfolio.id, rec.asset_id, ac, regime, now
         )
@@ -265,27 +275,17 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
                                    [prot_type], prot_reason, {}, regime, profile.name, now)
             continue
 
-        # Entry confirmations
-        from app.portfolio.confirmations import check_confirmations
-        from app.indicators.service import get_indicators
-        from app.recommendations.service import _get_volume_context
-
-        asset_sym_res = await db.execute(select(Asset.symbol).where(Asset.id == rec.asset_id))
-        asset_sym = asset_sym_res.scalar_one_or_none() or "?"
-        ind = await get_indicators(db, rec.asset_id, asset_sym, interval="1h")
+        # Confirmations
+        ind = await get_indicators(db, rec.asset_id, sym, interval="1h")
         price_data = await get_latest_price(db, rec.asset_id)
         change_24h = price_data.change_24h_pct if price_data else None
         avg_vol, latest_vol = await _get_volume_context(db, rec.asset_id, "1h")
 
         conf = check_confirmations(
-            indicators=ind,
-            change_24h_pct=change_24h,
-            avg_volume=avg_vol,
-            latest_volume=latest_vol,
-            rec_generated_at=rec.generated_at,
-            asset_class=ac,
-            regime=regime,
-            now=now,
+            indicators=ind, change_24h_pct=change_24h,
+            avg_volume=avg_vol, latest_volume=latest_vol,
+            rec_generated_at=rec.generated_at, asset_class=ac,
+            regime=regime, now=now,
         )
         if not conf["allowed"]:
             await _record_decision(db, rec, ac, "blocked", "confirmations",
@@ -293,22 +293,58 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
                                    conf["context"], regime, profile.name, now)
             continue
 
-        # Record allowed decision
-        await _record_decision(db, rec, ac, "allowed", "confirmations",
-                               [], "All confirmations passed", conf["context"],
-                               regime, profile.name, now)
+        # Compute ranking
+        from app.anomalies.models import AnomalyEvent
+        anom_cnt = (await db.execute(
+            select(func.count()).where(AnomalyEvent.asset_id == rec.asset_id, AnomalyEvent.is_resolved.is_(False))
+        )).scalar_one()
+        signal_age = (now - rec.generated_at).total_seconds() / 3600
+
+        ranking = compute_ranking(
+            rec_score=float(rec.score), confidence=rec.confidence,
+            risk_level=rec.risk_level, asset_class=ac, regime=regime,
+            signal_age_hours=signal_age, anomaly_count=anom_cnt,
+            indicators=ind, change_24h_pct=change_24h,
+        )
+
+        if ranking["allocation_multiplier"] <= 0:
+            await _record_decision(db, rec, ac, "blocked", "ranking",
+                                   ["rank_too_low"], f"Ranking {ranking['ranking_score']:.0f} below entry tier",
+                                   ranking, regime, profile.name, now)
+            continue
+
+        viable.append((rec, ac, sym, price_data, ranking))
+
+    # Phase 2: Sort by ranking_score, select top slots
+    viable.sort(key=lambda x: x[4]["ranking_score"], reverse=True)
+    slots_available = MAX_OPEN_POSITIONS - open_count
+
+    for rank_idx, (rec, ac, sym, price_data, ranking) in enumerate(viable):
+        if opened >= slots_available:
+            await _record_decision(db, rec, ac, "blocked", "ranking",
+                                   ["rank_blocked_lower_priority"],
+                                   f"Rank #{rank_idx+1} — no slots (opened {opened}/{slots_available})",
+                                   ranking, regime, profile.name, now)
+            continue
+
+        # Record selected
+        await _record_decision(db, rec, ac, "allowed", "ranking",
+                               ["rank_selected"],
+                               f"Rank #{rank_idx+1} — tier={ranking['tier']} alloc={ranking['allocation_multiplier']}",
+                               ranking, regime, profile.name, now)
 
         reserve = float(portfolio.initial_capital) * MIN_CASH_RESERVE_PCT
         available = float(portfolio.current_cash) - reserve
         if available < MIN_POSITION_USD:
             break
 
-        max_size = equity * effective_position_pct
+        # Apply allocation multiplier from ranking
+        alloc_mult = ranking["allocation_multiplier"]
+        max_size = equity * effective_position_pct * alloc_mult
         size_usd = min(max_size, available)
         if size_usd < MIN_POSITION_USD:
             break
 
-        price_data = await get_latest_price(db, rec.asset_id)
         if not price_data:
             continue
 
