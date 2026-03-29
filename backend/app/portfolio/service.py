@@ -244,11 +244,26 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
     opened = 0
     equity = await _compute_equity(db, portfolio)
 
+    from app.portfolio.protections import check_protections
+
     for rec in candidates:
         if rec.asset_id in blocked_ids:
             continue
         if open_count + opened >= MAX_OPEN_POSITIONS:
             break
+
+        # Get asset class for protection check
+        asset_res = await db.execute(select(Asset.asset_class).where(Asset.id == rec.asset_id))
+        ac = asset_res.scalar_one_or_none() or "crypto"
+
+        # Check protections
+        allowed, prot_type, prot_reason = await check_protections(
+            db, portfolio.id, rec.asset_id, ac, regime, now
+        )
+        if not allowed:
+            log.info("portfolio.entry_blocked", asset_id=str(rec.asset_id),
+                     protection=prot_type, reason=prot_reason)
+            continue
 
         reserve = float(portfolio.initial_capital) * MIN_CASH_RESERVE_PCT
         available = float(portfolio.current_cash) - reserve

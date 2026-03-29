@@ -22,12 +22,18 @@ const wlMenuForId = ref<string | null>(null)
 const evaluating = ref(false)
 const closingId = ref<string | null>(null)
 const expandedId = ref<string | null>(null)
+const protections = ref<any[]>([])
 
 async function load() {
   loading.value = true
   error.value = ''
   try {
     data.value = await fetchPortfolio()
+    // Fetch protections
+    try {
+      const pRes = await api.get('/portfolio/protections')
+      protections.value = pRes.data.active || []
+    } catch { protections.value = [] }
   } catch (e: any) {
     error.value = e.response?.data?.detail || e.message
   } finally {
@@ -169,6 +175,21 @@ const reasonLabels: Record<string, string> = {
         <div class="bg-gray-900 border border-gray-800 rounded-lg p-3">
           <div class="text-xs text-gray-500 uppercase">Win Rate</div>
           <div class="text-lg font-bold mt-1">{{ data.stats.win_rate != null ? data.stats.win_rate.toFixed(0) + '%' : '--' }}</div>
+        </div>
+      </div>
+
+      <!-- Active Protections -->
+      <div v-if="protections.length > 0" class="mb-5">
+        <h2 class="font-semibold text-sm mb-2 text-orange-400">Active Protections ({{ protections.length }})</h2>
+        <div class="flex gap-2 flex-wrap">
+          <div
+            v-for="p in protections" :key="p.id"
+            class="px-3 py-1.5 bg-orange-500/10 border border-orange-500/30 rounded-lg text-xs text-orange-400"
+          >
+            <span class="font-medium">{{ p.type.replace(/_/g, ' ') }}</span>
+            <span class="text-orange-300/60 ml-1">{{ p.reason }}</span>
+            <span v-if="p.expires_at" class="text-gray-500 ml-1">expires {{ p.expires_at.split('T')[1]?.slice(0,5) || '' }}</span>
+          </div>
         </div>
       </div>
 
