@@ -60,10 +60,28 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         log.error("live_prices.init_error", error=str(e))
 
+    # Start runtime jobs (independent evaluation + watchdog)
+    runtime_tasks = []
+    try:
+        from app.system.runtime import start_runtime_jobs, heartbeat_quick
+        runtime_tasks = await start_runtime_jobs()
+        await heartbeat_quick("backend_app")
+        # Run initial evaluation for any pending recs from previous run
+        from app.system.runtime import run_pending_evaluation
+        async with async_session() as db:
+            await run_pending_evaluation(db)
+    except Exception as e:
+        log.error("runtime.init_error", error=str(e))
+
     yield
 
     try:
         stop_pollers()
+    except Exception:
+        pass
+    try:
+        from app.system.runtime import stop_runtime_jobs
+        stop_runtime_jobs(runtime_tasks)
     except Exception:
         pass
     stop_scheduler()

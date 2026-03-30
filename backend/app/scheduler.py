@@ -33,6 +33,8 @@ async def _scheduled_ingestion(interval: str, asset_class: str) -> None:
     """Job callback: run ingestion for active assets of a given class."""
     log.info("scheduled_ingestion_start", interval=interval, asset_class=asset_class)
     try:
+        from app.system.runtime import heartbeat_quick
+        await heartbeat_quick("scheduler")
         async with async_session() as db:
             provider = _get_provider(asset_class)
             job = await run_ingestion(
@@ -51,6 +53,8 @@ async def _scheduled_ingestion(interval: str, asset_class: str) -> None:
                 inserted=job.records_inserted,
                 duration_ms=job.duration_ms,
             )
+            comp = f"ingestion_{asset_class}"
+            await heartbeat_quick(comp, {"status": job.status, "ok": job.assets_success})
     except Exception as e:
         log.error(
             "scheduled_ingestion_error",

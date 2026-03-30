@@ -32,6 +32,27 @@ async def health_check(db: AsyncSession = Depends(get_db)) -> HealthResponse:
     )
 
 
+@router.get("/runtime-status")
+async def runtime_status(db: AsyncSession = Depends(get_db)):
+    """Runtime health: per-component heartbeat status + overall verdict."""
+    from app.system.runtime import get_runtime_status
+    return await get_runtime_status(db)
+
+
+@router.post("/recovery/evaluate-pending")
+async def recovery_evaluate(db: AsyncSession = Depends(get_db)):
+    """Manually trigger evaluation for all pending recommendations."""
+    from app.system.runtime import run_pending_evaluation
+    return await run_pending_evaluation(db)
+
+
+@router.post("/recovery/run-watchdog")
+async def recovery_watchdog(db: AsyncSession = Depends(get_db)):
+    """Manually run watchdog check."""
+    from app.system.runtime import run_watchdog
+    return await run_watchdog(db)
+
+
 @router.get("/dashboard/overview")
 async def dashboard_overview(db: AsyncSession = Depends(get_db)):
     """Aggregate dashboard data: portfolio, signals, alerts, watchlists."""
