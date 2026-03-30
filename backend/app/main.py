@@ -38,7 +38,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     from app.scheduler import start_scheduler, stop_scheduler
 
-    start_scheduler()
+    await start_scheduler()
 
     # Start live price pollers
     try:

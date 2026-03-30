@@ -34,9 +34,12 @@ async def health_check(db: AsyncSession = Depends(get_db)) -> HealthResponse:
 
 @router.get("/runtime-status")
 async def runtime_status(db: AsyncSession = Depends(get_db)):
-    """Runtime health: per-component heartbeat status + overall verdict."""
+    """Runtime health: per-component heartbeat status + scheduler jobs + overall verdict."""
     from app.system.runtime import get_runtime_status
-    return await get_runtime_status(db)
+    from app.scheduler import get_scheduler_status
+    status = await get_runtime_status(db)
+    status["scheduler_jobs"] = get_scheduler_status()
+    return status
 
 
 @router.post("/recovery/evaluate-pending")
