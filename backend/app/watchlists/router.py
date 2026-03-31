@@ -298,6 +298,65 @@ async def watchlist_recommendations(watchlist_id: UUID, db: AsyncSession = Depen
     ]
 
 
+# ── Anomalies ─────────────────────────────────────
+
+@router.get("/{watchlist_id}/anomalies")
+async def watchlist_anomalies(watchlist_id: UUID, db: AsyncSession = Depends(get_db)):
+    """Return unresolved anomalies (score >= 0.5) from the last 24 h for watchlist assets."""
+    from datetime import timedelta
+
+    from app.anomalies.models import AnomalyEvent
+
+    await _get_watchlist_or_404(db, watchlist_id)
+
+    wa_res = await db.execute(
+        select(WatchlistAsset.asset_id, Asset.symbol)
+        .join(Asset, WatchlistAsset.asset_id == Asset.id)
+        .where(WatchlistAsset.watchlist_id == watchlist_id)
+    )
+    wa_rows = wa_res.all()
+    asset_ids = [r.asset_id for r in wa_rows]
+
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(hours=24)
+
+    anomalies: list[dict] = []
+    if asset_ids:
+        anom_res = await db.execute(
+            select(AnomalyEvent, Asset.symbol)
+            .join(Asset, AnomalyEvent.asset_id == Asset.id)
+            .where(
+                AnomalyEvent.asset_id.in_(asset_ids),
+                AnomalyEvent.is_resolved.is_(False),
+                AnomalyEvent.detected_at >= cutoff,
+                AnomalyEvent.score >= 0.5,
+            )
+            .order_by(AnomalyEvent.score.desc())
+        )
+        for row in anom_res.all():
+            anomalies.append(
+                {
+                    "id": str(row.AnomalyEvent.id),
+                    "asset_id": str(row.AnomalyEvent.asset_id),
+                    "symbol": row.symbol,
+                    "anomaly_type": row.AnomalyEvent.anomaly_type,
+                    "severity": row.AnomalyEvent.severity,
+                    "score": float(row.AnomalyEvent.score),
+                    "detected_at": row.AnomalyEvent.detected_at.isoformat(),
+                    "details": row.AnomalyEvent.details,
+                }
+            )
+
+    log.info("watchlist.anomalies_fetch_done", watchlist_id=str(watchlist_id), total=len(anomalies))
+    return {
+        "watchlist_id": str(watchlist_id),
+        "assets": [r.symbol for r in wa_rows],
+        "anomalies": anomalies,
+        "last_updated": now.isoformat(),
+        "total": len(anomalies),
+    }
+
+
 # ── Asset membership ─────────────────────────────
 
 @router.post("/{watchlist_id}/assets", status_code=201)
