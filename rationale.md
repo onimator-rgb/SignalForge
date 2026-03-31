@@ -2,102 +2,109 @@
 
 **author:** coder-worker (MarketPulse Coder)
 **branch:** task/marketpulse-task-2026-04-01-0007-implementation
-**date:** 2026-04-01
+**commit_sha:** 
+**date:** 2026-03-31
+**model_calls:** 1
 
 ---
 
 ## 1) One-line summary
-Add Trailing Buy entry mechanism that trails price downward after buy signals and executes on bounce, reducing average entry cost.
+Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
 - **Criteria:** TrailingBuyState or equivalent dict-based state with all required fields
-- **Status:** `pass`
-- **Evidence:** `TrailingBuyState` dataclass + `start_trailing` returns dict with signal_price, lowest_price, bounce_pct, started_at, expires_at, status
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** start_trailing returns context_data dict with lowest_price=signal_price, correct expiry
-- **Status:** `pass`
-- **Evidence:** test_returns_valid_context asserts lowest_price == signal_price, expires_at == started_at + max_hours
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** update_trailing correctly detects bounce: buy triggered when price >= lowest * (1 + bounce_pct)
-- **Status:** `pass`
-- **Evidence:** test_triggers_buy_on_bounce: price drops to 90, bounces to 92 > 90*1.02=91.8, action='buy'
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** update_trailing correctly detects expiry when now >= expires_at
-- **Status:** `pass`
-- **Evidence:** test_expires_after_max_hours: time jumps 13h past 12h window, action='expired'
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** update_trailing tracks new lows: lowest_price decreases when price drops
-- **Status:** `pass`
-- **Evidence:** test_tracks_lower_price: price 95 < 100, lowest_price updated to 95
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** All 3 strategy profiles have trailing_buy_bounce_pct and trailing_buy_max_hours
-- **Status:** `pass`
-- **Evidence:** test_profile_has_trailing_buy_fields parametrized across all 3 profiles
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** All tests pass, mypy clean
-- **Status:** `pass`
-- **Evidence:** 14 passed, mypy: 0 errors in trailing_buy.py, profiles.py, service.py
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** New candidate_buy signals create EntryDecision with stage='trailing_buy' instead of immediate buy
-- **Status:** `pass`
-- **Evidence:** Phase 1b in _check_entries creates EntryDecision(stage='trailing_buy', status='pending')
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** Pending trailing buys are checked each cycle and updated with current price
-- **Status:** `pass`
-- **Evidence:** Phase 0 in _check_entries queries pending trail EntryDecisions and calls update_trailing
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** Buy executes when price bounces above trailing low by bounce_pct
-- **Status:** `pass`
-- **Evidence:** Phase 0 sets status='allowed', adds to ready_to_buy; Phase 2 opens position
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** Trailing buy expires gracefully after max_hours with proper EntryDecision update
-- **Status:** `pass`
-- **Evidence:** Phase 0 sets status='blocked', reason_codes=['trail_expired']
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** Assets with existing pending trails are not duplicated
-- **Status:** `pass`
-- **Evidence:** pending_trail_asset_ids set checked before creating new trails in Phase 1
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** All tests pass, mypy clean
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/strategy/profiles.py` â€” Added trailing_buy_bounce_pct and trailing_buy_max_hours to StrategyProfile dataclass and all 3 profile instances
-- `backend/app/portfolio/trailing_buy.py` â€” New pure-function module: TrailingBuyState, start_trailing, update_trailing
-- `backend/app/portfolio/service.py` â€” Integrated trailing buy into _check_entries with Phase 0 (process pending), Phase 1b (create new trails), Phase 2 (execute triggered buys)
-- `backend/tests/test_trailing_buy.py` â€” 14 tests covering pure functions, profile params, and integration scenarios
+- `backend/app/portfolio/service.py`
+- `backend/app/portfolio/trailing_buy.py`
+- `backend/app/strategy/profiles.py`
+- `backend/tests/test_trailing_buy.py`
+- `rationale.md`
 
 ---
 
 ## 4) Tests run & results
-- `cd backend && uv run python -m pytest tests/test_trailing_buy.py -q` â€” 14 passed
-- `cd backend && uv run python -m mypy app/portfolio/trailing_buy.py --ignore-missing-imports` â€” Success
-- `cd backend && uv run python -m mypy app/strategy/profiles.py --ignore-missing-imports` â€” Success
-- `cd backend && uv run python -m mypy app/portfolio/service.py --ignore-missing-imports` â€” 0 errors in service.py (pre-existing errors in other files only)
+- **Commands run:**
+  - `cd backend && uv run python -m pytest tests/test_trailing_buy.py -q` — passed
+  - `cd backend && uv run python -m mypy app/portfolio/trailing_buy.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m mypy app/strategy/profiles.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_trailing_buy.py -q` — passed
+  - `cd backend && uv run python -m mypy app/portfolio/service.py --ignore-missing-imports` — FAILED
 
 ---
 
 ## 5) Data & sample evidence
-- All tests use synthetic data with fixed timestamps and prices. No real market data.
+- Synthetic fixtures used from tests/fixtures/
 
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** Modifying _check_entries is complex â€” **Severity:** medium â€” **Mitigation:** Preserved existing ranking/confirmation flow, added new phases around it, no changes to exit logic
-- **Risk:** JSONB context_data shape â€” **Severity:** low â€” **Mitigation:** Pure functions validate and produce consistent dict structure
+- **Risk:** LLM-generated code — **Severity:** medium — **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
 
 ---
 
 ## 7) Backwards compatibility / migration notes
-- No schema changes. Uses existing JSONB context_data column on EntryDecision.
-- New trailing buy entries have stage='trailing_buy' which doesn't conflict with existing stages.
+- New files only, backward compatible.
 
 ---
 
 ## 8) Performance considerations
-- One additional DB query per cycle to load pending trailing buys. Negligible impact.
+- No performance impact expected.
 
 ---
 
@@ -105,19 +112,17 @@ Add Trailing Buy entry mechanism that trails price downward after buy signals an
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
-- API key logged: `no`
+- API key logged: `no` (only presence check)
 
 ---
 
 ## 10) Open questions & follow-ups
-1. Should ranking allocation_multiplier be applied to trailing buy position sizing?
-2. Consider adaptive bounce thresholds based on asset volatility.
-3. Backtest trailing buy fill rates vs immediate buy performance.
+1. Review LLM-generated implementation for edge cases.
 
 ---
 
 ## 11) Short changelog
-- feat(marketpulse-task-2026-04-01-0007): Add trailing buy entry mechanism
+- `N/A` — feat(marketpulse-task-2026-04-01-0007): implementation
 
 ---
 
