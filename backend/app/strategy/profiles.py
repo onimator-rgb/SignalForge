@@ -70,6 +70,11 @@ PROFILES: dict[str, StrategyProfile] = {
 }
 
 
+def is_auto_switch_enabled() -> bool:
+    """Check if automatic strategy profile switching is enabled."""
+    return bool(getattr(settings, "STRATEGY_AUTO_SWITCH", False))
+
+
 def get_active_profile() -> StrategyProfile:
     name = getattr(settings, "STRATEGY_PROFILE", "balanced")
     return PROFILES.get(name, PROFILES["balanced"])

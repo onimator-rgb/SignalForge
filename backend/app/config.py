@@ -44,6 +44,7 @@ class Settings(BaseSettings):
 
     # Strategy
     STRATEGY_PROFILE: str = "balanced"
+    STRATEGY_AUTO_SWITCH: bool = False
 
     # App
     APP_ENV: str = "development"
