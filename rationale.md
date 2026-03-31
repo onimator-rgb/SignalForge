@@ -1,77 +1,90 @@
-# Rationale for `marketpulse-task-2026-03-31-0001`
+# Rationale for `marketpulse-task-2026-04-01-0007`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-03-31-0001-implementation
+**branch:** task/marketpulse-task-2026-04-01-0007-implementation
 **commit_sha:** 
 **date:** 2026-03-31
-**model_calls:** 0
+**model_calls:** 1
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-03-31-0001 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** GET /api/v1/watchlists/{id}/anomalies returns 200 with JSON keys [watchlist_id, assets, anomalies, last_updated, total] for a valid watchlist_id
+- **Criteria:** TrailingBuyState or equivalent dict-based state with all required fields
 - **Status:** `partial`
 - **Evidence:** Some checks failed
 
-- **Criteria:** GET /api/v1/watchlists/nonexistent-id/anomalies returns 404
+- **Criteria:** start_trailing returns context_data dict with lowest_price=signal_price, correct expiry
 - **Status:** `partial`
 - **Evidence:** Some checks failed
 
-- **Criteria:** anomalies list only contains events where is_resolved=False AND score >= 0.5 AND detected_at within last 24h
+- **Criteria:** update_trailing correctly detects bounce: buy triggered when price >= lowest * (1 + bounce_pct)
 - **Status:** `partial`
 - **Evidence:** Some checks failed
 
-- **Criteria:** tests pass: cd backend && python -m pytest tests/test_watchlist_anomalies.py -q
+- **Criteria:** update_trailing correctly detects expiry when now >= expires_at
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** update_trailing tracks new lows: lowest_price decreases when price drops
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** All 3 strategy profiles have trailing_buy_bounce_pct and trailing_buy_max_hours
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** All tests pass, mypy clean
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** New candidate_buy signals create EntryDecision with stage='trailing_buy' instead of immediate buy
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** Pending trailing buys are checked each cycle and updated with current price
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** Buy executes when price bounces above trailing low by bounce_pct
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** Trailing buy expires gracefully after max_hours with proper EntryDecision update
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** Assets with existing pending trails are not duplicated
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** All tests pass, mypy clean
 - **Status:** `partial`
 - **Evidence:** Some checks failed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `.github/workflows/ci.yml`
-- `artifacts/run-2026-03-31_17-12-34.json`
-- `artifacts/run-2026-03-31_17-28-51.json`
-- `artifacts/run-2026-03-31_17-32-20.json`
-- `artifacts/run-2026-03-31_17-34-53.json`
-- `artifacts/run-2026-03-31_17-37-45.json`
-- `auth/authorization.json`
-- `backend/uv.lock`
-- `marketpulse-orchestrator/README.md`
-- `marketpulse-orchestrator/SKILL.md`
-- `marketpulse-orchestrator/lib/__init__.py`
-- `marketpulse-orchestrator/lib/model_caller.py`
-- `marketpulse-orchestrator/prompts/coder_to_orchestrator.md`
-- `marketpulse-orchestrator/prompts/marketpulse_coder.md`
-- `marketpulse-orchestrator/prompts/orchestrator_to_coder.md`
-- `marketpulse-orchestrator/prompts/orchestrator_to_validator.md`
-- `marketpulse-orchestrator/references/acceptance_patterns.md`
-- `marketpulse-orchestrator/references/authorization.md`
-- `marketpulse-orchestrator/references/cli_checklist.md`
-- `marketpulse-orchestrator/references/rationale_template.md`
-- `marketpulse-orchestrator/task_store/task_example.json`
-- `marketpulse-orchestrator/validator.py`
-- `marketpulse-orchestrator/workers/Dockerfile`
-- `marketpulse-orchestrator/workers/__init__.py`
-- `marketpulse-orchestrator/workers/coder_worker.py`
-- `marketpulse-orchestrator/workers/docker-compose.yml`
-- `pyproject.toml`
+- `backend/app/portfolio/service.py`
+- `backend/app/portfolio/trailing_buy.py`
+- `backend/app/strategy/profiles.py`
+- `backend/tests/test_trailing_buy.py`
 - `rationale.md`
-- `scripts/launch_agents.ps1`
-- `scripts/launch_agents.sh`
-- `scripts/watch_logs.ps1`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && python -m pytest tests/test_watchlist_anomalies.py -q` — FAILED
-  - `cd backend && python -m mypy app/watchlists/router.py --ignore-missing-imports` — FAILED
+  - `cd backend && uv run python -m pytest tests/test_trailing_buy.py -q` — passed
+  - `cd backend && uv run python -m mypy app/portfolio/trailing_buy.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m mypy app/strategy/profiles.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_trailing_buy.py -q` — passed
+  - `cd backend && uv run python -m mypy app/portfolio/service.py --ignore-missing-imports` — FAILED
 
 ---
 
@@ -109,7 +122,7 @@ Automated implementation for task marketpulse-task-2026-03-31-0001 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-03-31-0001): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0007): implementation
 
 ---
 
