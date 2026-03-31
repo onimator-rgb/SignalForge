@@ -1,0 +1,76 @@
+{
+  "task_id": "marketpulse-task-2026-03-31-0001",
+  "created_at": "2026-03-31T09:00:00Z",
+  "created_by": "marketpulse-orchestrator-v1",
+  "title": "crypto anomaly panel - 24h unresolved",
+  "description": "Add a backend API and minimal wiring to expose unresolved crypto anomalies in the last 24 hours with severity >= 0.5 for a watchlist.",
+  "goal": "Expose unresolved crypto anomalies (last 24h, severity>=0.5) in watchlist panel",
+  "in_scope": [
+    "backend: query anomalies store and implement filter unresolved anomalies in last 24h with severity >= 0.5",
+    "api: new endpoint GET /api/watchlist/:id/anomalies that returns structured JSON",
+    "tests: unit + integration for endpoint, anomaly dedup logic and sample fixtures",
+    "rationale: add rationale.md mapping acceptance criteria to evidence"
+  ],
+  "out_of_scope": [
+    "frontend styling beyond a basic table or wireframe",
+    "historical analytics / long-term aggregation",
+    "real trading or broker integration"
+  ],
+  "subtasks": [
+    {
+      "id": "s1",
+      "title": "backend: anomalies API",
+      "description": "Implement a service function to query anomaly store, filter unresolved anomalies within the last 24 hours and with severity >= 0.5, deduplicate occurrences within 1 hour, and expose a GET /api/watchlist/:id/anomalies endpoint returning { assets, anomalies, last_updated }.",
+      "owner": "coder-agent",
+      "files_expected": [
+        "src/services/anomalies.py",
+        "src/api/watchlist.py",
+        "tests/test_anomalies_api.py",
+        "tests/fixtures/synthetic_price_spike.json"
+      ],
+      "required_checks": [
+        "python -m pytest tests/test_anomalies_api.py -q",
+        "python -m mypy src/ --ignore-missing-imports"
+      ],
+      "acceptance_criteria": [
+        "GET /api/watchlist/{id}/anomalies returns 200 and JSON with keys [\"assets\",\"anomalies\",\"last_updated\"] when called with valid demo token",
+        "anomaly deduplication: two identical anomalies within 30 minutes produce a single anomaly record with occurrences>=2",
+        "anomaly record for synthetic spike has type=\"price_spike\" and severity >= 0.5",
+        "rationale.md present and maps each acceptance criterion to pass/fail evidence"
+      ],
+      "max_change_loc": 300,
+      "max_files_changed": 6,
+      "risks": [
+        {
+          "type": "data",
+          "severity": "medium",
+          "explanation": "Depends on anomaly_store availability and data contract for anomaly records"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    "anomaly_store:v1",
+    "auth:demo-token"
+  ],
+  "priority": "medium",
+  "estimated_effort": "M",
+  "forbidden_paths": [
+    ".env",
+    "infra/",
+    "secrets/"
+  ],
+  "stop_conditions": [
+    "tests_fail_3_iterations",
+    "touch_secrets"
+  ],
+  "max_iterations": 5,
+  "authorization": {
+    "level": "auto_approve",
+    "deploy_allowed": false,
+    "allowed_actions": ["read_file", "write_file", "git_commit", "run_tests", "lint_check"],
+    "forbidden_actions": ["deploy", "access_secrets", "call_broker_api"],
+    "audit_required": true,
+    "max_iterations": 5
+  }
+}

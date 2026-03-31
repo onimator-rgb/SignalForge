@@ -1,0 +1,44 @@
+version: "3.8"
+
+services:
+  coder-worker:
+    build:
+      context: ..
+      dockerfile: workers/Dockerfile
+    volumes:
+      - ../task_store:/app/marketpulse-orchestrator/task_store:ro
+      - target_repo:/app/target-repo
+    environment:
+      - TASK_SPEC=task_store/task_example.json
+      - BASE_REF=main
+    command: >
+      --task task_store/task_example.json
+      --repo /app/target-repo
+      --base main
+    networks:
+      - orchestrator
+
+  validator:
+    build:
+      context: ..
+      dockerfile: workers/Dockerfile
+    entrypoint: ["python", "validator.py"]
+    volumes:
+      - ../task_store:/app/marketpulse-orchestrator/task_store:ro
+      - target_repo:/app/target-repo
+    command: >
+      --task-spec task_store/task_example.json
+      --repo /app/target-repo
+      --base main
+    depends_on:
+      coder-worker:
+        condition: service_completed_successfully
+    networks:
+      - orchestrator
+
+volumes:
+  target_repo:
+
+networks:
+  orchestrator:
+    driver: bridge
