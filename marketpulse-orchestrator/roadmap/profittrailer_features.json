@@ -1,0 +1,241 @@
+{
+  "source": "ProfitTrailer (https://wiki.profittrailer.com)",
+  "analyzed_at": "2026-03-31",
+  "tiers": {
+    "1": {
+      "label": "High Impact",
+      "features": [
+        {
+          "id": "trailing_stop_loss",
+          "name": "Trailing Stop Loss",
+          "description": "Dynamic stop loss that moves up as price rises. Triggers sell on X% drop from highest point since entry. Replaces fixed stop loss with adaptive mechanism that protects gains.",
+          "pt_reference": "TRAILING_STOP_LOSS_TRIGGER, TRAILING_STOP_LOSS_ARM",
+          "scope": "backend/app/portfolio/service.py — modify exit logic to track highest price since entry and trigger stop loss relative to that peak instead of entry price",
+          "files_hint": ["backend/app/portfolio/service.py", "backend/tests/test_trailing_stop.py"],
+          "complexity": "medium",
+          "depends_on": [],
+          "marketpulse_has": "fixed stop loss only"
+        },
+        {
+          "id": "trailing_take_profit",
+          "name": "Trailing Take Profit",
+          "description": "After profit target is hit, trail the price upward to capture more gains. Only sells when price drops X% from peak after reaching profit threshold.",
+          "pt_reference": "TRAILING_PROFIT, TRAILING_PROFIT_REBOUND_COUNT",
+          "scope": "backend/app/portfolio/service.py — add trailing profit mode that activates after take_profit threshold, tracks peak, sells on retracement",
+          "files_hint": ["backend/app/portfolio/service.py", "backend/tests/test_trailing_profit.py"],
+          "complexity": "medium",
+          "depends_on": [],
+          "marketpulse_has": "fixed take profit only"
+        },
+        {
+          "id": "trailing_buy",
+          "name": "Trailing Buy",
+          "description": "After buy signals confirm, trail the price downward to find local bottom before executing buy. Buys when price rises X% from the trailing low.",
+          "pt_reference": "TRAILING_BUY",
+          "scope": "backend/app/portfolio/service.py — add trailing buy state that delays entry, tracks lowest price after signal, buys on reversal",
+          "files_hint": ["backend/app/portfolio/service.py", "backend/tests/test_trailing_buy.py"],
+          "complexity": "medium",
+          "depends_on": [],
+          "marketpulse_has": "immediate entry on signal"
+        },
+        {
+          "id": "adx_indicator",
+          "name": "ADX (Average Directional Index)",
+          "description": "Measures trend STRENGTH (not direction). Values: 0-25 weak, 25-50 strong, 50-75 very strong, 75-100 extremely strong. Enhances market regime detection.",
+          "pt_reference": "ADX",
+          "scope": "backend/app/indicators/ — add ADX calculation from price bars, integrate into regime detection and recommendation scoring",
+          "files_hint": ["backend/app/indicators/service.py", "backend/tests/test_adx.py"],
+          "complexity": "small",
+          "depends_on": [],
+          "marketpulse_has": "no trend strength measurement"
+        },
+        {
+          "id": "stochastic_rsi",
+          "name": "Stochastic RSI",
+          "description": "Stochastic oscillator applied to RSI values. More sensitive than plain RSI. Returns %K and %D lines with crossover detection for momentum signals.",
+          "pt_reference": "STOCHRSIK, STOCHRSID, STOCHRSICROSS",
+          "scope": "backend/app/indicators/ — add StochRSI calculation, integrate into recommendation scoring composite",
+          "files_hint": ["backend/app/indicators/service.py", "backend/tests/test_stochrsi.py"],
+          "complexity": "small",
+          "depends_on": [],
+          "marketpulse_has": "plain RSI only"
+        },
+        {
+          "id": "squeeze_momentum",
+          "name": "Squeeze Momentum Indicator",
+          "description": "Detects when Bollinger Bands squeeze inside Keltner Channels (low volatility). Predicts imminent breakout. Fires signal when squeeze releases.",
+          "pt_reference": "SQUEEZEMOMENTUM",
+          "scope": "backend/app/indicators/ — add Keltner Channel calculation, detect BB-inside-KC squeeze, add as anomaly detector",
+          "files_hint": ["backend/app/indicators/service.py", "backend/app/anomalies/detectors.py", "backend/tests/test_squeeze.py"],
+          "complexity": "medium",
+          "depends_on": [],
+          "marketpulse_has": "BB exists but no squeeze detection"
+        },
+        {
+          "id": "auto_strategy_switch",
+          "name": "Auto Strategy Profile Switch",
+          "description": "Automatically switch between balanced/aggressive/conservative profiles based on detected market regime. Bull market → aggressive, bear → conservative, neutral → balanced.",
+          "pt_reference": "AUTO_SWITCH_CONFIG",
+          "scope": "backend/app/strategy/ — add auto_switch logic that connects existing regime detection to existing strategy profiles",
+          "files_hint": ["backend/app/strategy/service.py", "backend/tests/test_auto_switch.py"],
+          "complexity": "medium",
+          "depends_on": ["adx_indicator"],
+          "marketpulse_has": "both regime detection and strategy profiles exist, but not connected"
+        }
+      ]
+    },
+    "2": {
+      "label": "Strategic",
+      "features": [
+        {
+          "id": "dca_engine",
+          "name": "DCA Engine (Dollar Cost Averaging)",
+          "description": "When a position goes into loss, automatically buy more at lower prices to reduce average entry. Configurable: max DCA levels, buy amount per level, trigger percentage per level.",
+          "pt_reference": "DCA settings (100+ options)",
+          "scope": "backend/app/portfolio/ — add DCA logic with configurable levels, track average entry price across DCA buys",
+          "files_hint": ["backend/app/portfolio/service.py", "backend/app/portfolio/models.py", "backend/tests/test_dca.py"],
+          "complexity": "large",
+          "depends_on": [],
+          "marketpulse_has": "no DCA"
+        },
+        {
+          "id": "vwap",
+          "name": "VWAP / MVWAP",
+          "description": "Volume-Weighted Average Price — institutional-grade price level. MVWAP is the moving average of VWAP. Shows fair value based on volume distribution.",
+          "pt_reference": "VWAPPERCENTAGE, MVWAPPERCENTAGE",
+          "scope": "backend/app/indicators/ — calculate VWAP from price bars with volume, add as indicator",
+          "files_hint": ["backend/app/indicators/service.py", "backend/tests/test_vwap.py"],
+          "complexity": "medium",
+          "depends_on": [],
+          "marketpulse_has": "no VWAP"
+        },
+        {
+          "id": "obv",
+          "name": "OBV (On-Balance Volume)",
+          "description": "Cumulative volume indicator: adds volume on up days, subtracts on down days. Shows buying/selling pressure via volume flow.",
+          "pt_reference": "OBV",
+          "scope": "backend/app/indicators/ — add OBV calculation from price bars",
+          "files_hint": ["backend/app/indicators/service.py", "backend/tests/test_obv.py"],
+          "complexity": "small",
+          "depends_on": [],
+          "marketpulse_has": "no OBV"
+        },
+        {
+          "id": "mfi",
+          "name": "MFI (Money Flow Index)",
+          "description": "Volume-weighted RSI. Combines price and volume to measure buying/selling pressure. 0-100 scale like RSI.",
+          "pt_reference": "MFI",
+          "scope": "backend/app/indicators/ — add MFI calculation",
+          "files_hint": ["backend/app/indicators/service.py", "backend/tests/test_mfi.py"],
+          "complexity": "small",
+          "depends_on": [],
+          "marketpulse_has": "no MFI"
+        },
+        {
+          "id": "slippage_simulation",
+          "name": "Buy/Sell Slippage Simulation",
+          "description": "Simulate slippage in paper trading: actual fill price = market price +/- configurable slippage %. Makes P&L more realistic.",
+          "pt_reference": "BUY_SLIPPAGE_PERCENTAGE, SELL_SLIPPAGE_PERCENTAGE",
+          "scope": "backend/app/portfolio/service.py — apply slippage offset to entry/exit prices",
+          "files_hint": ["backend/app/portfolio/service.py", "backend/tests/test_slippage.py"],
+          "complexity": "small",
+          "depends_on": [],
+          "marketpulse_has": "no slippage"
+        },
+        {
+          "id": "consecutive_stop_loss_protection",
+          "name": "Consecutive Stop Loss Protection",
+          "description": "After N consecutive stop losses, automatically pause buying for X minutes. Prevents cascading losses in crash scenarios.",
+          "pt_reference": "CONSECUTIVE_STOP_LOSS_TRIGGER",
+          "scope": "backend/app/portfolio/service.py — track consecutive stop losses, add cooldown mechanism",
+          "files_hint": ["backend/app/portfolio/service.py", "backend/tests/test_consecutive_sl.py"],
+          "complexity": "small",
+          "depends_on": [],
+          "marketpulse_has": "no consecutive loss protection"
+        },
+        {
+          "id": "buy_cooldown",
+          "name": "Buy Timeout After Sell",
+          "description": "Cooldown period before re-entering a position after selling (especially after a loss). Prevents revenge trading.",
+          "pt_reference": "BUY_TIMEOUT_AFTER_SELL",
+          "scope": "backend/app/portfolio/service.py — add per-asset cooldown timer after position close",
+          "files_hint": ["backend/app/portfolio/service.py", "backend/tests/test_buy_cooldown.py"],
+          "complexity": "small",
+          "depends_on": [],
+          "marketpulse_has": "no cooldown"
+        }
+      ]
+    },
+    "3": {
+      "label": "Nice to Have",
+      "features": [
+        {
+          "id": "parabolic_sar",
+          "name": "Parabolic SAR",
+          "description": "Stop and Reverse indicator. Dots above/below price show trend direction. Natural fit for dynamic stop-loss placement.",
+          "pt_reference": "PSAR",
+          "scope": "backend/app/indicators/",
+          "files_hint": ["backend/app/indicators/service.py", "backend/tests/test_psar.py"],
+          "complexity": "small",
+          "depends_on": [],
+          "marketpulse_has": "no Parabolic SAR"
+        },
+        {
+          "id": "cci",
+          "name": "CCI (Commodity Channel Index)",
+          "description": "Measures deviation from statistical mean. Values above +100 = overbought, below -100 = oversold.",
+          "pt_reference": "CCI",
+          "scope": "backend/app/indicators/",
+          "files_hint": ["backend/app/indicators/service.py", "backend/tests/test_cci.py"],
+          "complexity": "small",
+          "depends_on": [],
+          "marketpulse_has": "no CCI"
+        },
+        {
+          "id": "keltner_channels",
+          "name": "Keltner Channels",
+          "description": "ATR-based envelope channels. Used with Bollinger Bands for squeeze detection.",
+          "pt_reference": "LOWKC, HIGHKC",
+          "scope": "backend/app/indicators/",
+          "files_hint": ["backend/app/indicators/service.py", "backend/tests/test_keltner.py"],
+          "complexity": "small",
+          "depends_on": [],
+          "marketpulse_has": "no Keltner Channels"
+        },
+        {
+          "id": "fibonacci_levels",
+          "name": "Fibonacci Retracement Levels",
+          "description": "Calculate support/resistance at Fibonacci ratios (23.6%, 38.2%, 50%, 61.8%) from recent swing high/low.",
+          "pt_reference": "FIBONACCI",
+          "scope": "backend/app/indicators/",
+          "files_hint": ["backend/app/indicators/service.py", "backend/tests/test_fibonacci.py"],
+          "complexity": "medium",
+          "depends_on": [],
+          "marketpulse_has": "no Fibonacci"
+        },
+        {
+          "id": "pivot_points",
+          "name": "Pivot Points",
+          "description": "Classic support/resistance pivot calculations from previous period high/low/close.",
+          "pt_reference": "PIVOT",
+          "scope": "backend/app/indicators/",
+          "files_hint": ["backend/app/indicators/service.py", "backend/tests/test_pivot.py"],
+          "complexity": "small",
+          "depends_on": [],
+          "marketpulse_has": "no Pivot Points"
+        },
+        {
+          "id": "min_volume_filter",
+          "name": "Min/Max Buy Volume Filter",
+          "description": "Only allow entries on assets with sufficient trading volume. Prevents bad fills on illiquid assets.",
+          "pt_reference": "MIN_BUY_VOLUME, MAX_BUY_VOLUME",
+          "scope": "backend/app/portfolio/service.py",
+          "files_hint": ["backend/app/portfolio/service.py", "backend/tests/test_volume_filter.py"],
+          "complexity": "small",
+          "depends_on": [],
+          "marketpulse_has": "volume used for anomaly only"
+        }
+      ]
+    }
+  }
+}

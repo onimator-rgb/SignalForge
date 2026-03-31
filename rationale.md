@@ -2,7 +2,7 @@
 
 **author:** coder-worker (MarketPulse Coder)
 **branch:** task/marketpulse-task-2026-03-31-0001-implementation
-**commit_sha:** 050c16de83a2bc5a045ee343a6ce5e281c00be29
+**commit_sha:** 
 **date:** 2026-03-31
 **model_calls:** 1
 
@@ -15,69 +15,88 @@ Automated implementation for task marketpulse-task-2026-03-31-0001 via coder_wor
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** GET /api/v1/watchlists/{id}/anomalies returns 200 with JSON keys [watchlist_id, assets, anomalies, last_updated, total] for a valid watchlist_id
+- **Criteria:** calc_adx returns ADXResult with adx, plus_di, minus_di fields
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** GET /api/v1/watchlists/nonexistent-id/anomalies returns 404
+- **Criteria:** Returns None when fewer than 2*period bars provided
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** anomalies list only contains events where is_resolved=False AND score >= 0.5 AND detected_at within last 24h
+- **Criteria:** ADX value is between 0 and 100 for valid input
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** tests pass: cd backend && python -m pytest tests/test_watchlist_anomalies.py -q
+- **Criteria:** +DI and -DI are between 0 and 100
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** IndicatorSnapshot includes adx_14, plus_di, minus_di fields
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** get_indicators() computes ADX from price bars and populates snapshot
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** score_adx() returns directional scores based on ADX strength and DI crossover
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** WEIGHTS dict sums to 1.0 with new 'adx' entry at 0.10
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** compute_recommendation() accepts and uses ADX parameters
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** All 9 tests pass
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** Tests cover None/insufficient data edge case
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** Tests verify ADX output range 0-100
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** Tests verify scoring logic for bullish, bearish, and weak trend scenarios
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** Weights sum validation test passes
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `.github/workflows/ci.yml`
-- `artifacts/run-2026-03-31_17-12-34.json`
-- `artifacts/run-2026-03-31_17-28-51.json`
-- `artifacts/run-2026-03-31_17-32-20.json`
-- `artifacts/run-2026-03-31_17-34-53.json`
-- `artifacts/run-2026-03-31_17-37-45.json`
-- `auth/authorization.json`
+- `backend/app/anomalies/models.py`
+- `backend/app/assets/models.py`
+- `backend/app/logging_config.py`
+- `backend/app/watchlists/models.py`
 - `backend/app/watchlists/router.py`
+- `backend/app/watchlists/schemas.py`
 - `backend/pyproject.toml`
 - `backend/tests/conftest.py`
 - `backend/tests/test_watchlist_anomalies.py`
 - `backend/uv.lock`
-- `marketpulse-orchestrator/README.md`
-- `marketpulse-orchestrator/SKILL.md`
-- `marketpulse-orchestrator/lib/__init__.py`
-- `marketpulse-orchestrator/lib/model_caller.py`
-- `marketpulse-orchestrator/prompts/coder_to_orchestrator.md`
-- `marketpulse-orchestrator/prompts/marketpulse_coder.md`
-- `marketpulse-orchestrator/prompts/orchestrator_to_coder.md`
-- `marketpulse-orchestrator/prompts/orchestrator_to_validator.md`
-- `marketpulse-orchestrator/references/acceptance_patterns.md`
-- `marketpulse-orchestrator/references/authorization.md`
-- `marketpulse-orchestrator/references/cli_checklist.md`
-- `marketpulse-orchestrator/references/rationale_template.md`
-- `marketpulse-orchestrator/task_store/task_example.json`
-- `marketpulse-orchestrator/validator.py`
-- `marketpulse-orchestrator/workers/Dockerfile`
-- `marketpulse-orchestrator/workers/__init__.py`
-- `marketpulse-orchestrator/workers/coder_worker.py`
-- `marketpulse-orchestrator/workers/docker-compose.yml`
-- `pyproject.toml`
 - `rationale.md`
-- `scripts/launch_agents.ps1`
-- `scripts/launch_agents.sh`
-- `scripts/watch_logs.ps1`
+- `uv.lock`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && python -m pytest tests/test_watchlist_anomalies.py -q` — passed
-  - `cd backend && python -m mypy app/watchlists/router.py --ignore-missing-imports` — passed
-  - `cd backend && python -m pytest tests/test_watchlist_anomalies.py -q` — passed
-  - `cd backend && python -m mypy app/watchlists/router.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -c "from app.indicators.calculators.adx import calc_adx, ADXResult; print('import OK')"` — passed
+  - `cd backend && uv run python -m mypy app/indicators/calculators/adx.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m mypy app/indicators/service.py app/indicators/schemas.py app/recommendations/scoring.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -c "from app.recommendations.scoring import WEIGHTS; assert abs(sum(WEIGHTS.values()) - 1.0) < 0.001, f'Weights sum to {sum(WEIGHTS.values())}'; print('weights OK')"` — passed
+  - `cd backend && uv run python -m pytest tests/test_adx.py -q` — passed
+  - `cd backend && uv run python -m mypy tests/test_adx.py --ignore-missing-imports` — passed
 
 ---
 
@@ -115,7 +134,7 @@ Automated implementation for task marketpulse-task-2026-03-31-0001 via coder_wor
 ---
 
 ## 11) Short changelog
-- `050c16d` — feat(marketpulse-task-2026-03-31-0001): implementation
+- `N/A` — feat(marketpulse-task-2026-03-31-0001): implementation
 
 ---
 

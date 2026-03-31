@@ -6,6 +6,7 @@ import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.indicators.calculators.adx import calc_adx
 from app.indicators.calculators.bollinger import BollingerResult, calc_bollinger
 from app.indicators.calculators.macd import MACDResult, calc_macd
 from app.indicators.calculators.rsi import calc_rsi
@@ -50,12 +51,15 @@ async def get_indicators(
     bars.reverse()
 
     closes = pd.Series([float(b.close) for b in bars])
+    highs = pd.Series([float(b.high) for b in bars])
+    lows = pd.Series([float(b.low) for b in bars])
     latest_bar = bars[-1]
 
     # Calculate each indicator
     rsi_val = calc_rsi(closes, period=14)
     macd_res = calc_macd(closes, fast=12, slow=26, signal_period=9)
     bb_res = calc_bollinger(closes, period=20, num_std=2.0)
+    adx_res = calc_adx(highs, lows, closes, period=14)
 
     log.debug(
         "indicators_calc_done",
@@ -64,6 +68,7 @@ async def get_indicators(
         rsi=rsi_val,
         has_macd=macd_res is not None,
         has_bb=bb_res is not None,
+        has_adx=adx_res is not None,
     )
 
     return IndicatorSnapshot(
@@ -75,6 +80,9 @@ async def get_indicators(
         rsi_14=rsi_val,
         macd=_macd_to_out(macd_res),
         bollinger=_bb_to_out(bb_res),
+        adx_14=adx_res.adx if adx_res else None,
+        plus_di=adx_res.plus_di if adx_res else None,
+        minus_di=adx_res.minus_di if adx_res else None,
         bars_available=len(bars),
     )
 
