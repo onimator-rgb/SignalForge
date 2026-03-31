@@ -2,7 +2,7 @@
 
 **author:** coder-worker (MarketPulse Coder)
 **branch:** task/marketpulse-task-2026-03-31-0001-implementation
-**commit_sha:** 
+**commit_sha:** 050c16de83a2bc5a045ee343a6ce5e281c00be29
 **date:** 2026-03-31
 **model_calls:** 1
 
@@ -15,34 +15,69 @@ Automated implementation for task marketpulse-task-2026-03-31-0001 via coder_wor
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** GET /api/watchlist/{id}/anomalies returns 200 and JSON with keys ["assets","anomalies","last_updated"] when called with valid demo token
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** GET /api/v1/watchlists/{id}/anomalies returns 200 with JSON keys [watchlist_id, assets, anomalies, last_updated, total] for a valid watchlist_id
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** anomaly deduplication: two identical anomalies within 30 minutes produce a single anomaly record with occurrences>=2
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** GET /api/v1/watchlists/nonexistent-id/anomalies returns 404
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** anomaly record for synthetic spike has type="price_spike" and severity >= 0.5
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** anomalies list only contains events where is_resolved=False AND score >= 0.5 AND detected_at within last 24h
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** rationale.md present and maps each acceptance criterion to pass/fail evidence
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** tests pass: cd backend && python -m pytest tests/test_watchlist_anomalies.py -q
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
+- `.github/workflows/ci.yml`
+- `artifacts/run-2026-03-31_17-12-34.json`
+- `artifacts/run-2026-03-31_17-28-51.json`
+- `artifacts/run-2026-03-31_17-32-20.json`
+- `artifacts/run-2026-03-31_17-34-53.json`
+- `artifacts/run-2026-03-31_17-37-45.json`
+- `auth/authorization.json`
+- `backend/app/watchlists/router.py`
+- `backend/pyproject.toml`
+- `backend/tests/conftest.py`
+- `backend/tests/test_watchlist_anomalies.py`
+- `backend/uv.lock`
+- `marketpulse-orchestrator/README.md`
+- `marketpulse-orchestrator/SKILL.md`
+- `marketpulse-orchestrator/lib/__init__.py`
+- `marketpulse-orchestrator/lib/model_caller.py`
+- `marketpulse-orchestrator/prompts/coder_to_orchestrator.md`
+- `marketpulse-orchestrator/prompts/marketpulse_coder.md`
+- `marketpulse-orchestrator/prompts/orchestrator_to_coder.md`
+- `marketpulse-orchestrator/prompts/orchestrator_to_validator.md`
+- `marketpulse-orchestrator/references/acceptance_patterns.md`
+- `marketpulse-orchestrator/references/authorization.md`
+- `marketpulse-orchestrator/references/cli_checklist.md`
+- `marketpulse-orchestrator/references/rationale_template.md`
+- `marketpulse-orchestrator/task_store/task_example.json`
+- `marketpulse-orchestrator/validator.py`
+- `marketpulse-orchestrator/workers/Dockerfile`
+- `marketpulse-orchestrator/workers/__init__.py`
+- `marketpulse-orchestrator/workers/coder_worker.py`
+- `marketpulse-orchestrator/workers/docker-compose.yml`
+- `pyproject.toml`
 - `rationale.md`
+- `scripts/launch_agents.ps1`
+- `scripts/launch_agents.sh`
+- `scripts/watch_logs.ps1`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `model_call` — FAILED
-  - `python -m pytest tests/test_anomalies_api.py -q` — FAILED
-  - `python -m mypy src/ --ignore-missing-imports` — FAILED
+  - `cd backend && python -m pytest tests/test_watchlist_anomalies.py -q` — passed
+  - `cd backend && python -m mypy app/watchlists/router.py --ignore-missing-imports` — passed
+  - `cd backend && python -m pytest tests/test_watchlist_anomalies.py -q` — passed
+  - `cd backend && python -m mypy app/watchlists/router.py --ignore-missing-imports` — passed
 
 ---
 
@@ -80,7 +115,7 @@ Automated implementation for task marketpulse-task-2026-03-31-0001 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-03-31-0001): implementation
+- `050c16d` — feat(marketpulse-task-2026-03-31-0001): implementation
 
 ---
 
