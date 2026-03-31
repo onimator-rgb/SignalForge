@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-03-31-0003`
+# Rationale for `marketpulse-task-2026-03-31-0005`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-03-31-0003-implementation
+**branch:** task/marketpulse-task-2026-03-31-0005-implementation
 **commit_sha:** 
 **date:** 2026-03-31
 **model_calls:** 1
@@ -9,84 +9,88 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-03-31-0003 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-03-31-0005 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** StrategyProfile dataclass has trailing_tp_pct and trailing_tp_arm_pct fields
+- **Criteria:** calc_keltner returns KeltnerResult with upper > middle > lower for normal price data
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** All three profiles (conservative, balanced, aggressive) have trailing-TP values set
+- **Criteria:** calc_keltner returns None when fewer than 21 bars provided
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** get_profile_dict includes the two new fields
+- **Criteria:** detect_squeeze returns is_squeeze=True when BB contracts inside KC (low volatility data)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** mypy passes with no errors
+- **Criteria:** detect_squeeze returns is_squeeze=False when BB extends outside KC (high volatility data)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** When pnl crosses take_profit_pct + trailing_tp_arm_pct, position enters trailing-TP mode instead of closing
+- **Criteria:** All values rounded to 4 decimal places
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** When pnl is between take_profit_pct and take_profit_pct + trailing_tp_arm_pct, position closes immediately as 'target_hit'
+- **Criteria:** SqueezeDetector inherits BaseDetector and implements name and detect
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** When in trailing-TP mode, position closes when price drops trailing_tp_pct from peak
+- **Criteria:** Returns AnomalyCandidate with type 'squeeze_release' when squeeze releases with strong momentum
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Safety floor ensures trailing-TP exit never below original take_profit_price
+- **Criteria:** Returns None when in active squeeze (no release yet)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** State stored in exit_context JSONB, no new DB columns
+- **Criteria:** Returns None when no squeeze detected at all (normal volatility)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** mypy passes with no errors
+- **Criteria:** Detector is registered in DETECTORS list in anomalies/service.py
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** All 7 test cases pass
+- **Criteria:** All tests pass with pytest
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Tests cover: immediate close, arming, retracement exit, peak tracking, safety floor, stop-loss priority, regime modifier
+- **Criteria:** At least 7 test functions covering calculator and detector
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Tests use unit-test style (no DB fixtures needed â€” tests exercise pure functions)
+- **Criteria:** Tests validate both positive and negative cases
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** mypy passes with no errors
+- **Criteria:** No mypy errors in new files
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/exits.py`
-- `backend/app/strategy/profiles.py`
-- `backend/tests/test_trailing_profit.py`
+- `backend/app/anomalies/detectors/squeeze.py`
+- `backend/app/anomalies/service.py`
+- `backend/app/indicators/calculators/__init__.py`
+- `backend/app/indicators/calculators/squeeze.py`
+- `backend/tests/test_squeeze.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m mypy app/strategy/profiles.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/exits.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m pytest tests/test_trailing_profit.py -q` — passed
-  - `cd backend && uv run python -m mypy tests/test_trailing_profit.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_squeeze.py -q -x` — passed
+  - `cd backend && uv run python -m mypy app/indicators/calculators/squeeze.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_squeeze.py -q -x` — passed
+  - `cd backend && uv run python -m mypy app/anomalies/detectors/squeeze.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_squeeze.py -v` — passed
+  - `cd backend && uv run python -m mypy app/indicators/calculators/squeeze.py app/anomalies/detectors/squeeze.py --ignore-missing-imports` — passed
 
 ---
 
@@ -124,7 +128,7 @@ Automated implementation for task marketpulse-task-2026-03-31-0003 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-03-31-0003): implementation
+- `N/A` — feat(marketpulse-task-2026-03-31-0005): implementation
 
 ---
 
