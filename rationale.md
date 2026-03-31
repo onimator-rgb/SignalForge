@@ -2,90 +2,91 @@
 
 **author:** coder-worker (MarketPulse Coder)
 **branch:** task/marketpulse-task-2026-04-01-0011-implementation
-**date:** 2026-04-01
+**commit_sha:** 
+**date:** 2026-03-31
+**model_calls:** 1
 
 ---
 
 ## 1) One-line summary
-Auto Strategy Profile Switch: maps market regime to strategy profile with opt-in auto-switch via STRATEGY_AUTO_SWITCH setting.
+Automated implementation for task marketpulse-task-2026-04-01-0011 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
 - **Criteria:** REGIME_TO_PROFILE maps risk_on→aggressive, neutral→balanced, risk_off→conservative
-- **Status:** `pass`
-- **Evidence:** Constant defined in service.py, verified by test_regime_to_profile_mapping
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** auto_select_profile is async, calls calculate_regime, returns correct profile+regime tuple
-- **Status:** `pass`
-- **Evidence:** 3 async tests (risk_on, risk_off, neutral) all pass
+- **Criteria:** auto_select_profile is async, calls calculate_regime, and returns correct profile+regime tuple
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** is_auto_switch_enabled reads from settings with False default
-- **Status:** `pass`
-- **Evidence:** test_is_auto_switch_enabled_default + test_is_auto_switch_enabled_true pass
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** /summary endpoint includes auto_switch section with enabled, recommended_profile, reason fields
-- **Status:** `pass`
-- **Evidence:** router.py updated, returns auto_switch dict in all cases
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** All 6 tests pass
-- **Status:** `pass`
-- **Evidence:** pytest tests/test_auto_switch.py -q → 6 passed
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** Tests cover all 3 regime→profile mappings
-- **Status:** `pass`
-- **Evidence:** test_auto_select_profile_risk_on, _risk_off, _neutral
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** Tests verify auto-switch enabled/disabled behavior
-- **Status:** `pass`
-- **Evidence:** test_is_auto_switch_enabled_default, _true
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** No DB fixtures needed — regime calculation is mocked
-- **Status:** `pass`
-- **Evidence:** All tests use unittest.mock.patch with AsyncMock
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/strategy/service.py` — NEW: REGIME_TO_PROFILE mapping + async auto_select_profile()
-- `backend/app/strategy/profiles.py` — Added is_auto_switch_enabled() helper
-- `backend/app/strategy/router.py` — Extended /summary with auto_switch section; uses auto-selected profile when enabled
-- `backend/app/config.py` — Added STRATEGY_AUTO_SWITCH: bool = False
-- `backend/tests/test_auto_switch.py` — NEW: 6 unit tests covering all acceptance criteria
-- `rationale.md` — This file
+- `backend/app/config.py`
+- `backend/app/strategy/profiles.py`
+- `backend/app/strategy/router.py`
+- `backend/app/strategy/service.py`
+- `backend/tests/test_auto_switch.py`
+- `rationale.md`
 
 ---
 
 ## 4) Tests run & results
-- `cd backend && uv run python -m py_compile app/strategy/service.py` → passed
-- `cd backend && uv run python -m mypy app/strategy/service.py --ignore-missing-imports` → passed (pre-existing error in app/live/cache.py only)
-- `cd backend && uv run python -m mypy app/strategy/profiles.py --ignore-missing-imports` → passed
-- `cd backend && uv run python -m pytest tests/test_auto_switch.py -q` → 6 passed in 0.06s
-- `cd backend && uv run python -m mypy tests/test_auto_switch.py --ignore-missing-imports` → passed (pre-existing error in transitive dep only)
+- **Commands run:**
+  - `cd backend && uv run python -m py_compile app/strategy/service.py` � passed
+  - `cd backend && uv run python -m mypy app/strategy/service.py --ignore-missing-imports` � FAILED
+  - `cd backend && uv run python -m mypy app/strategy/profiles.py --ignore-missing-imports` � passed
+  - `cd backend && uv run python -m mypy app/strategy/router.py --ignore-missing-imports` � FAILED
+  - `cd backend && uv run python -m pytest tests/test_auto_switch.py -q` � passed
+  - `cd backend && uv run python -m mypy tests/test_auto_switch.py --ignore-missing-imports` � FAILED
 
 ---
 
 ## 5) Data & sample evidence
-- All tests use mocked regime data — no real DB or external calls.
+- Synthetic fixtures used from tests/fixtures/
 
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** Integration with calculate_regime — **Severity:** low — **Mitigation:** service.py is a thin wrapper; regime logic unchanged
-- **Risk:** Breaking /summary endpoint — **Severity:** low — **Mitigation:** Response is additive (new auto_switch key), existing keys unchanged
+- **Risk:** LLM-generated code � **Severity:** medium � **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
 
 ---
 
 ## 7) Backwards compatibility / migration notes
-- Fully backward compatible. Auto-switch defaults to False.
-- /summary response gains a new `auto_switch` key — additive change only.
+- New files only, backward compatible.
 
 ---
 
 ## 8) Performance considerations
-- No additional DB queries when auto-switch is disabled.
-- When enabled, same single calculate_regime() call is reused.
+- No performance impact expected.
 
 ---
 
@@ -93,21 +94,21 @@ Auto Strategy Profile Switch: maps market regime to strategy profile with opt-in
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
-- API key logged: `no`
+- API key logged: `no` (only presence check)
 
 ---
 
 ## 10) Open questions & follow-ups
-None.
+1. Review LLM-generated implementation for edge cases.
 
 ---
 
 ## 11) Short changelog
-- feat(marketpulse-task-2026-04-01-0011): auto strategy profile switch based on market regime
+- `N/A` � feat(marketpulse-task-2026-04-01-0011): implementation
 
 ---
 
 ## 12) Final verdict (developer self-check)
 - **I confirm** that all acceptance criteria marked `pass` have test evidence attached: `yes`
 - **I confirm** no forbidden paths were modified: `yes`
-- **I request** next step: `approve`
+- **I request** next step: `validate`
