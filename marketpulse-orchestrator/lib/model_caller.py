@@ -14,6 +14,7 @@ Security:
 import json
 import logging
 import os
+import subprocess
 import time
 from typing import Any, Dict, List, Optional
 
@@ -43,9 +44,9 @@ class ModelCaller:
         # result = {"files": [{"path": "src/foo.py", "content": "..."}], "summary": "..."}
     """
 
-    DEFAULT_MODEL = "claude-sonnet-4-20250514"
-    ESCALATION_MODEL = "claude-opus-4-20250514"
-    DEFAULT_MAX_TOKENS = 16384
+    DEFAULT_MODEL = "claude-sonnet-4-6"
+    ESCALATION_MODEL = "claude-sonnet-4-6"  # Sonnet instead of Opus — cheaper, no timeout
+    DEFAULT_MAX_TOKENS = 64000              # Enough for full file generation without truncation
     MAX_RETRIES = 3
     RETRY_BACKOFF = [2, 5, 10]  # seconds
 
@@ -195,15 +196,24 @@ class ModelCaller:
                 )
 
                 messages = [{"role": "user", "content": user_content}]
-                kwargs = {
+                kwargs: Dict[str, Any] = {
                     "model": model,
                     "max_tokens": max_tokens,
                     "messages": messages,
                 }
+                # cache_control must live INSIDE the system block, not at top level.
+                # When set correctly, cached tokens cost ~10% of normal input tokens.
                 if system_prompt:
-                    kwargs["system"] = system_prompt
+                    kwargs["system"] = [
+                        {
+                            "type": "text",
+                            "text": system_prompt,
+                            "cache_control": {"type": "ephemeral"},
+                        }
+                    ]
 
-                response = client.messages.create(**kwargs)
+                with client.messages.stream(**kwargs) as stream:
+                    response = stream.get_final_message()
 
                 # Extract text content
                 text = ""
@@ -261,3 +271,126 @@ class ModelCaller:
 
     def reset_counter(self):
         self._call_count = 0
+
+
+class MaxModelCaller(ModelCaller):
+    """Uses Claude Code CLI instead of direct Anthropic API.
+
+    Zero API cost — uses the user's Claude MAX subscription.
+    Requires: `claude` CLI installed and authenticated (`claude auth login`).
+
+    Falls back to direct API (super().call_model) if CLI is unavailable.
+    """
+
+    # Max prompt size to pass as CLI argument (Windows CreateProcess limit ~32767 chars)
+    _MAX_INLINE_CHARS = 20_000
+
+    def _claude_cli_available(self) -> bool:
+        """Check whether the `claude` binary is on PATH (handles Windows .cmd wrappers)."""
+        import shutil
+        if shutil.which("claude") is not None:
+            return True
+        # On Windows, shutil.which may miss .cmd wrappers — try via shell
+        try:
+            result = subprocess.run(
+                "claude --version", shell=True,
+                capture_output=True, timeout=10
+            )
+            return result.returncode == 0
+        except Exception:
+            return False
+
+    def call_model(
+        self,
+        prompt_json: Dict[str, Any],
+        model: Optional[str] = None,
+        max_tokens: Optional[int] = None,
+        system_prompt: str = "",
+    ) -> Dict[str, Any]:
+        """Call Claude via CLI (MAX subscription). Falls back to API if CLI unavailable."""
+        if not self._claude_cli_available():
+            logger.warning(
+                "claude CLI not found — falling back to direct API. "
+                "Install Claude Code and run `claude auth login` for free MAX calls."
+            )
+            return super().call_model(prompt_json, model, max_tokens, system_prompt)
+
+        self._check_call_limit()
+        user_content = json.dumps(prompt_json, separators=(",", ":"), ensure_ascii=False)
+
+        # Embed system prompt in user message — CLI has no separate system param
+        if system_prompt:
+            full_prompt = (
+                "<system_instructions>\n"
+                + system_prompt
+                + "\n</system_instructions>\n\n"
+                + user_content
+            )
+        else:
+            full_prompt = user_content
+
+        last_error: Optional[Exception] = None
+        for attempt in range(self.MAX_RETRIES):
+            try:
+                logger.info(
+                    f"MaxModelCaller: claude CLI attempt {attempt + 1}/{self.MAX_RETRIES} "
+                    f"(call {self._call_count}/{self.max_calls_per_task})"
+                )
+
+                # shell=True required on Windows so claude.CMD wrappers are resolved.
+                # Prompt passed via stdin — avoids shell escaping / argument length limits.
+                result = subprocess.run(
+                    "claude --print --output-format json",
+                    input=full_prompt,
+                    shell=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=300,
+                    encoding="utf-8",
+                )
+
+                if result.returncode != 0:
+                    raise ModelCallerError(
+                        f"claude CLI exited {result.returncode}: {result.stderr[:500]}"
+                    )
+
+                cli_output = json.loads(result.stdout)
+                if cli_output.get("is_error"):
+                    raise ModelCallerError(
+                        f"claude CLI error response: {result.stdout[:500]}"
+                    )
+
+                text: str = cli_output.get("result", "")
+                if not text:
+                    raise ModelCallerError(
+                        f"Empty result from claude CLI: {result.stdout[:200]}"
+                    )
+
+                data = self._validate_response(text)
+                data = self._sanitize_paths(data)
+                logger.info(
+                    f"MaxModelCaller: returned {len(data.get('files', []))} files "
+                    f"(cost_usd={cli_output.get('cost_usd', 0):.4f})"
+                )
+                return data
+
+            except ForbiddenPathError:
+                raise
+            except Exception as e:
+                last_error = e
+                wait = self.RETRY_BACKOFF[min(attempt, len(self.RETRY_BACKOFF) - 1)]
+                logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {wait}s...")
+                time.sleep(wait)
+
+        raise ModelCallerError(
+            f"All {self.MAX_RETRIES} retries exhausted. Last error: {last_error}"
+        )
+
+    def call_escalation(
+        self,
+        prompt_json: Dict[str, Any],
+        system_prompt: str = "",
+    ) -> Dict[str, Any]:
+        """MAX subscription has no escalation cost — reuse same call."""
+        logger.info("MaxModelCaller: escalation = same CLI call (no extra cost)")
+        return self.call_model(prompt_json, system_prompt=system_prompt)

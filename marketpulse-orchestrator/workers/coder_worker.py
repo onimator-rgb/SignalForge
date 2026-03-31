@@ -21,6 +21,7 @@ Security: No deploys, no secrets, no broker APIs. Paper-trading only.
 
 import argparse
 import json
+import logging
 import os
 import shutil
 import subprocess
@@ -33,7 +34,10 @@ from typing import Any, Dict, List, Optional, Tuple
 # Add parent dir to path for lib imports
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from lib.model_caller import ModelCaller, ModelCallerError, ForbiddenPathError  # noqa: E402, I001
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+logger = logging.getLogger("marketpulse.coder_worker")
+
+from lib.model_caller import ModelCaller, MaxModelCaller, ModelCallerError, ForbiddenPathError  # noqa: E402, I001
 
 
 # ── Helpers ────────────────────────────────────────────────────────────
@@ -314,8 +318,9 @@ def execute_task(
     orchestrator_root: Optional[str] = None,
     use_llm: bool = True,
     dry_run_only: bool = False,
-    max_tokens: int = 16384,
+    max_tokens: int = 64000,
     max_model_calls: int = 10,
+    use_max: bool = False,
 ) -> Dict[str, Any]:
     """Main entry point: execute a task_spec against a repo."""
 
@@ -351,11 +356,13 @@ def execute_task(
     # 5. LLM-driven implementation (if enabled)
     if use_llm:
         system_prompt = load_prompt(orchestrator_root)
-        caller = ModelCaller(
+        CallerClass = MaxModelCaller if use_max else ModelCaller
+        caller = CallerClass(
             forbidden_paths=forbidden,
             max_calls_per_task=max_model_calls,
             max_tokens=max_tokens,
         )
+        logger.info(f"Using {'MaxModelCaller (Claude MAX subscription)' if use_max else 'ModelCaller (Anthropic API)'}")
 
         prompt_payload = {
             "task_spec": spec,
@@ -363,9 +370,16 @@ def execute_task(
             "base_ref": base_ref,
             "branch": branch,
             "instruction": (
-                "Implement the task described in task_spec. Return a JSON object with "
-                "'files' (list of {path, content}) and 'summary' (string). "
-                "Do NOT include files matching forbidden_paths."
+                "Implement the task described in task_spec. "
+                "YOUR RESPONSE MUST BE A SINGLE JSON OBJECT (no markdown, no prose) with exactly "
+                "two top-level keys: 'files' and 'summary'. "
+                "'files' is a list of objects, each with 'path' (string, relative to repo root) "
+                "and 'content' (string, full file content). "
+                "'summary' is a short string describing what was implemented. "
+                "IMPORTANT: 'files' contains SOURCE CODE FILES TO CREATE, not API response data. "
+                "Do NOT return the API endpoint's JSON response as 'files'. "
+                "Do NOT include files matching forbidden_paths. "
+                "Example structure: {\"files\": [{\"path\": \"src/foo.py\", \"content\": \"...\"}], \"summary\": \"...\"}"
             ),
         }
 
@@ -418,6 +432,7 @@ def execute_task(
             return _error_report(task_id, str(e), "ask_human")
         except ModelCallerError as e:
             # Model failed — fall through to validate-only mode
+            model_calls_used = caller.call_count  # capture actual call count even on failure
             commands_run.append({
                 "cmd": "model_call", "exit_code": 1, "stdout": str(e)[:2000]
             })
@@ -527,10 +542,13 @@ def main():
                         help="Skip LLM calls — validate-only mode")
     parser.add_argument("--dry-run", action="store_true",
                         help="Apply changes to temp dir only, do not commit")
-    parser.add_argument("--max-tokens", type=int, default=16384,
-                        help="Max tokens per model call")
+    parser.add_argument("--max-tokens", type=int, default=64000,
+                        help="Max tokens per model call (default: 64000)")
     parser.add_argument("--max-calls", type=int, default=10,
                         help="Max model calls per task")
+    parser.add_argument("--use-max", action="store_true",
+                        help="Use Claude MAX subscription via `claude` CLI (no API cost). "
+                             "Requires `claude auth login` and an active MAX plan.")
     args = parser.parse_args()
 
     result = execute_task(
@@ -539,6 +557,7 @@ def main():
         dry_run_only=args.dry_run,
         max_tokens=args.max_tokens,
         max_model_calls=args.max_calls,
+        use_max=args.use_max,
     )
 
     print(json.dumps(result, indent=2, ensure_ascii=False))

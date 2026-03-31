@@ -41,13 +41,14 @@ class ScoringResult:
 # ── Signal weights ──────────────────────────────
 
 WEIGHTS = {
-    "rsi": 0.25,
+    "rsi": 0.20,
     "macd": 0.15,
     "bollinger": 0.15,
-    "price_trend": 0.20,
+    "price_trend": 0.15,
     "volume": 0.05,
     "anomaly": 0.10,
     "volatility": 0.10,
+    "adx": 0.10,
 }
 
 
@@ -191,6 +192,34 @@ def score_volatility(bb_width: float | None, asset_class: str) -> SignalScore:
     return SignalScore("volatility", max(-1.0, min(1.0, s)), WEIGHTS["volatility"], d)
 
 
+def score_adx(
+    adx: float | None,
+    plus_di: float | None,
+    minus_di: float | None,
+) -> SignalScore:
+    if adx is None or plus_di is None or minus_di is None:
+        return SignalScore("adx", 0.0, WEIGHTS["adx"], "no data")
+
+    if adx < 20:
+        return SignalScore("adx", 0.0, WEIGHTS["adx"], f"weak trend (ADX={adx:.0f})")
+
+    bullish = plus_di > minus_di
+    direction = "bullish" if bullish else "bearish"
+
+    if adx > 50:
+        s = 0.8 if bullish else -0.8
+        d = f"very strong {direction} (ADX={adx:.0f}, +DI={plus_di:.0f}, -DI={minus_di:.0f})"
+    elif adx >= 25:
+        s = 0.6 if bullish else -0.6
+        d = f"strong {direction} (ADX={adx:.0f}, +DI={plus_di:.0f}, -DI={minus_di:.0f})"
+    else:
+        # adx 20-25
+        s = 0.3 if bullish else -0.3
+        d = f"emerging {direction} (ADX={adx:.0f}, +DI={plus_di:.0f}, -DI={minus_di:.0f})"
+
+    return SignalScore("adx", s, WEIGHTS["adx"], d)
+
+
 # ── Composite scoring ────────────────────────────
 
 def compute_recommendation(
@@ -202,6 +231,9 @@ def compute_recommendation(
     has_rsi_extreme_oversold: bool,
     asset_class: str,
     asset_symbol: str,
+    adx_14: float | None = None,
+    plus_di: float | None = None,
+    minus_di: float | None = None,
 ) -> ScoringResult:
     """Compute composite recommendation from all signals."""
 
@@ -211,6 +243,14 @@ def compute_recommendation(
     close_val = indicators.close if indicators else None
     bb_width = bb_val.width if bb_val else None
 
+    # Use ADX from indicators if not explicitly provided
+    if adx_14 is None and indicators is not None:
+        adx_14 = indicators.adx_14
+    if plus_di is None and indicators is not None:
+        plus_di = indicators.plus_di
+    if minus_di is None and indicators is not None:
+        minus_di = indicators.minus_di
+
     signals = [
         score_rsi(rsi_val),
         score_macd(macd_val),
@@ -219,6 +259,7 @@ def compute_recommendation(
         score_volume(avg_volume, latest_volume),
         score_anomaly(unresolved_anomalies, has_rsi_extreme_oversold),
         score_volatility(bb_width, asset_class),
+        score_adx(adx_14, plus_di, minus_di),
     ]
 
     # Weighted sum: range [-1.0, +1.0]

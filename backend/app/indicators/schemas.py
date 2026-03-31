@@ -28,4 +28,7 @@ class IndicatorSnapshot(BaseModel):
     rsi_14: float | None = None
     macd: MACDOut | None = None
     bollinger: BollingerOut | None = None
+    adx_14: float | None = None
+    plus_di: float | None = None
+    minus_di: float | None = None
     bars_available: int  # how many bars were used

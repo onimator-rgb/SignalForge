@@ -38,9 +38,9 @@ class Settings(BaseSettings):
     ANOMALY_RSI_LOWER: float = 20.0
 
     # LLM
-    LLM_PROVIDER: str = "claude"
+    LLM_PROVIDER: str = "local"
     ANTHROPIC_API_KEY: str = ""
-    LLM_MODEL: str = "claude-sonnet-4-20250514"
+    LLM_MODEL: str = ""
 
     # Strategy
     STRATEGY_PROFILE: str = "balanced"

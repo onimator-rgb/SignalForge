@@ -111,6 +111,15 @@ You do NOT deploy, access secrets, or call real broker APIs.
 
 After JSON: 3-6 sentence human summary + 1-3 open questions if any.
 
+## Python type annotation rules (mypy strict)
+- Flask route functions: return type must be `Response`, not `tuple[Response, int]`.
+  Use `make_response(jsonify({...}), 200)` or just `return jsonify({...})` (200 default).
+  For errors: `resp = make_response(jsonify({"error": "..."}), 404); return resp`
+- Import `make_response` from flask when returning non-200 status codes.
+- No relative imports that climb above the package root (`from ...module` is forbidden
+  if the package has no parent). Use absolute imports: `from src.services.anomalies import ...`
+- All function return types must be consistent with the declared return annotation.
+
 ## Escalation
 - Blocked -> `next_recommended_step: "ask_human"` with description.
 - Tests fail 3x -> `next_recommended_step: "revise"` with failure analysis.

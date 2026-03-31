@@ -85,6 +85,8 @@ async def generate_report(
             user_prompt=user_prompt,
             temperature=0.3,
             max_tokens=2000,
+            report_type=report_type,
+            context=context,
         )
 
         duration_ms = int((_time.monotonic() - t_start) * 1000)

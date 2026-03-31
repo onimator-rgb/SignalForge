@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Numeric, String, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -24,7 +25,7 @@ class AnomalyEvent(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     details: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     timeframe: Mapped[str] = mapped_column(String(5), nullable=False)
     is_resolved: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    resolved_at: Mapped[datetime | None] = mapped_column(
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
 

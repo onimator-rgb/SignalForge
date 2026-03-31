@@ -1,0 +1,150 @@
+{
+  "task_id": "marketpulse-task-2026-03-31-0001",
+  "created_at": "2026-03-31T12:00:00Z",
+  "created_by": "orchestrator-brain",
+  "title": "ADX (Average Directional Index) Indicator",
+  "description": "Add ADX indicator calculation from price bars. ADX measures trend strength on a 0-100 scale (0-25 weak, 25-50 strong, 50-75 very strong, 75-100 extremely strong). Implement as a new calculator following the existing RSI/MACD/Bollinger pattern, integrate into IndicatorSnapshot, and add as an 8th signal in the recommendation scoring composite.",
+  "goal": "ADX available via the indicators service, included in IndicatorSnapshot, and contributing to recommendation composite scoring with appropriate weight.",
+  "tech_stack": "FastAPI, async SQLAlchemy (AsyncSession), PostgreSQL. All I/O must be async.",
+  "in_scope": [
+    "backend/app/indicators/calculators/adx.py — new calculator module with calc_adx() function",
+    "backend/app/indicators/service.py — call calc_adx() and add adx_14 field to IndicatorSnapshot",
+    "backend/app/indicators/schemas.py — add adx_14: float | None to IndicatorSnapshot schema",
+    "backend/app/recommendations/scoring.py — add score_adx() signal extractor and integrate into composite with weight 0.10",
+    "backend/tests/test_adx.py — unit tests for ADX calculation and scoring integration"
+  ],
+  "out_of_scope": [
+    "frontend changes",
+    "database migrations",
+    "real trading",
+    "modifying existing indicator weights"
+  ],
+  "subtasks": [
+    {
+      "id": "s1",
+      "title": "Implement ADX calculator",
+      "description": "Create backend/app/indicators/calculators/adx.py with a calc_adx() function.\n\nSignature: def calc_adx(highs: pd.Series, lows: pd.Series, closes: pd.Series, period: int = 14) -> ADXResult | None\n\nADXResult should be a frozen dataclass with fields: adx (float), plus_di (float), minus_di (float).\n\nAlgorithm:\n1. Calculate True Range (TR) = max(high-low, |high-prev_close|, |low-prev_close|)\n2. Calculate +DM (Plus Directional Movement) = high - prev_high if positive and > (prev_low - low), else 0\n3. Calculate -DM (Minus Directional Movement) = prev_low - low if positive and > (high - prev_high), else 0\n4. Smooth TR, +DM, -DM using Wilder's smoothing (first value = sum of period, subsequent = prev - prev/period + current)\n5. +DI = 100 * smoothed(+DM) / smoothed(TR)\n6. -DI = 100 * smoothed(-DM) / smoothed(TR)\n7. DX = 100 * |+DI - -DI| / (+DI + -DI)\n8. ADX = Wilder's smoothed average of DX over period\n\nRequires minimum 2*period bars (28 for default period=14). Return None if insufficient data.\n\nAlso update backend/app/indicators/calculators/__init__.py to export calc_adx and ADXResult.",
+      "owner": "coder-agent",
+      "files_expected": [
+        "backend/app/indicators/calculators/adx.py",
+        "backend/app/indicators/calculators/__init__.py"
+      ],
+      "required_checks": [
+        "cd backend && uv run python -c \"from app.indicators.calculators.adx import calc_adx, ADXResult; print('import OK')\"",
+        "cd backend && uv run python -m mypy app/indicators/calculators/adx.py --ignore-missing-imports"
+      ],
+      "acceptance_criteria": [
+        "calc_adx returns ADXResult with adx, plus_di, minus_di fields",
+        "Returns None when fewer than 2*period bars provided",
+        "ADX value is between 0 and 100 for valid input",
+        "+DI and -DI are between 0 and 100"
+      ],
+      "max_change_loc": 100,
+      "max_files_changed": 2,
+      "risks": [
+        {
+          "type": "calculation",
+          "severity": "low",
+          "explanation": "Wilder smoothing must match standard ADX formula; verify with known test values"
+        }
+      ]
+    },
+    {
+      "id": "s2",
+      "title": "Integrate ADX into IndicatorSnapshot and scoring",
+      "description": "1. In backend/app/indicators/schemas.py: Add adx_14: float | None = None and plus_di: float | None = None and minus_di: float | None = None fields to the IndicatorSnapshot model.\n\n2. In backend/app/indicators/service.py:\n   - Import calc_adx from calculators\n   - In get_indicators(), extract highs and lows Series from price bars (same pattern as closes)\n   - Call calc_adx(highs, lows, closes, period=14)\n   - Populate adx_14, plus_di, minus_di in the returned IndicatorSnapshot\n\n3. In backend/app/recommendations/scoring.py:\n   - Add score_adx(adx: float | None, plus_di: float | None, minus_di: float | None) -> SignalScore\n   - Scoring logic:\n     - adx is None → score 0.0 (neutral)\n     - adx < 20 → score 0.0 (no trend, no edge)\n     - adx 20-25 and +DI > -DI → score +0.3 (emerging bullish trend)\n     - adx 20-25 and -DI > +DI → score -0.3 (emerging bearish trend)\n     - adx 25-50 and +DI > -DI → score +0.6 (strong bullish trend)\n     - adx 25-50 and -DI > +DI → score -0.6 (strong bearish trend)\n     - adx > 50 and +DI > -DI → score +0.8 (very strong bull)\n     - adx > 50 and -DI > +DI → score -0.8 (very strong bear)\n   - Add 'adx' to WEIGHTS dict with weight 0.10. Redistribute by reducing 'price_trend' from 0.20 to 0.15 and 'rsi' from 0.25 to 0.20 so total remains 1.0\n   - Include adx signal in compute_recommendation() — accept adx_14, plus_di, minus_di as optional params (default None), call score_adx, add to signals list",
+      "owner": "coder-agent",
+      "files_expected": [
+        "backend/app/indicators/schemas.py",
+        "backend/app/indicators/service.py",
+        "backend/app/recommendations/scoring.py"
+      ],
+      "required_checks": [
+        "cd backend && uv run python -m mypy app/indicators/service.py app/indicators/schemas.py app/recommendations/scoring.py --ignore-missing-imports",
+        "cd backend && uv run python -c \"from app.recommendations.scoring import WEIGHTS; assert abs(sum(WEIGHTS.values()) - 1.0) < 0.001, f'Weights sum to {sum(WEIGHTS.values())}'; print('weights OK')\""
+      ],
+      "acceptance_criteria": [
+        "IndicatorSnapshot includes adx_14, plus_di, minus_di fields",
+        "get_indicators() computes ADX from price bars and populates snapshot",
+        "score_adx() returns directional scores based on ADX strength and DI crossover",
+        "WEIGHTS dict sums to 1.0 with new 'adx' entry at 0.10",
+        "compute_recommendation() accepts and uses ADX parameters"
+      ],
+      "max_change_loc": 120,
+      "max_files_changed": 3,
+      "risks": [
+        {
+          "type": "integration",
+          "severity": "medium",
+          "explanation": "Changing recommendation weights affects all scoring — weight redistribution must keep total at 1.0 and not dramatically shift existing recommendation classifications"
+        }
+      ]
+    },
+    {
+      "id": "s3",
+      "title": "Unit tests for ADX calculator and scoring",
+      "description": "Create backend/tests/test_adx.py with these tests:\n\n1. test_adx_insufficient_data — pass < 28 bars, assert returns None\n2. test_adx_known_values — create a synthetic trending price series (e.g., steadily rising closes with highs/lows), verify ADX > 25 and +DI > -DI\n3. test_adx_range — verify ADX, +DI, -DI are all between 0 and 100\n4. test_adx_sideways_market — flat/oscillating prices should produce ADX < 25\n5. test_score_adx_none — score_adx(None, None, None) returns score 0.0\n6. test_score_adx_strong_bullish — ADX=40, +DI=30, -DI=15 → score +0.6\n7. test_score_adx_strong_bearish — ADX=40, +DI=15, -DI=30 → score -0.6\n8. test_score_adx_weak_trend — ADX=15 → score 0.0\n9. test_weights_sum — verify WEIGHTS sum to 1.0\n\nUse plain pytest (no async needed for pure calculation tests). Import calc_adx from app.indicators.calculators.adx and score_adx from app.recommendations.scoring. Use pd.Series for inputs.",
+      "owner": "coder-agent",
+      "files_expected": [
+        "backend/tests/test_adx.py"
+      ],
+      "required_checks": [
+        "cd backend && uv run python -m pytest tests/test_adx.py -q",
+        "cd backend && uv run python -m mypy tests/test_adx.py --ignore-missing-imports"
+      ],
+      "acceptance_criteria": [
+        "All 9 tests pass",
+        "Tests cover None/insufficient data edge case",
+        "Tests verify ADX output range 0-100",
+        "Tests verify scoring logic for bullish, bearish, and weak trend scenarios",
+        "Weights sum validation test passes"
+      ],
+      "max_change_loc": 150,
+      "max_files_changed": 1,
+      "risks": [
+        {
+          "type": "test_stability",
+          "severity": "low",
+          "explanation": "Synthetic price data must be carefully constructed to produce predictable ADX values"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    "backend/app/indicators/calculators/ (existing RSI, MACD, Bollinger calculators)",
+    "backend/app/indicators/service.py (get_indicators, get_closes_series)",
+    "backend/app/indicators/schemas.py (IndicatorSnapshot)",
+    "backend/app/recommendations/scoring.py (WEIGHTS, compute_recommendation, SignalScore)"
+  ],
+  "priority": "high",
+  "estimated_effort": "S",
+  "forbidden_paths": [
+    ".env",
+    "infra/",
+    "secrets/",
+    "backend/alembic/"
+  ],
+  "stop_conditions": [
+    "tests_fail_3_iterations",
+    "touch_secrets"
+  ],
+  "max_iterations": 5,
+  "authorization": {
+    "level": "auto_approve",
+    "deploy_allowed": false,
+    "allowed_actions": [
+      "read_file",
+      "write_file",
+      "git_commit",
+      "run_tests",
+      "lint_check"
+    ],
+    "forbidden_actions": [
+      "deploy",
+      "access_secrets",
+      "call_broker_api"
+    ],
+    "audit_required": true,
+    "max_iterations": 5
+  }
+}
