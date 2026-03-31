@@ -408,8 +408,8 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
         rec_res = await db.execute(
             select(Recommendation).where(Recommendation.id == recommendation_id)
         )
-        rec = rec_res.scalar_one_or_none()
-        if not rec:
+        trail_rec = rec_res.scalar_one_or_none()
+        if not trail_rec:
             continue
 
         if asset_id in blocked_ids:
@@ -470,7 +470,7 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
             "portfolio.position_opened",
             symbol=symbol, price=price,
             quantity=round(quantity, 8), value_usd=round(size_usd, 2),
-            score=float(rec.score), entry_type="trailing_buy",
+            score=float(trail_rec.score), entry_type="trailing_buy",
         )
 
     return opened
