@@ -41,7 +41,7 @@ class ScoringResult:
 # ── Signal weights ──────────────────────────────
 
 WEIGHTS = {
-    "rsi": 0.20,
+    "rsi": 0.15,
     "macd": 0.15,
     "bollinger": 0.15,
     "price_trend": 0.15,
@@ -49,6 +49,7 @@ WEIGHTS = {
     "anomaly": 0.10,
     "volatility": 0.10,
     "adx": 0.10,
+    "stoch_rsi": 0.05,
 }
 
 
@@ -220,6 +221,28 @@ def score_adx(
     return SignalScore("adx", s, WEIGHTS["adx"], d)
 
 
+def score_stochrsi(k: float | None, d: float | None) -> SignalScore:
+    if k is None or d is None:
+        return SignalScore("stoch_rsi", 0.0, WEIGHTS["stoch_rsi"], "no data")
+
+    if k < 20 and d < 20:
+        s, detail = 0.7, f"strongly oversold (%K={k:.0f}, %D={d:.0f})"
+    elif k < 20 or d < 30:
+        s, detail = 0.4, f"oversold (%K={k:.0f}, %D={d:.0f})"
+    elif k > d and k < 50:
+        s, detail = 0.3, f"bullish momentum (%K={k:.0f}, %D={d:.0f})"
+    elif k > 80 and d > 80:
+        s, detail = -0.7, f"strongly overbought (%K={k:.0f}, %D={d:.0f})"
+    elif k > 80 or d > 70:
+        s, detail = -0.4, f"overbought (%K={k:.0f}, %D={d:.0f})"
+    elif k < d and k > 50:
+        s, detail = -0.3, f"bearish momentum (%K={k:.0f}, %D={d:.0f})"
+    else:
+        s, detail = 0.0, f"neutral (%K={k:.0f}, %D={d:.0f})"
+
+    return SignalScore("stoch_rsi", s, WEIGHTS["stoch_rsi"], detail)
+
+
 # ── Composite scoring ────────────────────────────
 
 def compute_recommendation(
@@ -251,6 +274,9 @@ def compute_recommendation(
     if minus_di is None and indicators is not None:
         minus_di = indicators.minus_di
 
+    stoch_rsi_k = indicators.stoch_rsi_k if indicators else None
+    stoch_rsi_d = indicators.stoch_rsi_d if indicators else None
+
     signals = [
         score_rsi(rsi_val),
         score_macd(macd_val),
@@ -260,6 +286,7 @@ def compute_recommendation(
         score_anomaly(unresolved_anomalies, has_rsi_extreme_oversold),
         score_volatility(bb_width, asset_class),
         score_adx(adx_14, plus_di, minus_di),
+        score_stochrsi(stoch_rsi_k, stoch_rsi_d),
     ]
 
     # Weighted sum: range [-1.0, +1.0]
