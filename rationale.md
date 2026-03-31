@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-03-31-0005`
+# Rationale for `marketpulse-task-2026-04-01-0007`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-03-31-0005-implementation
+**branch:** task/marketpulse-task-2026-04-01-0007-implementation
 **commit_sha:** 
 **date:** 2026-03-31
 **model_calls:** 1
@@ -9,88 +9,82 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-03-31-0005 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** calc_keltner returns KeltnerResult with upper > middle > lower for normal price data
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** TrailingBuyState or equivalent dict-based state with all required fields
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** calc_keltner returns None when fewer than 21 bars provided
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** start_trailing returns context_data dict with lowest_price=signal_price, correct expiry
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** detect_squeeze returns is_squeeze=True when BB contracts inside KC (low volatility data)
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** update_trailing correctly detects bounce: buy triggered when price >= lowest * (1 + bounce_pct)
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** detect_squeeze returns is_squeeze=False when BB extends outside KC (high volatility data)
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** update_trailing correctly detects expiry when now >= expires_at
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** All values rounded to 4 decimal places
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** update_trailing tracks new lows: lowest_price decreases when price drops
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** SqueezeDetector inherits BaseDetector and implements name and detect
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** All 3 strategy profiles have trailing_buy_bounce_pct and trailing_buy_max_hours
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Returns AnomalyCandidate with type 'squeeze_release' when squeeze releases with strong momentum
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** All tests pass, mypy clean
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Returns None when in active squeeze (no release yet)
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** New candidate_buy signals create EntryDecision with stage='trailing_buy' instead of immediate buy
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Returns None when no squeeze detected at all (normal volatility)
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Pending trailing buys are checked each cycle and updated with current price
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Detector is registered in DETECTORS list in anomalies/service.py
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Buy executes when price bounces above trailing low by bounce_pct
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** All tests pass with pytest
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Trailing buy expires gracefully after max_hours with proper EntryDecision update
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** At least 7 test functions covering calculator and detector
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Assets with existing pending trails are not duplicated
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Tests validate both positive and negative cases
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** No mypy errors in new files
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** All tests pass, mypy clean
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/anomalies/detectors/squeeze.py`
-- `backend/app/anomalies/service.py`
-- `backend/app/indicators/calculators/__init__.py`
-- `backend/app/indicators/calculators/squeeze.py`
-- `backend/tests/test_squeeze.py`
+- `backend/app/portfolio/service.py`
+- `backend/app/portfolio/trailing_buy.py`
+- `backend/app/strategy/profiles.py`
+- `backend/tests/test_trailing_buy.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_squeeze.py -q -x` — passed
-  - `cd backend && uv run python -m mypy app/indicators/calculators/squeeze.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m pytest tests/test_squeeze.py -q -x` — passed
-  - `cd backend && uv run python -m mypy app/anomalies/detectors/squeeze.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m pytest tests/test_squeeze.py -v` — passed
-  - `cd backend && uv run python -m mypy app/indicators/calculators/squeeze.py app/anomalies/detectors/squeeze.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_trailing_buy.py -q` — passed
+  - `cd backend && uv run python -m mypy app/portfolio/trailing_buy.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m mypy app/strategy/profiles.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_trailing_buy.py -q` — passed
+  - `cd backend && uv run python -m mypy app/portfolio/service.py --ignore-missing-imports` — FAILED
 
 ---
 
@@ -128,7 +122,7 @@ Automated implementation for task marketpulse-task-2026-03-31-0005 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-03-31-0005): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0007): implementation
 
 ---
 

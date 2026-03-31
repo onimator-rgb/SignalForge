@@ -183,6 +183,9 @@ async def _close_position(
 # ── Entry logic ───────────────────────────────────
 
 async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) -> int:
+    from app.portfolio.models import EntryDecision
+    from app.portfolio.trailing_buy import start_trailing, update_trailing
+
     # Load strategy profile + regime
     profile = get_active_profile()
     regime_data = await calculate_regime(db)
@@ -228,6 +231,49 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
     cooldown_asset_ids = set(r[0] for r in cooldown_res.all())
     blocked_ids = open_asset_ids | cooldown_asset_ids
 
+    # ── Phase 0: Process pending trailing buys ────────────
+    ready_to_buy: list[tuple[uuid.UUID, uuid.UUID]] = []  # (asset_id, recommendation_id)
+    pending_trail_asset_ids: set[uuid.UUID] = set()
+
+    pending_trails_res = await db.execute(
+        select(EntryDecision).where(
+            EntryDecision.stage == "trailing_buy",
+            EntryDecision.status == "pending",
+        )
+    )
+    pending_trails = list(pending_trails_res.scalars().all())
+
+    for trail in pending_trails:
+        pending_trail_asset_ids.add(trail.asset_id)
+        price_data = await get_latest_price(db, trail.asset_id)
+        if not price_data:
+            continue
+
+        if not trail.context_data or not trail.recommendation_id:
+            continue
+
+        action, updated_ctx = update_trailing(trail.context_data, price_data.close, now)
+
+        if action == "buy":
+            trail.status = "allowed"
+            trail.reason_text = f"trailing_buy_triggered at {price_data.close}"
+            trail.context_data = updated_ctx
+            ready_to_buy.append((trail.asset_id, trail.recommendation_id))
+            log.info("portfolio.trailing_buy_triggered",
+                     asset_id=str(trail.asset_id), price=price_data.close,
+                     lowest=updated_ctx["lowest_price"])
+        elif action == "expired":
+            trail.status = "blocked"
+            trail.reason_codes = ["trail_expired"]
+            trail.reason_text = "Trailing buy expired without bounce"
+            trail.context_data = updated_ctx
+            log.info("portfolio.trailing_buy_expired", asset_id=str(trail.asset_id))
+        else:
+            # continue trailing — update lowest_price
+            trail.context_data = updated_ctx
+
+        await db.flush()
+
     recs_res = await db.execute(
         select(Recommendation)
         .where(
@@ -252,10 +298,14 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
     from app.indicators.service import get_indicators
     from app.recommendations.service import _get_volume_context
 
-    viable = []  # [(rec, asset_class, symbol, indicators, price_data, ranking)]
+    viable = []  # [(rec, asset_class, symbol, price_data, ranking)]
 
     for rec in candidates:
         if rec.asset_id in blocked_ids:
+            continue
+
+        # Skip assets that already have a pending trailing buy
+        if rec.asset_id in pending_trail_asset_ids:
             continue
 
         asset_info = await db.execute(
@@ -315,53 +365,85 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
 
         viable.append((rec, ac, sym, price_data, ranking))
 
-    # Phase 2: Sort by ranking_score, select top slots
-    viable.sort(key=lambda x: x[4]["ranking_score"], reverse=True)
-    slots_available = MAX_OPEN_POSITIONS - open_count
-
-    for rank_idx, (rec, ac, sym, price_data, ranking) in enumerate(viable):
-        if opened >= slots_available:
-            await _record_decision(db, rec, ac, "blocked", "ranking",
-                                   ["rank_blocked_lower_priority"],
-                                   f"Rank #{rank_idx+1} — no slots (opened {opened}/{slots_available})",
-                                   ranking, regime, profile.name, now)
+    # Phase 1b: Create trailing buy entries for new viable candidates
+    for rec, ac, sym, price_data, ranking in viable:
+        if not price_data:
             continue
 
-        # Record selected
-        await _record_decision(db, rec, ac, "allowed", "ranking",
-                               ["rank_selected"],
-                               f"Rank #{rank_idx+1} — tier={ranking['tier']} alloc={ranking['allocation_multiplier']}",
-                               ranking, regime, profile.name, now)
+        current_price = price_data.close
+        trail_ctx = start_trailing(
+            current_price, profile.trailing_buy_bounce_pct,
+            profile.trailing_buy_max_hours, now,
+        )
+
+        decision = EntryDecision(
+            asset_id=rec.asset_id,
+            recommendation_id=rec.id,
+            status="pending",
+            stage="trailing_buy",
+            reason_codes=["trailing_buy_started"],
+            reason_text=f"Trailing buy started at {current_price}",
+            context_data=trail_ctx,
+            regime=regime,
+            profile=profile.name,
+        )
+        db.add(decision)
+        pending_trail_asset_ids.add(rec.asset_id)
+
+        log.info("portfolio.trailing_buy_started",
+                 symbol=sym, price=current_price,
+                 bounce_pct=profile.trailing_buy_bounce_pct,
+                 max_hours=profile.trailing_buy_max_hours)
+
+    await db.flush()
+
+    # Phase 2: Process ready_to_buy from trailing buys that triggered
+    slots_available = MAX_OPEN_POSITIONS - open_count
+
+    for asset_id, recommendation_id in ready_to_buy:
+        if opened >= slots_available:
+            break
+
+        # Load the recommendation for this trailing buy
+        rec_res = await db.execute(
+            select(Recommendation).where(Recommendation.id == recommendation_id)
+        )
+        trail_rec = rec_res.scalar_one_or_none()
+        if not trail_rec:
+            continue
+
+        if asset_id in blocked_ids:
+            continue
 
         reserve = float(portfolio.initial_capital) * MIN_CASH_RESERVE_PCT
         available = float(portfolio.current_cash) - reserve
         if available < MIN_POSITION_USD:
             break
 
-        # Apply allocation multiplier from ranking
-        alloc_mult = ranking["allocation_multiplier"]
-        max_size = equity * effective_position_pct * alloc_mult
-        size_usd = min(max_size, available)
-        if size_usd < MIN_POSITION_USD:
-            break
-
+        price_data = await get_latest_price(db, asset_id)
         if not price_data:
             continue
 
         price = price_data.close
+
+        max_size = equity * effective_position_pct
+        size_usd = min(max_size, available)
+        if size_usd < MIN_POSITION_USD:
+            break
+
         quantity = size_usd / price
 
         pos = PortfolioPosition(
             portfolio_id=portfolio.id,
-            asset_id=rec.asset_id,
-            recommendation_id=rec.id,
+            asset_id=asset_id,
+            recommendation_id=recommendation_id,
             entry_price=price,
             quantity=quantity,
             entry_value_usd=round(size_usd, 2),
-            opened_at=datetime.now(timezone.utc),
+            opened_at=now,
             stop_loss_price=round(price * (1 + profile.stop_loss_pct), 8),
             take_profit_price=round(price * (1 + profile.take_profit_pct), 8),
-            max_hold_until=datetime.now(timezone.utc) + timedelta(hours=profile.max_hold_hours),
+            max_hold_until=now + timedelta(hours=profile.max_hold_hours),
         )
         db.add(pos)
         await db.flush()
@@ -370,25 +452,25 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
             portfolio_id=portfolio.id,
             position_id=pos.id,
             tx_type="buy",
-            asset_id=rec.asset_id,
+            asset_id=asset_id,
             price=price,
             quantity=quantity,
             value_usd=round(size_usd, 2),
-            executed_at=datetime.now(timezone.utc),
+            executed_at=now,
         )
         db.add(tx)
 
         portfolio.current_cash = float(portfolio.current_cash) - round(size_usd, 2)
-        blocked_ids.add(rec.asset_id)
+        blocked_ids.add(asset_id)
         opened += 1
 
-        asset_res = await db.execute(select(Asset.symbol).where(Asset.id == rec.asset_id))
+        asset_res = await db.execute(select(Asset.symbol).where(Asset.id == asset_id))
         symbol = asset_res.scalar_one_or_none() or "?"
         log.info(
             "portfolio.position_opened",
             symbol=symbol, price=price,
             quantity=round(quantity, 8), value_usd=round(size_usd, 2),
-            score=float(rec.score),
+            score=float(trail_rec.score), entry_type="trailing_buy",
         )
 
     return opened
