@@ -1,6 +1,7 @@
 """Asset model — tracked financial instruments (crypto, stocks)."""
 
 import uuid
+from typing import Optional
 
 from sqlalchemy import Boolean, Index, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -16,11 +17,11 @@ class Asset(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     symbol: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     provider_symbol: Mapped[str] = mapped_column(String(20), nullable=False)
-    coingecko_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    market_cap_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    coingecko_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    market_cap_rank: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     asset_class: Mapped[str] = mapped_column(String(10), nullable=False, default="crypto")
-    exchange: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    exchange: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     currency: Mapped[str] = mapped_column(String(5), nullable=False, default="USD")
     metadata_: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
 

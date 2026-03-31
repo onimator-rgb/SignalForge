@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy import DateTime, ForeignKey, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID
@@ -15,7 +16,7 @@ class Watchlist(Base, UUIDPrimaryKeyMixin):
     __tablename__ = "watchlists"
 
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()"), nullable=False
     )

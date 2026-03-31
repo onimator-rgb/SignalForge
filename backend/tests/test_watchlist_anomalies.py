@@ -9,17 +9,13 @@ import pytest
 from tests.conftest import async_client
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
 def _mock_db(*results):
-    """Mock AsyncSession whose execute() returns *results* in order."""
     db = MagicMock()
     db.execute = AsyncMock(side_effect=list(results))
     return db
 
 
 def _result(scalar=None, rows=None):
-    """Build a mock SQLAlchemy Result."""
     r = MagicMock()
     r.scalar_one_or_none.return_value = scalar
     r.all.return_value = rows if rows is not None else []
@@ -56,17 +52,14 @@ def _anomaly_row(asset_id, symbol, score=0.75, hours_ago=1):
     return row
 
 
-# ── Tests ─────────────────────────────────────────────────────────────────────
-
 async def test_valid_watchlist_returns_200_with_required_keys():
-    """GET /anomalies for a valid watchlist returns 200 with all required JSON keys."""
     wl_id = uuid.uuid4()
     asset_id = uuid.uuid4()
 
     db = _mock_db(
-        _result(scalar=_watchlist(wl_id)),            # _get_watchlist_or_404
-        _result(rows=[_asset_row(asset_id, "BTC")]),  # watchlist assets
-        _result(rows=[_anomaly_row(asset_id, "BTC")]),  # anomalies
+        _result(scalar=_watchlist(wl_id)),
+        _result(rows=[_asset_row(asset_id, "BTC")]),
+        _result(rows=[_anomaly_row(asset_id, "BTC")]),
     )
 
     async with await async_client(db) as client:
@@ -81,11 +74,10 @@ async def test_valid_watchlist_returns_200_with_required_keys():
 
 
 async def test_nonexistent_watchlist_returns_404():
-    """GET /anomalies for an unknown watchlist_id returns 404."""
     wl_id = uuid.uuid4()
 
     db = _mock_db(
-        _result(scalar=None),  # watchlist not found
+        _result(scalar=None),
     )
 
     async with await async_client(db) as client:
@@ -95,12 +87,11 @@ async def test_nonexistent_watchlist_returns_404():
 
 
 async def test_watchlist_with_no_assets_returns_empty_list():
-    """Watchlist with zero assets returns an empty anomalies list."""
     wl_id = uuid.uuid4()
 
     db = _mock_db(
-        _result(scalar=_watchlist(wl_id)),  # found
-        _result(rows=[]),                    # no assets → anomaly query skipped
+        _result(scalar=_watchlist(wl_id)),
+        _result(rows=[]),
     )
 
     async with await async_client(db) as client:
@@ -114,7 +105,6 @@ async def test_watchlist_with_no_assets_returns_empty_list():
 
 
 async def test_anomaly_object_contains_all_required_fields():
-    """Each anomaly in the response contains all documented fields."""
     wl_id = uuid.uuid4()
     asset_id = uuid.uuid4()
 
@@ -130,25 +120,21 @@ async def test_anomaly_object_contains_all_required_fields():
     assert resp.status_code == 200
     anomaly = resp.json()["anomalies"][0]
     for field in ("id", "asset_id", "symbol", "anomaly_type", "severity", "score", "detected_at", "details"):
-        assert field in anomaly, f"Missing field in anomaly response: {field}"
+        assert field in anomaly
     assert anomaly["score"] == pytest.approx(0.9)
     assert anomaly["symbol"] == "ETH"
 
 
 async def test_only_unresolved_high_score_recent_anomalies_returned():
-    """Only anomalies matching all three filter criteria appear in the response."""
     wl_id = uuid.uuid4()
     asset_id = uuid.uuid4()
 
-    # The endpoint applies filters in the SQL query; the mock returns only what
-    # the (mocked) DB would produce after filtering. We assert the endpoint
-    # faithfully forwards exactly what the DB returns — no double-filtering.
     passing_anomaly = _anomaly_row(asset_id, "SOL", score=0.8, hours_ago=1)
 
     db = _mock_db(
         _result(scalar=_watchlist(wl_id)),
         _result(rows=[_asset_row(asset_id, "SOL")]),
-        _result(rows=[passing_anomaly]),  # DB already applied is_resolved/score/time filters
+        _result(rows=[passing_anomaly]),
     )
 
     async with await async_client(db) as client:
@@ -161,7 +147,6 @@ async def test_only_unresolved_high_score_recent_anomalies_returned():
 
 
 async def test_multiple_assets_and_anomalies():
-    """Multiple assets and anomalies are all returned correctly."""
     wl_id = uuid.uuid4()
     asset_id_1 = uuid.uuid4()
     asset_id_2 = uuid.uuid4()

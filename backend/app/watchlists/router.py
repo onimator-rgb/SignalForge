@@ -24,8 +24,6 @@ log = get_logger(__name__)
 router = APIRouter(prefix="/api/v1/watchlists", tags=["watchlists"])
 
 
-# ── Helpers ───────────────────────────────────────
-
 async def _watchlist_out(db: AsyncSession, wl: Watchlist) -> WatchlistOut:
     count_res = await db.execute(
         select(func.count()).where(WatchlistAsset.watchlist_id == wl.id)
@@ -48,11 +46,8 @@ async def _get_watchlist_or_404(db: AsyncSession, wl_id: UUID) -> Watchlist:
     return wl
 
 
-# ── Watchlist CRUD ────────────────────────────────
-
 @router.get("", response_model=list[WatchlistOut])
 async def list_watchlists(db: AsyncSession = Depends(get_db)):
-    """List all watchlists with asset counts."""
     result = await db.execute(
         select(
             Watchlist,
@@ -77,7 +72,6 @@ async def list_watchlists(db: AsyncSession = Depends(get_db)):
 
 @router.post("", response_model=WatchlistOut, status_code=201)
 async def create_watchlist(req: CreateWatchlistRequest, db: AsyncSession = Depends(get_db)):
-    """Create a new watchlist."""
     wl = Watchlist(name=req.name, description=req.description)
     db.add(wl)
     await db.commit()
@@ -88,7 +82,6 @@ async def create_watchlist(req: CreateWatchlistRequest, db: AsyncSession = Depen
 
 @router.get("/{watchlist_id}", response_model=WatchlistOut)
 async def get_watchlist(watchlist_id: UUID, db: AsyncSession = Depends(get_db)):
-    """Get watchlist details."""
     wl = await _get_watchlist_or_404(db, watchlist_id)
     return await _watchlist_out(db, wl)
 
@@ -97,7 +90,6 @@ async def get_watchlist(watchlist_id: UUID, db: AsyncSession = Depends(get_db)):
 async def update_watchlist(
     watchlist_id: UUID, req: UpdateWatchlistRequest, db: AsyncSession = Depends(get_db)
 ):
-    """Update watchlist name or description."""
     wl = await _get_watchlist_or_404(db, watchlist_id)
     if req.name is not None:
         wl.name = req.name
@@ -112,25 +104,20 @@ async def update_watchlist(
 
 @router.delete("/{watchlist_id}", status_code=204)
 async def delete_watchlist(watchlist_id: UUID, db: AsyncSession = Depends(get_db)):
-    """Delete a watchlist and its memberships."""
     wl = await _get_watchlist_or_404(db, watchlist_id)
     await db.delete(wl)
     await db.commit()
     log.info("watchlist.delete_done", id=str(watchlist_id))
 
 
-# ── Asset membership ─────────────────────────────
-
 @router.get("/{watchlist_id}/assets", response_model=list[WatchlistAssetOut])
 async def list_watchlist_assets(watchlist_id: UUID, db: AsyncSession = Depends(get_db)):
-    """List assets in a watchlist with enriched data (price, recommendation, portfolio)."""
     await _get_watchlist_or_404(db, watchlist_id)
 
     from app.assets.service import get_latest_price
     from app.recommendations.models import Recommendation
     from app.portfolio.models import PortfolioPosition
 
-    # Base asset data
     result = await db.execute(
         select(
             WatchlistAsset.asset_id,
@@ -146,7 +133,6 @@ async def list_watchlist_assets(watchlist_id: UUID, db: AsyncSession = Depends(g
     )
     rows = result.all()
 
-    # Batch: active recommendations
     asset_ids = [r.asset_id for r in rows]
     rec_res = await db.execute(
         select(Recommendation.asset_id, Recommendation.recommendation_type, Recommendation.score)
@@ -154,7 +140,6 @@ async def list_watchlist_assets(watchlist_id: UUID, db: AsyncSession = Depends(g
     )
     rec_map = {r.asset_id: (r.recommendation_type, float(r.score)) for r in rec_res.all()}
 
-    # Batch: open portfolio positions
     pos_res = await db.execute(
         select(PortfolioPosition.asset_id)
         .where(PortfolioPosition.asset_id.in_(asset_ids), PortfolioPosition.status == "open")
@@ -183,18 +168,14 @@ async def list_watchlist_assets(watchlist_id: UUID, db: AsyncSession = Depends(g
     return items
 
 
-# ── Intelligence / recommendations ────────────────
-
 @router.get("/{watchlist_id}/intelligence")
 async def watchlist_intelligence(watchlist_id: UUID, db: AsyncSession = Depends(get_db)):
-    """Quick intelligence summary for a watchlist."""
     wl = await _get_watchlist_or_404(db, watchlist_id)
 
     from app.recommendations.models import Recommendation
     from app.portfolio.models import PortfolioPosition
     from app.anomalies.models import AnomalyEvent
 
-    # Asset IDs in watchlist
     wa_res = await db.execute(
         select(WatchlistAsset.asset_id).where(WatchlistAsset.watchlist_id == watchlist_id)
     )
@@ -202,13 +183,11 @@ async def watchlist_intelligence(watchlist_id: UUID, db: AsyncSession = Depends(
     if not asset_ids:
         return {"watchlist": wl.name, "total_assets": 0, "signals": {}, "strongest": [], "weakest": []}
 
-    # Class counts
     class_res = await db.execute(
         select(Asset.asset_class, func.count()).where(Asset.id.in_(asset_ids)).group_by(Asset.asset_class)
     )
     class_counts: dict[str, int] = dict(class_res.all())  # type: ignore[arg-type]
 
-    # Recommendation counts
     rec_res = await db.execute(
         select(
             Recommendation.asset_id, Recommendation.recommendation_type,
@@ -223,7 +202,6 @@ async def watchlist_intelligence(watchlist_id: UUID, db: AsyncSession = Depends(
     for r in recs:
         rec_type_counts[r.recommendation_type] = rec_type_counts.get(r.recommendation_type, 0) + 1
 
-    # Portfolio overlap
     pos_res = await db.execute(
         select(func.count()).where(
             PortfolioPosition.asset_id.in_(asset_ids), PortfolioPosition.status == "open"
@@ -231,7 +209,6 @@ async def watchlist_intelligence(watchlist_id: UUID, db: AsyncSession = Depends(
     )
     open_positions = pos_res.scalar_one()
 
-    # Anomaly count
     anom_res = await db.execute(
         select(func.count()).where(
             AnomalyEvent.asset_id.in_(asset_ids), AnomalyEvent.is_resolved.is_(False)
@@ -261,7 +238,6 @@ async def watchlist_intelligence(watchlist_id: UUID, db: AsyncSession = Depends(
 
 @router.get("/{watchlist_id}/recommendations")
 async def watchlist_recommendations(watchlist_id: UUID, db: AsyncSession = Depends(get_db)):
-    """Active recommendations for assets in a watchlist."""
     await _get_watchlist_or_404(db, watchlist_id)
 
     from app.recommendations.models import Recommendation
@@ -297,8 +273,6 @@ async def watchlist_recommendations(watchlist_id: UUID, db: AsyncSession = Depen
         for r in result.all()
     ]
 
-
-# ── Anomalies ─────────────────────────────────────
 
 @router.get("/{watchlist_id}/anomalies")
 async def watchlist_anomalies(watchlist_id: UUID, db: AsyncSession = Depends(get_db)):
@@ -357,21 +331,16 @@ async def watchlist_anomalies(watchlist_id: UUID, db: AsyncSession = Depends(get
     }
 
 
-# ── Asset membership ─────────────────────────────
-
 @router.post("/{watchlist_id}/assets", status_code=201)
 async def add_asset(
     watchlist_id: UUID, req: AddAssetRequest, db: AsyncSession = Depends(get_db)
 ):
-    """Add an asset to a watchlist."""
     await _get_watchlist_or_404(db, watchlist_id)
 
-    # Check asset exists
     asset_res = await db.execute(select(Asset).where(Asset.id == req.asset_id))
     if not asset_res.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Asset not found")
 
-    # Check duplicate
     existing = await db.execute(
         select(WatchlistAsset).where(
             WatchlistAsset.watchlist_id == watchlist_id,
@@ -392,7 +361,6 @@ async def add_asset(
 async def remove_asset(
     watchlist_id: UUID, asset_id: UUID, db: AsyncSession = Depends(get_db)
 ):
-    """Remove an asset from a watchlist."""
     result = await db.execute(
         delete(WatchlistAsset).where(
             WatchlistAsset.watchlist_id == watchlist_id,
