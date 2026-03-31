@@ -55,7 +55,8 @@ def run_cmd(cmd: str, cwd: str, timeout: int = 120) -> Tuple[int, str]:
 
 def load_task_spec(path: str) -> Dict[str, Any]:
     with open(path) as f:
-        return json.load(f)
+        data: Dict[str, Any] = json.load(f)
+        return data
 
 
 def load_prompt(orchestrator_root: str) -> str:
