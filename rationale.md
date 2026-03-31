@@ -34,11 +34,11 @@ Automated implementation for task marketpulse-task-2026-03-31-0001 via coder_wor
 ---
 
 ## 3) Files changed (and rationale per file)
+- `rationale.md`
 - `src/services/anomalies.py`
 - `src/api/watchlist.py`
 - `tests/test_anomalies_api.py`
 - `tests/fixtures/synthetic_price_spike.json`
-- `rationale.md`
 
 ---
 
