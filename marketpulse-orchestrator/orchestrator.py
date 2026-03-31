@@ -483,9 +483,11 @@ RESPOND WITH ONLY A JSON OBJECT matching the schema from your system instruction
             task_path = session_task_dir / f"task_{task_id}.json"
             task_path.write_text(json.dumps(task_spec, indent=2, ensure_ascii=False), encoding="utf-8")
 
-            # 4. Clean git state so Coder can create branches
+            # 4. Clean git state so Coder can create fresh branches
+            #    Reset tracked files to HEAD, remove untracked (except logs/)
+            _run_cmd("git checkout main", self.repo_path)
             _run_cmd("git checkout -- .", self.repo_path)
-            _run_cmd("git clean -fd marketpulse-orchestrator/task_store/ reports/ logs/", self.repo_path)
+            _run_cmd("git clean -fd --exclude=logs/", self.repo_path)
 
             # 5. Coder → Validator loop
             task_result = {
