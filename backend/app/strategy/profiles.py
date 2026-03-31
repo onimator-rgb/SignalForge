@@ -25,6 +25,9 @@ class StrategyProfile:
     trailing_pct: float
     trailing_arm_pct: float
     break_even_arm_pct: float
+    # Exit engine v1 — trailing take profit
+    trailing_tp_pct: float
+    trailing_tp_arm_pct: float
 
 
 PROFILES: dict[str, StrategyProfile] = {
@@ -40,6 +43,8 @@ PROFILES: dict[str, StrategyProfile] = {
         trailing_pct=0.03,
         trailing_arm_pct=0.05,
         break_even_arm_pct=0.03,
+        trailing_tp_pct=0.02,
+        trailing_tp_arm_pct=0.01,
     ),
     "balanced": StrategyProfile(
         name="balanced",
@@ -53,6 +58,8 @@ PROFILES: dict[str, StrategyProfile] = {
         trailing_pct=0.05,
         trailing_arm_pct=0.06,
         break_even_arm_pct=0.04,
+        trailing_tp_pct=0.03,
+        trailing_tp_arm_pct=0.02,
     ),
     "aggressive": StrategyProfile(
         name="aggressive",
@@ -66,6 +73,8 @@ PROFILES: dict[str, StrategyProfile] = {
         trailing_pct=0.07,
         trailing_arm_pct=0.08,
         break_even_arm_pct=0.05,
+        trailing_tp_pct=0.05,
+        trailing_tp_arm_pct=0.03,
     ),
 }
 
@@ -88,4 +97,6 @@ def get_profile_dict(profile: StrategyProfile) -> dict:
         "trailing_pct": profile.trailing_pct,
         "trailing_arm_pct": profile.trailing_arm_pct,
         "break_even_arm_pct": profile.break_even_arm_pct,
+        "trailing_tp_pct": profile.trailing_tp_pct,
+        "trailing_tp_arm_pct": profile.trailing_tp_arm_pct,
     }

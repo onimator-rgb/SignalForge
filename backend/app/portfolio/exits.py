@@ -76,8 +76,29 @@ def evaluate_exit(
             context["peak_at_close"] = new_peak
             return "trailing_stop_hit", context
 
-    # ── Rule D: Take profit ───────────────────────
-    if pnl_pct >= profile.take_profit_pct:
+    # ── Rule D: Take profit / trailing take profit ─
+    trailing_tp_arm_threshold = profile.take_profit_pct + profile.trailing_tp_arm_pct
+    exit_ctx = pos.exit_context or {}
+    trailing_tp_armed = exit_ctx.get("trailing_tp_armed", False)
+
+    if trailing_tp_armed:
+        # D2: Trailing TP mode — check for retracement from peak
+        tp_peak = exit_ctx.get("trailing_tp_peak", new_peak)
+        take_profit_price = entry * (1 + profile.take_profit_pct)
+        # Safety floor: trailing stop never below original take_profit_price
+        trailing_tp_stop = max(tp_peak * (1 - profile.trailing_tp_pct), take_profit_price)
+        context["trailing_tp_armed"] = True
+        context["trailing_tp_peak"] = tp_peak
+        context["trailing_tp_stop"] = trailing_tp_stop
+        if current_price <= trailing_tp_stop:
+            context["rule"] = "trailing_tp"
+            return "trailing_tp_hit", context
+    elif pnl_pct >= trailing_tp_arm_threshold:
+        # Price high enough to arm trailing TP — don't close, let it run
+        context["trailing_tp_armed"] = True
+        context["trailing_tp_peak"] = new_peak
+    elif pnl_pct >= profile.take_profit_pct:
+        # Between take_profit and arm threshold — immediate close
         context["rule"] = "take_profit"
         return "target_hit", context
 
@@ -99,7 +120,7 @@ def evaluate_exit(
         context["rule"] = "max_hold"
         return "max_hold", context
 
-    return None, {}
+    return None, context
 
 
 def update_position_state(
@@ -145,5 +166,21 @@ def update_position_state(
             changed = True
             if old_trail == 0:
                 log.info("portfolio.trailing_armed", trail_price=new_trail, peak=peak)
+
+    # Arm / update trailing take profit (state in exit_context JSONB)
+    trailing_tp_arm_threshold = profile.take_profit_pct + profile.trailing_tp_arm_pct
+    regime_tp_arm_threshold = trailing_tp_arm_threshold - regime_offset
+    exit_ctx = pos.exit_context or {}
+    if pnl_pct >= regime_tp_arm_threshold:
+        if not exit_ctx.get("trailing_tp_armed"):
+            exit_ctx["trailing_tp_armed"] = True
+            exit_ctx["trailing_tp_peak"] = current_price
+            pos.exit_context = exit_ctx
+            changed = True
+            log.info("portfolio.trailing_tp_armed", pnl_pct=round(pnl_pct * 100, 2))
+        elif current_price > exit_ctx.get("trailing_tp_peak", 0):
+            exit_ctx["trailing_tp_peak"] = current_price
+            pos.exit_context = exit_ctx
+            changed = True
 
     return changed

@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-03-31-0001`
+# Rationale for `marketpulse-task-2026-03-31-0003`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-03-31-0001-implementation
+**branch:** task/marketpulse-task-2026-03-31-0003-implementation
 **commit_sha:** 
 **date:** 2026-03-31
 **model_calls:** 1
@@ -9,97 +9,84 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-03-31-0001 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-03-31-0003 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** calc_stochrsi returns None when given fewer bars than the minimum required
+- **Criteria:** StrategyProfile dataclass has trailing_tp_pct and trailing_tp_arm_pct fields
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** calc_stochrsi returns StochRSIResult with k and d both in 0-100 range for valid input
+- **Criteria:** All three profiles (conservative, balanced, aggressive) have trailing-TP values set
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** For a strong uptrend (monotonically rising closes), %K and %D are both above 80
+- **Criteria:** get_profile_dict includes the two new fields
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** For a strong downtrend (monotonically falling closes), %K and %D are both below 20
+- **Criteria:** mypy passes with no errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** For sideways data, %K and %D are in the 30-70 range
+- **Criteria:** When pnl crosses take_profit_pct + trailing_tp_arm_pct, position enters trailing-TP mode instead of closing
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** StochRSIResult and calc_stochrsi are exported from calculators __init__
+- **Criteria:** When pnl is between take_profit_pct and take_profit_pct + trailing_tp_arm_pct, position closes immediately as 'target_hit'
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** IndicatorSnapshot includes stoch_rsi_k and stoch_rsi_d as optional float fields
+- **Criteria:** When in trailing-TP mode, position closes when price drops trailing_tp_pct from peak
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** get_indicators() computes and populates StochRSI values when sufficient bars exist
+- **Criteria:** Safety floor ensures trailing-TP exit never below original take_profit_price
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** get_indicators() sets stoch_rsi_k and stoch_rsi_d to None when insufficient data
+- **Criteria:** State stored in exit_context JSONB, no new DB columns
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** mypy passes with no errors on both files
+- **Criteria:** mypy passes with no errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** WEIGHTS dict has 9 entries and sums to 1.0
+- **Criteria:** All 7 test cases pass
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** score_stochrsi(None, None) returns score 0.0
+- **Criteria:** Tests cover: immediate close, arming, retracement exit, peak tracking, safety floor, stop-loss priority, regime modifier
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** score_stochrsi(15.0, 15.0) returns positive score (oversold)
+- **Criteria:** Tests use unit-test style (no DB fixtures needed â€” tests exercise pure functions)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** score_stochrsi(85.0, 85.0) returns negative score (overbought)
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** compute_recommendation() includes stoch_rsi in signal_breakdown
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** All existing tests still pass (no regression in scoring)
+- **Criteria:** mypy passes with no errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/indicators/calculators/__init__.py`
-- `backend/app/indicators/calculators/stochrsi.py`
-- `backend/app/indicators/schemas.py`
-- `backend/app/indicators/service.py`
-- `backend/app/recommendations/scoring.py`
-- `backend/tests/test_stochrsi.py`
+- `backend/app/portfolio/exits.py`
+- `backend/app/strategy/profiles.py`
+- `backend/tests/test_trailing_profit.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_stochrsi.py -q` — passed
-  - `cd backend && uv run python -m mypy app/indicators/calculators/stochrsi.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/indicators/schemas.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m pytest tests/test_stochrsi.py -q` — passed
-  - `cd backend && uv run python -m mypy app/recommendations/scoring.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m mypy app/strategy/profiles.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m mypy app/portfolio/exits.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_trailing_profit.py -q` — passed
+  - `cd backend && uv run python -m mypy tests/test_trailing_profit.py --ignore-missing-imports` — passed
 
 ---
 
@@ -137,7 +124,7 @@ Automated implementation for task marketpulse-task-2026-03-31-0001 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-03-31-0001): implementation
+- `N/A` — feat(marketpulse-task-2026-03-31-0003): implementation
 
 ---
 
