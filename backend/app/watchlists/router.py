@@ -206,7 +206,7 @@ async def watchlist_intelligence(watchlist_id: UUID, db: AsyncSession = Depends(
     class_res = await db.execute(
         select(Asset.asset_class, func.count()).where(Asset.id.in_(asset_ids)).group_by(Asset.asset_class)
     )
-    class_counts = dict(class_res.all())
+    class_counts: dict[str, int] = dict(class_res.all())  # type: ignore[arg-type]
 
     # Recommendation counts
     rec_res = await db.execute(
@@ -219,7 +219,7 @@ async def watchlist_intelligence(watchlist_id: UUID, db: AsyncSession = Depends(
         .order_by(Recommendation.score.desc())
     )
     recs = rec_res.all()
-    rec_type_counts = {}
+    rec_type_counts: dict[str, int] = {}
     for r in recs:
         rec_type_counts[r.recommendation_type] = rec_type_counts.get(r.recommendation_type, 0) + 1
 
@@ -399,7 +399,7 @@ async def remove_asset(
             WatchlistAsset.asset_id == asset_id,
         )
     )
-    if result.rowcount == 0:
+    if result.rowcount == 0:  # type: ignore[attr-defined]
         raise HTTPException(status_code=404, detail="Asset not in watchlist")
     await db.commit()
     log.info("watchlist.asset_remove_done", watchlist_id=str(watchlist_id), asset_id=str(asset_id))
