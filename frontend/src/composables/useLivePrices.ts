@@ -9,7 +9,8 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { fetchLivePrices, type LivePriceItem } from '../api/live'
 
-const SSE_URL = '/api/v1/live/stream'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
+const SSE_URL = `${API_BASE}/api/v1/live/stream`
 const FALLBACK_POLL_MS = 30_000  // Slow fallback if SSE fails
 
 export function useLivePrices(_intervalMs = 15_000) {
@@ -40,11 +41,7 @@ export function useLivePrices(_intervalMs = 15_000) {
   function connectSSE() {
     if (eventSource) return
 
-    const baseUrl = window.location.hostname === 'localhost'
-      ? 'http://localhost:8000'
-      : ''
-
-    eventSource = new EventSource(baseUrl + SSE_URL)
+    eventSource = new EventSource(SSE_URL)
 
     eventSource.onopen = () => {
       status.value = 'streaming'
