@@ -91,6 +91,8 @@ jobs:
           mkdir -p /tmp/mock_repo
           cd /tmp/mock_repo
           git init
+          git config user.email "ci@marketpulse.dev"
+          git config user.name "MarketPulse CI"
           touch .gitkeep
           git add .gitkeep
           git commit -m "initial: empty"
