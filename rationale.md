@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0007`
+# Rationale for `marketpulse-task-2026-04-01-0011`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0007-implementation
+**branch:** task/marketpulse-task-2026-04-01-0011-implementation
 **commit_sha:** 
 **date:** 2026-03-31
 **model_calls:** 1
@@ -9,82 +9,64 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0011 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** TrailingBuyState or equivalent dict-based state with all required fields
+- **Criteria:** REGIME_TO_PROFILE maps risk_onâ†’aggressive, neutralâ†’balanced, risk_offâ†’conservative
 - **Status:** `partial`
 - **Evidence:** Some checks failed
 
-- **Criteria:** start_trailing returns context_data dict with lowest_price=signal_price, correct expiry
+- **Criteria:** auto_select_profile is async, calls calculate_regime, and returns correct profile+regime tuple
 - **Status:** `partial`
 - **Evidence:** Some checks failed
 
-- **Criteria:** update_trailing correctly detects bounce: buy triggered when price >= lowest * (1 + bounce_pct)
+- **Criteria:** is_auto_switch_enabled reads from settings with False default
 - **Status:** `partial`
 - **Evidence:** Some checks failed
 
-- **Criteria:** update_trailing correctly detects expiry when now >= expires_at
+- **Criteria:** /summary endpoint includes auto_switch section with enabled, recommended_profile, reason fields
 - **Status:** `partial`
 - **Evidence:** Some checks failed
 
-- **Criteria:** update_trailing tracks new lows: lowest_price decreases when price drops
+- **Criteria:** All 6 tests pass
 - **Status:** `partial`
 - **Evidence:** Some checks failed
 
-- **Criteria:** All 3 strategy profiles have trailing_buy_bounce_pct and trailing_buy_max_hours
+- **Criteria:** Tests cover all 3 regimeâ†’profile mappings
 - **Status:** `partial`
 - **Evidence:** Some checks failed
 
-- **Criteria:** All tests pass, mypy clean
+- **Criteria:** Tests verify auto-switch enabled/disabled behavior
 - **Status:** `partial`
 - **Evidence:** Some checks failed
 
-- **Criteria:** New candidate_buy signals create EntryDecision with stage='trailing_buy' instead of immediate buy
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Pending trailing buys are checked each cycle and updated with current price
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Buy executes when price bounces above trailing low by bounce_pct
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Trailing buy expires gracefully after max_hours with proper EntryDecision update
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Assets with existing pending trails are not duplicated
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** All tests pass, mypy clean
+- **Criteria:** No DB fixtures needed â€” regime calculation is mocked
 - **Status:** `partial`
 - **Evidence:** Some checks failed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/service.py`
-- `backend/app/portfolio/trailing_buy.py`
+- `backend/app/config.py`
 - `backend/app/strategy/profiles.py`
-- `backend/tests/test_trailing_buy.py`
+- `backend/app/strategy/router.py`
+- `backend/app/strategy/service.py`
+- `backend/tests/test_auto_switch.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_trailing_buy.py -q` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/trailing_buy.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m py_compile app/strategy/service.py` — passed
+  - `cd backend && uv run python -m mypy app/strategy/service.py --ignore-missing-imports` — FAILED
   - `cd backend && uv run python -m mypy app/strategy/profiles.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m pytest tests/test_trailing_buy.py -q` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/service.py --ignore-missing-imports` — FAILED
+  - `cd backend && uv run python -m mypy app/strategy/router.py --ignore-missing-imports` — FAILED
+  - `cd backend && uv run python -m pytest tests/test_auto_switch.py -q` — passed
+  - `cd backend && uv run python -m mypy tests/test_auto_switch.py --ignore-missing-imports` — FAILED
 
 ---
 
@@ -122,7 +104,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0007): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0011): implementation
 
 ---
 
