@@ -477,12 +477,15 @@ RESPOND WITH ONLY A JSON OBJECT matching the schema from your system instruction
             title = task_spec.get("title", "?")
             logger.info(f"[{_ts()}] Task: {task_id} — {title} (feature: {feature_id})")
 
-            # 3. Write task_spec
-            TASK_STORE.mkdir(parents=True, exist_ok=True)
-            task_path = TASK_STORE / f"task_{task_id}.json"
+            # 3. Write task_spec to logs/ (untracked) to avoid git conflicts
+            session_task_dir = LOG_DIR / f"tasks_{self.session_id}"
+            session_task_dir.mkdir(parents=True, exist_ok=True)
+            task_path = session_task_dir / f"task_{task_id}.json"
             task_path.write_text(json.dumps(task_spec, indent=2, ensure_ascii=False), encoding="utf-8")
 
-            # 4. Do NOT touch git state — orchestrator files live in working tree
+            # 4. Clean git state so Coder can create branches
+            _run_cmd("git checkout -- .", self.repo_path)
+            _run_cmd("git clean -fd marketpulse-orchestrator/task_store/ reports/ logs/", self.repo_path)
 
             # 5. Coder → Validator loop
             task_result = {

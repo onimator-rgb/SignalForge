@@ -33,9 +33,10 @@ frontend/dist/
 Thumbs.db
 desktop.ini
 
-# Logs
+# Logs & reports
 *.log
 logs/
+reports/
 
 # Database
 backend/uploads/
