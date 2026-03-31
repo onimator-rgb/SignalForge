@@ -33,7 +33,7 @@ from typing import Any, Dict, List, Optional, Tuple
 # Add parent dir to path for lib imports
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from lib.model_caller import ModelCaller, ModelCallerError, ForbiddenPathError
+from lib.model_caller import ModelCaller, ModelCallerError, ForbiddenPathError  # noqa: E402, I001
 
 
 # ── Helpers ────────────────────────────────────────────────────────────
@@ -542,7 +542,7 @@ def main():
 
     print(json.dumps(result, indent=2, ensure_ascii=False))
 
-    print(f"\n--- Worker Report ---")
+    print("\n--- Worker Report ---")
     print(f"Task: {result['task_id']}")
     print(f"Branch: {result['branch']}")
     print(f"Verdict: {result['next_recommended_step'].upper()}")

@@ -13,8 +13,7 @@ import os
 import subprocess
 import sys
 from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 
 def load_task_spec(path: str) -> Dict[str, Any]:
@@ -42,10 +41,10 @@ def check_commit_messages(repo_path: str, base_ref: str, task_id: str) -> Tuple[
     code, output = run_cmd(f"git log {base_ref}..HEAD --oneline", repo_path)
     if code != 0:
         return False, f"git log failed: {output}"
-    lines = [l.strip() for l in output.strip().split("\n") if l.strip()]
+    lines = [line.strip() for line in output.strip().split("\n") if line.strip()]
     if not lines:
         return False, "No commits found on task branch"
-    missing = [l for l in lines if task_id not in l]
+    missing = [line for line in lines if task_id not in line]
     if missing:
         return False, f"Commits missing task_id: {missing}"
     return True, f"All {len(lines)} commits contain {task_id}"
