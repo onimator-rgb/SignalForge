@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 """
-MarketPulse Coder Worker — Agent 2
-Reads a task_spec, creates a branch, applies implementation, runs checks,
-commits, and exports a structured JSON report.
+MarketPulse Coder Worker — Agent 2 (with Model Integration)
+
+Reads a task_spec, optionally calls Claude (claude-sonnet-4) to generate
+implementation, applies changes via dry-run, runs checks, commits, and
+exports a structured JSON report.
 
 Usage:
-    python coder_worker.py --task task_store/task_example.json --repo /path/to/repo [--base main]
+    # With LLM (requires ANTHROPIC_API_KEY):
+    python coder_worker.py --task task_store/task_example.json --repo /path/to/repo
 
-This worker does NOT call an LLM API. It executes a deterministic implementation
-pipeline based on the task_spec. For LLM-driven implementation, invoke Claude Code
-with the marketpulse_coder.md prompt and pass the task_spec as input.
+    # Without LLM (validate-only mode, checks existing code):
+    python coder_worker.py --task task_store/task_example.json --repo /path/to/repo --no-llm
+
+    # Dry-run only (no commit):
+    python coder_worker.py --task task_store/task_example.json --repo /path/to/repo --dry-run
 
 Security: No deploys, no secrets, no broker APIs. Paper-trading only.
 """
@@ -20,9 +25,15 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+# Add parent dir to path for lib imports
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from lib.model_caller import ModelCaller, ModelCallerError, ForbiddenPathError
 
 
 # ── Helpers ────────────────────────────────────────────────────────────
@@ -56,7 +67,7 @@ def load_prompt(orchestrator_root: str) -> str:
     return ""
 
 
-# ── Security checks ───────────────────────────────────────────────────
+# ── Security ──────────────────────────────────────────────────────────
 
 FORBIDDEN_DEFAULTS = [".env", "infra/", "secrets/"]
 
@@ -78,51 +89,87 @@ def check_authorization(spec: Dict[str, Any]) -> Tuple[bool, str]:
     return False, f"authorization.level={level}: requires human approval"
 
 
-# ── Git operations ─────────────────────────────────────────────────────
+# ── Git operations ────────────────────────────────────────────────────
 
 def git_setup_branch(repo: str, base_ref: str, task_id: str) -> Tuple[bool, str]:
     """Checkout base_ref and create task branch."""
     branch_name = f"task/{task_id}-implementation"
-
     code, out = run_cmd(f"git checkout {base_ref}", repo)
-    if code != 0:
-        # Try without checkout if already on base
-        pass
-
     code, out = run_cmd(f"git checkout -b {branch_name}", repo)
     if code != 0:
-        # Branch may already exist
         code, out = run_cmd(f"git checkout {branch_name}", repo)
         if code != 0:
             return False, f"Failed to create/checkout branch: {out}"
-
     return True, branch_name
 
 
-def git_commit(repo: str, task_id: str, message: str, files: List[str]) -> Tuple[bool, str]:
-    """Stage files and commit with task_id in message."""
-    for f in files:
-        run_cmd(f'git add "{f}"', repo)
-
+def git_commit(repo: str, task_id: str, message: str) -> Tuple[bool, str]:
+    """Stage all and commit with task_id in message."""
+    run_cmd("git add -A", repo)
     full_msg = f"feat({task_id}): {message}"
     code, out = run_cmd(f'git commit -m "{full_msg}"', repo)
     if code != 0:
         return False, f"Commit failed: {out}"
-
-    code, sha = run_cmd("git rev-parse HEAD", repo)
+    _, sha = run_cmd("git rev-parse HEAD", repo)
     return True, sha.strip()
 
 
-# ── Implementation pipeline ───────────────────────────────────────────
+# ── Dry-run logic ─────────────────────────────────────────────────────
+
+def apply_files_to_dir(target_dir: str, files: List[Dict[str, str]]) -> List[str]:
+    """Write model-generated files to a directory. Returns list of paths written."""
+    written = []
+    for f in files:
+        path = f["path"]
+        content = f["content"]
+        full_path = os.path.join(target_dir, path)
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        with open(full_path, "w", encoding="utf-8") as fh:
+            fh.write(content)
+        written.append(path)
+    return written
+
+
+def dry_run_checks(
+    repo_path: str,
+    files: List[Dict[str, str]],
+    checks: List[str],
+    forbidden: List[str],
+) -> Tuple[bool, List[Dict], List[str]]:
+    """Apply files to temp copy of repo, run checks. Return (pass, results, blocked_paths)."""
+
+    # Check forbidden paths first
+    blocked = [f["path"] for f in files if check_forbidden(f["path"], forbidden)]
+    if blocked:
+        return False, [], blocked
+
+    # Create temp copy
+    with tempfile.TemporaryDirectory(prefix="mp_dryrun_") as tmp:
+        # Copy repo to temp dir
+        tmp_repo = os.path.join(tmp, "repo")
+        shutil.copytree(repo_path, tmp_repo, dirs_exist_ok=True)
+
+        # Apply model-generated files
+        apply_files_to_dir(tmp_repo, files)
+
+        # Run checks in temp dir
+        results = []
+        all_pass = True
+        for cmd in checks:
+            code, output = run_cmd(cmd, tmp_repo)
+            results.append({"cmd": cmd, "exit_code": code, "stdout": output[:2000]})
+            if code != 0:
+                all_pass = False
+
+        return all_pass, results, []
+
+
+# ── Rationale generation ──────────────────────────────────────────────
 
 def create_rationale(
-    repo: str,
-    task_id: str,
-    branch: str,
-    commit_sha: str,
-    criteria_results: List[Dict],
-    files_changed: List[str],
-    commands_run: List[Dict],
+    repo: str, task_id: str, branch: str, commit_sha: str,
+    criteria_results: List[Dict], files_changed: List[str],
+    commands_run: List[Dict], model_calls: int = 0,
 ) -> str:
     """Generate rationale.md from template."""
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -133,14 +180,11 @@ def create_rationale(
         criteria_section += f"- **Status:** `{cr['status']}`\n"
         criteria_section += f"- **Evidence:** {cr['evidence']}\n"
 
-    files_section = ""
-    for f in files_changed:
-        files_section += f"- `{f}`\n"
-
-    commands_section = ""
-    for cmd in commands_run:
-        status = "passed" if cmd["exit_code"] == 0 else "FAILED"
-        commands_section += f"  - `{cmd['cmd']}` — {status}\n"
+    files_section = "\n".join(f"- `{f}`" for f in files_changed)
+    cmds_section = "\n".join(
+        f"  - `{c['cmd']}` — {'passed' if c['exit_code'] == 0 else 'FAILED'}"
+        for c in commands_run
+    )
 
     content = f"""# Rationale for `{task_id}`
 
@@ -148,11 +192,12 @@ def create_rationale(
 **branch:** {branch}
 **commit_sha:** {commit_sha}
 **date:** {now}
+**model_calls:** {model_calls}
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task {task_id} via coder_worker.py.
+Automated implementation for task {task_id} via coder_worker.py with model integration.
 
 ---
 
@@ -162,11 +207,13 @@ Automated implementation for task {task_id} via coder_worker.py.
 
 ## 3) Files changed (and rationale per file)
 {files_section}
+
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-{commands_section}
+{cmds_section}
+
 ---
 
 ## 5) Data & sample evidence
@@ -175,7 +222,7 @@ Automated implementation for task {task_id} via coder_worker.py.
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** automated implementation — **Severity:** medium — **Mitigation:** all changes validated by validator.py
+- **Risk:** LLM-generated code — **Severity:** medium — **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
 
 ---
 
@@ -185,7 +232,7 @@ Automated implementation for task {task_id} via coder_worker.py.
 ---
 
 ## 8) Performance considerations
-- No performance impact expected (new endpoints/services only).
+- No performance impact expected.
 
 ---
 
@@ -193,16 +240,17 @@ Automated implementation for task {task_id} via coder_worker.py.
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
+- API key logged: `no` (only presence check)
 
 ---
 
 ## 10) Open questions & follow-ups
-1. Review implementation for edge cases.
+1. Review LLM-generated implementation for edge cases.
 
 ---
 
 ## 11) Short changelog
-- `{commit_sha[:7]}` — feat({task_id}): automated implementation
+- `{commit_sha[:7] if commit_sha else 'N/A'}` — feat({task_id}): implementation
 
 ---
 
@@ -211,14 +259,15 @@ Automated implementation for task {task_id} via coder_worker.py.
 - **I confirm** no forbidden paths were modified: `yes`
 - **I request** next step: `validate`
 """
-    rationale_path = os.path.join(repo, "rationale.md")
-    with open(rationale_path, "w") as f:
+    path = os.path.join(repo, "rationale.md")
+    with open(path, "w") as f:
         f.write(content)
-    return rationale_path
+    return path
 
+
+# ── Acceptance criteria mapping ───────────────────────────────────────
 
 def run_required_checks(repo: str, checks: List[str]) -> Tuple[bool, List[Dict]]:
-    """Execute required_checks and collect results."""
     results = []
     all_pass = True
     for cmd in checks:
@@ -229,45 +278,43 @@ def run_required_checks(repo: str, checks: List[str]) -> Tuple[bool, List[Dict]]
     return all_pass, results
 
 
-def map_acceptance_criteria(
-    repo: str,
-    criteria: List[str],
-    check_results: List[Dict],
-) -> List[Dict]:
-    """Map acceptance criteria to test results."""
+def map_acceptance_criteria(criteria: List[str], check_results: List[Dict]) -> List[Dict]:
     results = []
-    all_tests_pass = all(r["exit_code"] == 0 for r in check_results)
-
+    all_pass = all(r["exit_code"] == 0 for r in check_results)
     for crit in criteria:
-        if all_tests_pass:
-            results.append({
-                "criteria": crit,
-                "status": "pass",
-                "evidence": "All required checks passed"
-            })
-        else:
-            # Check if specific test output mentions this criterion's key terms
-            key_terms = [w for w in crit.lower().split() if len(w) > 4][:3]
-            found = False
-            for r in check_results:
-                if r["exit_code"] == 0 and any(t in r["stdout"].lower() for t in key_terms):
-                    found = True
-                    break
-            results.append({
-                "criteria": crit,
-                "status": "pass" if found else "partial",
-                "evidence": "Matched in test output" if found else "Tests passed but no direct match"
-            })
+        results.append({
+            "criteria": crit,
+            "status": "pass" if all_pass else "partial",
+            "evidence": "All required checks passed" if all_pass else "Some checks failed"
+        })
     return results
 
 
-# ── Main worker ────────────────────────────────────────────────────────
+# ── Error report builder ─────────────────────────────────────────────
+
+def _error_report(task_id: str, msg: str, step: str = "revise") -> Dict[str, Any]:
+    return {
+        "task_id": task_id, "branch": "", "commit_sha": "",
+        "files_changed": [], "commands_run": [],
+        "tests": {"passed": False, "summary": msg, "failed_tests": []},
+        "lint": {"passed": False, "output": msg},
+        "acceptance_criteria_results": [],
+        "rationale_path": "", "issues": [{"path": "N/A", "severity": "high", "description": msg}],
+        "next_recommended_step": step, "notes": msg
+    }
+
+
+# ── Main worker ───────────────────────────────────────────────────────
 
 def execute_task(
     task_spec_path: str,
     repo_path: str,
     base_ref: str = "main",
     orchestrator_root: Optional[str] = None,
+    use_llm: bool = True,
+    dry_run_only: bool = False,
+    max_tokens: int = 16384,
+    max_model_calls: int = 10,
 ) -> Dict[str, Any]:
     """Main entry point: execute a task_spec against a repo."""
 
@@ -275,102 +322,151 @@ def execute_task(
     task_id = spec["task_id"]
     forbidden = spec.get("forbidden_paths", FORBIDDEN_DEFAULTS)
 
-    # 1. Check authorization
+    # 1. Authorization
     auth_ok, auth_msg = check_authorization(spec)
     if not auth_ok:
-        return {
-            "task_id": task_id,
-            "branch": "",
-            "commit_sha": "",
-            "files_changed": [],
-            "commands_run": [],
-            "tests": {"passed": False, "summary": auth_msg, "failed_tests": []},
-            "lint": {"passed": False, "output": auth_msg},
-            "acceptance_criteria_results": [],
-            "rationale_path": "",
-            "issues": [{"path": "N/A", "severity": "high", "description": auth_msg}],
-            "next_recommended_step": "ask_human",
-            "notes": auth_msg
-        }
+        return _error_report(task_id, auth_msg, "ask_human")
 
     # 2. Setup branch
     ok, branch = git_setup_branch(repo_path, base_ref, task_id)
     if not ok:
-        return {
-            "task_id": task_id, "branch": "", "commit_sha": "",
-            "files_changed": [], "commands_run": [],
-            "tests": {"passed": False, "summary": branch, "failed_tests": []},
-            "lint": {"passed": False, "output": branch},
-            "acceptance_criteria_results": [],
-            "rationale_path": "",
-            "issues": [{"path": "N/A", "severity": "high", "description": branch}],
-            "next_recommended_step": "revise",
-            "notes": f"Branch setup failed: {branch}"
-        }
+        return _error_report(task_id, f"Branch setup failed: {branch}")
 
     # 3. Collect subtask info
-    all_files_expected = []
-    all_criteria = []
-    all_checks = []
+    all_files_expected, all_criteria, all_checks = [], [], []
     for st in spec.get("subtasks", []):
         all_files_expected.extend(st.get("files_expected", []))
         all_criteria.extend(st.get("acceptance_criteria", []))
         all_checks.extend(st.get("required_checks", []))
 
-    # 4. Check which expected files already exist (from prior implementation)
-    existing_files = []
-    missing_files = []
-    for f in all_files_expected:
-        full_path = os.path.join(repo_path, f)
-        if os.path.exists(full_path):
-            existing_files.append(f)
-        else:
-            missing_files.append(f)
+    # 4. Resolve orchestrator root for prompt loading
+    if orchestrator_root is None:
+        orchestrator_root = str(Path(__file__).resolve().parents[1])
 
-    # 5. Log what we found
     commands_run = []
+    model_generated_files = []
+    model_calls_used = 0
 
-    # 6. Run required checks
+    # 5. LLM-driven implementation (if enabled)
+    if use_llm:
+        system_prompt = load_prompt(orchestrator_root)
+        caller = ModelCaller(
+            forbidden_paths=forbidden,
+            max_calls_per_task=max_model_calls,
+            max_tokens=max_tokens,
+        )
+
+        prompt_payload = {
+            "task_spec": spec,
+            "repo_path": repo_path,
+            "base_ref": base_ref,
+            "branch": branch,
+            "instruction": (
+                "Implement the task described in task_spec. Return a JSON object with "
+                "'files' (list of {path, content}) and 'summary' (string). "
+                "Do NOT include files matching forbidden_paths."
+            ),
+        }
+
+        try:
+            result = caller.call_model(prompt_payload, system_prompt=system_prompt)
+            model_calls_used = caller.call_count
+            model_generated_files = result.get("files", [])
+
+            if model_generated_files:
+                # Dry-run: apply to temp copy, run checks
+                dr_pass, dr_results, blocked = dry_run_checks(
+                    repo_path, model_generated_files, all_checks, forbidden
+                )
+
+                if blocked:
+                    return {
+                        **_error_report(task_id, f"FORBIDDEN: model tried to write: {blocked}", "ask_human"),
+                        "notes": f"Blocked paths: {blocked}. Model calls: {model_calls_used}"
+                    }
+
+                commands_run.extend(dr_results)
+
+                if dr_pass and not dry_run_only:
+                    # Checks passed in dry-run → apply to real repo
+                    apply_files_to_dir(repo_path, model_generated_files)
+                elif not dr_pass:
+                    # Dry-run failed → try escalation (Opus)
+                    if caller.calls_remaining > 0:
+                        try:
+                            esc_result = caller.call_escalation(
+                                prompt_payload, system_prompt=system_prompt
+                            )
+                            model_calls_used = caller.call_count
+                            esc_files = esc_result.get("files", [])
+                            if esc_files:
+                                dr2_pass, dr2_results, blocked2 = dry_run_checks(
+                                    repo_path, esc_files, all_checks, forbidden
+                                )
+                                commands_run.extend(dr2_results)
+                                if dr2_pass and not dry_run_only:
+                                    model_generated_files = esc_files
+                                    apply_files_to_dir(repo_path, esc_files)
+                        except (ModelCallerError, ForbiddenPathError) as e:
+                            commands_run.append({
+                                "cmd": "escalation_call", "exit_code": 1,
+                                "stdout": str(e)[:2000]
+                            })
+
+        except ForbiddenPathError as e:
+            return _error_report(task_id, str(e), "ask_human")
+        except ModelCallerError as e:
+            # Model failed — fall through to validate-only mode
+            commands_run.append({
+                "cmd": "model_call", "exit_code": 1, "stdout": str(e)[:2000]
+            })
+
+    # 6. Run required checks on actual repo
     checks_pass, check_results = run_required_checks(repo_path, all_checks)
     commands_run.extend(check_results)
 
     # 7. Map acceptance criteria
-    criteria_results = map_acceptance_criteria(repo_path, all_criteria, check_results)
+    criteria_results = map_acceptance_criteria(all_criteria, check_results)
 
-    # 8. Determine files changed (from git diff)
+    # 8. Get files changed
     _, diff_out = run_cmd(f"git diff --name-only {base_ref}..HEAD", repo_path)
     files_changed = [f.strip() for f in diff_out.strip().split("\n") if f.strip()]
+    # Include model-applied files
+    for mf in model_generated_files:
+        p = mf["path"]
+        if p not in files_changed:
+            files_changed.append(p)
 
-    # 9. Get current commit sha
-    _, commit_sha = run_cmd("git rev-parse HEAD", repo_path)
-    commit_sha = commit_sha.strip()
+    # 9. Commit (unless dry-run)
+    commit_sha = ""
+    if not dry_run_only and (model_generated_files or files_changed):
+        ok, sha = git_commit(repo_path, task_id, "implementation via coder_worker")
+        if ok:
+            commit_sha = sha
 
-    # 10. Create rationale.md
-    rationale_path = create_rationale(
+    # 10. Create rationale
+    create_rationale(
         repo_path, task_id, branch, commit_sha,
-        criteria_results, files_changed or existing_files, commands_run
+        criteria_results, files_changed, commands_run, model_calls_used
     )
 
-    # 11. Commit rationale if it's new
-    run_cmd("git add rationale.md", repo_path)
-    rationale_committed = False
-    code, out = run_cmd(
-        f'git commit -m "docs({task_id}): add rationale.md with acceptance criteria mapping"',
-        repo_path
-    )
-    if code == 0:
-        rationale_committed = True
-        _, commit_sha = run_cmd("git rev-parse HEAD", repo_path)
-        commit_sha = commit_sha.strip()
-        files_changed.append("rationale.md")
+    # Commit rationale
+    if not dry_run_only:
+        run_cmd("git add rationale.md", repo_path)
+        code, _ = run_cmd(
+            f'git commit -m "docs({task_id}): add rationale.md"', repo_path
+        )
+        if code == 0:
+            _, sha = run_cmd("git rev-parse HEAD", repo_path)
+            commit_sha = sha.strip()
+            if "rationale.md" not in files_changed:
+                files_changed.append("rationale.md")
 
-    # 12. Determine test summary
+    # 11. Build result
     test_pass_count = sum(1 for r in check_results if r["exit_code"] == 0)
     test_fail_count = len(check_results) - test_pass_count
-    failed_tests = [r["cmd"] for r in check_results if r["exit_code"] != 0]
-
-    # 13. Determine next step
     all_criteria_pass = all(r["status"] == "pass" for r in criteria_results)
+
     if checks_pass and all_criteria_pass:
         next_step = "approve"
     elif checks_pass:
@@ -378,21 +474,14 @@ def execute_task(
     else:
         next_step = "revise"
 
-    # 14. Collect issues
+    if dry_run_only:
+        next_step = f"dry_run_{next_step}"
+
     issues = []
-    if missing_files:
-        issues.append({
-            "path": ", ".join(missing_files),
-            "severity": "med",
-            "description": f"Expected files not found: {missing_files}"
-        })
     for r in check_results:
         if r["exit_code"] != 0:
-            issues.append({
-                "path": "N/A",
-                "severity": "high",
-                "description": f"Check failed: {r['cmd']} (exit {r['exit_code']})"
-            })
+            issues.append({"path": "N/A", "severity": "high",
+                           "description": f"Check failed: {r['cmd']}"})
 
     return {
         "task_id": task_id,
@@ -403,30 +492,53 @@ def execute_task(
         "tests": {
             "passed": checks_pass,
             "summary": f"{test_pass_count} passed, {test_fail_count} failed",
-            "failed_tests": failed_tests
+            "failed_tests": [r["cmd"] for r in check_results if r["exit_code"] != 0]
         },
         "lint": {
-            "passed": all(r["exit_code"] == 0 for r in check_results if "mypy" in r["cmd"] or "ruff" in r["cmd"] or "lint" in r["cmd"]),
-            "output": "; ".join(r["stdout"][:200] for r in check_results if "mypy" in r["cmd"] or "lint" in r["cmd"])[:2000]
+            "passed": all(r["exit_code"] == 0 for r in check_results
+                          if "mypy" in r["cmd"] or "ruff" in r["cmd"]),
+            "output": "; ".join(
+                r["stdout"][:200] for r in check_results
+                if "mypy" in r["cmd"] or "ruff" in r["cmd"]
+            )[:2000]
         },
         "acceptance_criteria_results": criteria_results,
         "rationale_path": "rationale.md",
         "issues": issues,
         "next_recommended_step": next_step,
-        "notes": f"Worker completed at {datetime.now(timezone.utc).isoformat()}"
+        "notes": (
+            f"Worker completed at {datetime.now(timezone.utc).isoformat()}. "
+            f"Model calls: {model_calls_used}. "
+            f"LLM: {'enabled' if use_llm else 'disabled'}. "
+            f"Dry-run: {dry_run_only}."
+        )
     }
 
 
 def main():
-    parser = argparse.ArgumentParser(description="MarketPulse Coder Worker")
+    parser = argparse.ArgumentParser(description="MarketPulse Coder Worker v2")
     parser.add_argument("--task", required=True, help="Path to task_spec JSON")
     parser.add_argument("--repo", required=True, help="Path to target repo")
     parser.add_argument("--base", default="main", help="Base ref (default: main)")
     parser.add_argument("--orchestrator-root", default=None,
-                        help="Path to orchestrator root (for prompt loading)")
+                        help="Path to orchestrator root")
+    parser.add_argument("--no-llm", action="store_true",
+                        help="Skip LLM calls — validate-only mode")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Apply changes to temp dir only, do not commit")
+    parser.add_argument("--max-tokens", type=int, default=16384,
+                        help="Max tokens per model call")
+    parser.add_argument("--max-calls", type=int, default=10,
+                        help="Max model calls per task")
     args = parser.parse_args()
 
-    result = execute_task(args.task, args.repo, args.base, args.orchestrator_root)
+    result = execute_task(
+        args.task, args.repo, args.base, args.orchestrator_root,
+        use_llm=not args.no_llm,
+        dry_run_only=args.dry_run,
+        max_tokens=args.max_tokens,
+        max_model_calls=args.max_calls,
+    )
 
     print(json.dumps(result, indent=2, ensure_ascii=False))
 
@@ -435,12 +547,12 @@ def main():
     print(f"Branch: {result['branch']}")
     print(f"Verdict: {result['next_recommended_step'].upper()}")
     print(f"Tests: {result['tests']['summary']}")
-    if result['issues']:
+    if result["issues"]:
         print(f"Issues ({len(result['issues'])}):")
-        for i in result['issues']:
+        for i in result["issues"]:
             print(f"  [{i['severity']}] {i['description'][:120]}")
 
-    sys.exit(0 if result["next_recommended_step"] == "approve" else 1)
+    sys.exit(0 if "approve" in result["next_recommended_step"] else 1)
 
 
 if __name__ == "__main__":
