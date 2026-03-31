@@ -1,0 +1,42 @@
+[project]
+name = "marketpulse-ai"
+version = "0.1.0"
+description = "MarketPulse AI — crypto market analysis with anomaly detection, scoring, and paper-trading"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+
+dependencies = [
+    "flask>=3.0",
+    "anthropic>=0.40",
+    "gitpython>=3.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "mypy>=1.10",
+    "ruff>=0.5",
+    "pytest-cov>=5.0",
+]
+
+[project.scripts]
+run-validator = "marketpulse_orchestrator.validator:main"
+run-coder-worker = "marketpulse_orchestrator.workers.coder_worker:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "backend/tests"]
+addopts = "-q --tb=short"
+
+[tool.mypy]
+python_version = "3.9"
+ignore_missing_imports = true
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.ruff]
+target-version = "py39"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
