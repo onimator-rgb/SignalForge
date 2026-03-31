@@ -1,122 +1,116 @@
-# Rationale for `marketpulse-task-2026-03-31-0001`
+# Rationale for `marketpulse-task-2026-03-31-0003`
 
-**author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-03-31-0001-implementation
-**commit_sha:** 
+**author:** coder-agent
+**branch:** task/marketpulse-task-2026-03-31-0003-implementation
+**commit_sha:** (pending)
 **date:** 2026-03-31
-**model_calls:** 1
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-03-31-0001 via coder_worker.py with model integration.
+Add trailing take profit to the exit engine so positions that hit TP trail upward and close on retracement, capturing more profit in strong trends.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** calc_adx returns ADXResult with adx, plus_di, minus_di fields
+### Subtask S1 â€” Strategy profiles
+- **Criteria:** StrategyProfile dataclass has trailing_tp_pct and trailing_tp_arm_pct fields
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `backend/app/strategy/profiles.py` lines 28-29
 
-- **Criteria:** Returns None when fewer than 2*period bars provided
+- **Criteria:** All three profiles have trailing-TP values set
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** conservative (0.02, 0.01), balanced (0.03, 0.02), aggressive (0.05, 0.03)
 
-- **Criteria:** ADX value is between 0 and 100 for valid input
+- **Criteria:** get_profile_dict includes the two new fields
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `profiles.py` lines 93-94
 
-- **Criteria:** +DI and -DI are between 0 and 100
+- **Criteria:** mypy passes with no errors
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `mypy app/strategy/profiles.py --ignore-missing-imports` -> Success
 
-- **Criteria:** IndicatorSnapshot includes adx_14, plus_di, minus_di fields
+### Subtask S2 â€” Exit engine
+- **Criteria:** When pnl crosses take_profit_pct + trailing_tp_arm_pct, position enters trailing-TP mode
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `test_tp_arms_trailing_above_arm` passes
 
-- **Criteria:** get_indicators() computes ADX from price bars and populates snapshot
+- **Criteria:** When pnl between take_profit_pct and arm threshold, position closes as 'target_hit'
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `test_tp_immediate_close_below_arm` passes
 
-- **Criteria:** score_adx() returns directional scores based on ADX strength and DI crossover
+- **Criteria:** When in trailing-TP mode, position closes when price drops trailing_tp_pct from peak
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `test_trailing_tp_closes_on_retracement` passes
 
-- **Criteria:** WEIGHTS dict sums to 1.0 with new 'adx' entry at 0.10
+- **Criteria:** Safety floor ensures trailing-TP exit never below original take_profit_price
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `test_trailing_tp_safety_floor` and `test_trailing_tp_floor_triggers_close` pass
 
-- **Criteria:** compute_recommendation() accepts and uses ADX parameters
+- **Criteria:** State stored in exit_context JSONB, no new DB columns
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Only exit_context field used; no changes to models.py
 
-- **Criteria:** All 9 tests pass
+- **Criteria:** mypy passes with no errors
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `mypy app/portfolio/exits.py --ignore-missing-imports` -> Success
 
-- **Criteria:** Tests cover None/insufficient data edge case
+### Subtask S3 â€” Tests
+- **Criteria:** All 7+ test cases pass
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `pytest tests/test_trailing_profit.py -q` -> 9 passed
 
-- **Criteria:** Tests verify ADX output range 0-100
+- **Criteria:** Tests cover: immediate close, arming, retracement exit, peak tracking, safety floor, stop-loss priority, regime modifier
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** All 7 categories covered across 9 test methods
 
-- **Criteria:** Tests verify scoring logic for bullish, bearish, and weak trend scenarios
+- **Criteria:** mypy passes with no errors
 - **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** Weights sum validation test passes
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `mypy tests/test_trailing_profit.py --ignore-missing-imports` -> Success
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/anomalies/models.py`
-- `backend/app/assets/models.py`
-- `backend/app/logging_config.py`
-- `backend/app/watchlists/models.py`
-- `backend/app/watchlists/router.py`
-- `backend/app/watchlists/schemas.py`
-- `backend/pyproject.toml`
-- `backend/tests/conftest.py`
-- `backend/tests/test_watchlist_anomalies.py`
-- `backend/uv.lock`
-- `rationale.md`
-- `uv.lock`
+- `backend/app/strategy/profiles.py` â€” Added trailing_tp_pct, trailing_tp_arm_pct to StrategyProfile dataclass, all 3 profiles, and get_profile_dict. ~12 LOC delta.
+- `backend/app/portfolio/exits.py` â€” Modified Rule D in evaluate_exit for trailing-TP logic; added trailing-TP state tracking in update_position_state. ~40 LOC delta.
+- `backend/tests/test_trailing_profit.py` â€” New file with 9 test methods covering all acceptance criteria. ~175 LOC.
+- `rationale.md` â€” This file.
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -c "from app.indicators.calculators.adx import calc_adx, ADXResult; print('import OK')"` — passed
-  - `cd backend && uv run python -m mypy app/indicators/calculators/adx.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/indicators/service.py app/indicators/schemas.py app/recommendations/scoring.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -c "from app.recommendations.scoring import WEIGHTS; assert abs(sum(WEIGHTS.values()) - 1.0) < 0.001, f'Weights sum to {sum(WEIGHTS.values())}'; print('weights OK')"` — passed
-  - `cd backend && uv run python -m pytest tests/test_adx.py -q` — passed
-  - `cd backend && uv run python -m mypy tests/test_adx.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m mypy app/strategy/profiles.py --ignore-missing-imports` -> Success
+  - `cd backend && uv run python -m mypy app/portfolio/exits.py --ignore-missing-imports` -> Success
+  - `cd backend && uv run python -m mypy tests/test_trailing_profit.py --ignore-missing-imports` -> Success
+  - `cd backend && uv run python -m pytest tests/test_trailing_profit.py -q` -> 9 passed in 0.10s
 
 ---
 
 ## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
+- All tests use synthetic data: entry_price=100.0, various current_price values
+- Balanced profile defaults: take_profit_pct=0.15, trailing_tp_pct=0.03, trailing_tp_arm_pct=0.02
+- No external data sources used
 
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code — **Severity:** medium — **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+- **Risk:** Floating point edge cases in price comparisons â€” **Severity:** low â€” **Mitigation:** Tests use pytest.approx; prices chosen to avoid boundary issues
+- **Risk:** Changed return value of evaluate_exit from `(None, {})` to `(None, context)` â€” **Severity:** low â€” **Mitigation:** Callers check `reason` first; extra context is informational only
 
 ---
 
 ## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
+- No DB migrations needed â€” uses existing exit_context JSONB column
+- No API changes
+- Adding fields to frozen dataclass is backwards-compatible (all constructors updated)
 
 ---
 
 ## 8) Performance considerations
-- No performance impact expected.
+- No significant performance impact â€” trailing-TP check is O(1) dict lookup on exit_context
+- No additional DB queries
 
 ---
 
@@ -124,17 +118,17 @@ Automated implementation for task marketpulse-task-2026-03-31-0001 via coder_wor
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
-- API key logged: `no` (only presence check)
 
 ---
 
 ## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
+1. Should trailing_tp_arm_pct have a separate regime modifier, or is sharing the general regime_offset sufficient?
+2. Consider adding metrics/logging for how much additional profit trailing-TP captures vs immediate TP
 
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-03-31-0001): implementation
+- feat(exits): add trailing take profit to exit engine (marketpulse-task-2026-03-31-0003)
 
 ---
 
