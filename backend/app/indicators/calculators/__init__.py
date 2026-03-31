@@ -10,6 +10,7 @@ from app.indicators.calculators.squeeze import (
     calc_keltner,
     detect_squeeze,
 )
+from app.indicators.calculators.stochrsi import StochRSIResult, calc_stochrsi
 
 __all__ = [
     "ADXResult",
@@ -17,10 +18,12 @@ __all__ = [
     "KeltnerResult",
     "MACDResult",
     "SqueezeState",
+    "StochRSIResult",
     "calc_adx",
     "calc_bollinger",
     "calc_keltner",
     "calc_macd",
     "calc_rsi",
+    "calc_stochrsi",
     "detect_squeeze",
 ]

@@ -35,75 +35,77 @@ def _make_position(
 
 
 BALANCED = PROFILES["balanced"]
-# balanced: take_profit_pct=0.15, trailing_tp_pct=0.03, trailing_tp_arm_pct=0.02
-# So arm threshold = 0.15 + 0.02 = 0.17 (17% above entry)
+# balanced: take_profit_pct=0.15, trailing_pct=0.05, trailing_arm_pct=0.06
+# Arm threshold = take_profit_pct + trailing_arm_pct = 0.15 + 0.06 = 0.21 (21%)
+# Trailing stop after arm = peak * (1 - trailing_pct) = peak * 0.95
+# Safety floor = entry * (1 + take_profit_pct) = entry * 1.15
 
 
 class TestTpImmediateCloseBelowArm:
-    """S3 test 1: position hits take_profit_pct but not arm threshold → immediate close."""
+    """Price hits take_profit but below arm threshold → immediate close."""
 
     def test_tp_immediate_close_below_arm(self) -> None:
-        pos = _make_position(entry_price=100.0)
-        # 16% gain — above take_profit (15%) but below arm threshold (17%)
-        current_price = 116.0
+        pos = _make_position(entry_price=100.0, peak_price=100.0)
+        # 18% gain — above take_profit (15%) but below arm (21%)
+        current_price = 118.0
         reason, ctx = evaluate_exit(pos, current_price, BALANCED, regime="normal")
         assert reason == "target_hit"
         assert ctx["rule"] == "take_profit"
 
 
 class TestTpArmsTrailingAboveArm:
-    """S3 test 2: position hits arm threshold → does NOT close, context shows armed."""
+    """Price hits arm threshold → does NOT close, trailing armed."""
 
     def test_tp_arms_trailing_above_arm(self) -> None:
         pos = _make_position(entry_price=100.0, peak_price=100.0)
-        # 18% gain — above arm threshold (17%)
-        current_price = 118.0
+        # 22% gain — above arm threshold (21%)
+        current_price = 122.0
         reason, ctx = evaluate_exit(pos, current_price, BALANCED, regime="normal")
         assert reason is None, f"Expected no close, got reason={reason}"
         assert ctx.get("trailing_tp_armed") is True
 
 
 class TestTrailingTpClosesOnRetracement:
-    """S3 test 3: after arming, price drops trailing_tp_pct from peak → closes."""
+    """After arming, price drops trailing_pct from peak → closes."""
 
     def test_trailing_tp_closes_on_retracement(self) -> None:
-        # Position already armed with peak at 120
+        # Position already armed with peak at 130
         pos = _make_position(
             entry_price=100.0,
-            peak_price=120.0,
-            exit_context={"trailing_tp_armed": True, "trailing_tp_peak": 120.0},
+            peak_price=130.0,
+            exit_context={"trailing_tp_armed": True, "trailing_tp_peak": 130.0},
         )
-        # Trailing TP stop = max(120 * (1 - 0.03), 100 * 1.15) = max(116.4, 115.0) = 116.4
-        # Price drops to 116.0 — below 116.4
-        current_price = 116.0
+        # Trailing TP stop = max(130 * (1 - 0.05), 100 * 1.15) = max(123.5, 115.0) = 123.5
+        # Price drops to 123.0 — below 123.5
+        current_price = 123.0
         reason, ctx = evaluate_exit(pos, current_price, BALANCED, regime="normal")
         assert reason == "trailing_tp_hit"
         assert ctx["rule"] == "trailing_tp"
-        assert ctx["trailing_tp_stop"] == pytest.approx(116.4)
+        assert ctx["trailing_tp_stop"] == pytest.approx(123.5)
 
 
 class TestTrailingTpTracksPeak:
-    """S3 test 4: price continues rising after arm, peak is updated in exit_context."""
+    """Price continues rising after arm, peak is updated in exit_context."""
 
     def test_trailing_tp_tracks_peak(self) -> None:
         pos = _make_position(
             entry_price=100.0,
-            peak_price=118.0,
-            exit_context={"trailing_tp_armed": True, "trailing_tp_peak": 118.0},
+            peak_price=122.0,
+            exit_context={"trailing_tp_armed": True, "trailing_tp_peak": 122.0},
         )
-        # Price rises to 125 — should update peak
-        current_price = 125.0
+        # Price rises to 130 — should update peak
+        current_price = 130.0
         changed = update_position_state(pos, current_price, BALANCED, regime="normal")
         assert changed is True
-        assert pos.exit_context["trailing_tp_peak"] == 125.0
+        assert pos.exit_context["trailing_tp_peak"] == 130.0
 
 
 class TestTrailingTpSafetyFloor:
-    """S3 test 5: trailing TP exit price never falls below take_profit_price."""
+    """Trailing TP exit price never falls below take_profit_price."""
 
     def test_trailing_tp_safety_floor(self) -> None:
-        # Entry=100, take_profit_price ~ 115.0
-        # Peak=118, trailing raw = 118 * 0.97 = 114.46 < ~115
+        # Entry=100, take_profit_price = 115.0
+        # Peak=118, trailing raw = 118 * 0.95 = 112.1 < 115.0
         # Safety floor should clamp UP to take_profit_price
         pos = _make_position(
             entry_price=100.0,
@@ -132,14 +134,13 @@ class TestTrailingTpSafetyFloor:
 
 
 class TestTrailingTpDoesNotOverrideStopLoss:
-    """S3 test 6: stop loss still triggers first even when trailing-TP is armed."""
+    """Stop loss still triggers first even when trailing-TP is armed."""
 
     def test_trailing_tp_does_not_override_stop_loss(self) -> None:
-        # balanced stop_loss_pct = -0.08
         pos = _make_position(
             entry_price=100.0,
-            peak_price=120.0,
-            exit_context={"trailing_tp_armed": True, "trailing_tp_peak": 120.0},
+            peak_price=130.0,
+            exit_context={"trailing_tp_armed": True, "trailing_tp_peak": 130.0},
         )
         # Price crashes to 91 — below stop loss (-9%)
         current_price = 91.0
@@ -149,25 +150,26 @@ class TestTrailingTpDoesNotOverrideStopLoss:
 
 
 class TestTrailingTpRegimeAdjustment:
-    """S3 test 7: in risk_off regime, trailing-TP arm threshold is lowered."""
+    """In risk_off regime, trailing-TP arm threshold is adjusted."""
 
     def test_trailing_tp_regime_adjustment(self) -> None:
         pos = _make_position(entry_price=100.0, peak_price=100.0)
-        # Normal arm threshold = 0.15 + 0.02 = 0.17
-        # risk_off regime lowers arm by 1%: effective = 0.16
-        # 16.5% gain — above risk_off threshold (16%) but below normal (17%)
-        current_price = 116.5
+        # Normal arm threshold = 0.15 + 0.06 = 0.21
+        # risk_off lowers trailing_arm by 1%: effective = 0.05
+        # So arm threshold = 0.15 + 0.05 = 0.20
+        # 20.5% gain — above risk_off threshold (20%) but below normal (21%)
+        current_price = 120.5
 
-        # In risk_off: should arm (16.5% >= 16%)
+        # In risk_off: should arm (20.5% >= 20%)
         changed = update_position_state(pos, current_price, BALANCED, regime="risk_off")
         assert changed is True
         assert pos.exit_context is not None
-        assert pos.exit_context["trailing_tp_armed"] is True
+        assert pos.exit_context.get("trailing_tp_armed") is True
 
     def test_trailing_tp_not_armed_normal_regime_same_price(self) -> None:
         pos = _make_position(entry_price=100.0, peak_price=100.0)
-        current_price = 116.5
-        # In normal regime: 16.5% < 17% threshold → NOT armed
-        changed = update_position_state(pos, current_price, BALANCED, regime="normal")
-        exit_ctx = pos.exit_context or {}
-        assert not exit_ctx.get("trailing_tp_armed", False)
+        current_price = 120.5
+        # In normal regime: 20.5% < 21% threshold → NOT armed, just target_hit
+        reason, ctx = evaluate_exit(pos, current_price, BALANCED, regime="normal")
+        # 20.5% > take_profit (15%) but < arm (21%) → immediate close
+        assert reason == "target_hit"
