@@ -4,7 +4,7 @@
 **branch:** task/marketpulse-task-2026-03-31-0001-implementation
 **commit_sha:** 
 **date:** 2026-03-31
-**model_calls:** 1
+**model_calls:** 0
 
 ---
 
@@ -35,18 +35,12 @@ Automated implementation for task marketpulse-task-2026-03-31-0001 via coder_wor
 
 ## 3) Files changed (and rationale per file)
 - `rationale.md`
-- `src/services/anomalies.py`
-- `src/api/watchlist.py`
-- `tests/test_anomalies_api.py`
-- `tests/fixtures/synthetic_price_spike.json`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `python -m pytest tests/test_anomalies_api.py -q` — passed
-  - `python -m mypy src/ --ignore-missing-imports` — FAILED
-  - `escalation_call` — FAILED
+  - `model_call` — FAILED
   - `python -m pytest tests/test_anomalies_api.py -q` — FAILED
   - `python -m mypy src/ --ignore-missing-imports` — FAILED
 
