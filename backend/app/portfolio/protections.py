@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.assets.models import Asset
 from app.logging_config import get_logger
+from app.market_data.models import PriceBar
 from app.portfolio.models import Portfolio, PortfolioPosition, ProtectionEvent
 from app.portfolio.rules import DAILY_DRAWDOWN_LIMIT_PCT
 
@@ -39,6 +40,8 @@ MARKET_CB_ASSET_PCT = 0.60
 MARKET_CB_LOOKBACK_MINUTES = 60
 MARKET_CB_LOCK_HOURS = 2
 MARKET_CB_RULE = "market_circuit_breaker"
+MIN_VOLUME_USD: dict[str, float] = {"crypto": 100_000.0, "stock": 1_000_000.0, "default": 50_000.0}
+VOLUME_LOOKBACK_HOURS = 24
 
 
 async def check_protections(
@@ -86,6 +89,16 @@ async def check_protections(
     blocked, reason = await _check_entry_frequency(db, portfolio_id, now)
     if blocked:
         return False, "entry_frequency_cap", reason
+
+    # E2. Volume filter guard
+    blocked, reason = await _check_volume_filter(db, asset_id, asset_class, now)
+    if blocked:
+        assert reason is not None
+        await _log_protection(
+            db, "low_volume_guard", reason,
+            asset_id=asset_id, asset_class=asset_class, now=now,
+        )
+        return False, "low_volume_guard", reason
 
     # F. Daily drawdown guard
     allowed, ptype, dd_reason = await _daily_drawdown_guard(db, portfolio_id, now)
@@ -267,6 +280,34 @@ async def _check_consecutive_sl(
         await _log_protection(db, "consecutive_sl_guard", reason, now=now, expires=expires)
         return True, reason
 
+    return False, None
+
+
+async def _check_volume_filter(
+    db: AsyncSession, asset_id: uuid.UUID, asset_class: str, now: datetime
+) -> tuple[bool, str | None]:
+    """Block entry if 24h USD volume is below the minimum threshold for the asset class."""
+    cutoff = now - timedelta(hours=VOLUME_LOOKBACK_HOURS)
+    result = await db.execute(
+        select(PriceBar.close, PriceBar.volume)
+        .where(
+            PriceBar.asset_id == asset_id,
+            PriceBar.interval == "1h",
+            PriceBar.time >= cutoff,
+            PriceBar.time <= now,
+        )
+        .order_by(PriceBar.time.desc())
+        .limit(VOLUME_LOOKBACK_HOURS)
+    )
+    rows = result.all()
+    if not rows:
+        return True, "No price bars found — insufficient data to verify volume"
+
+    total_volume_usd = sum(float(row.close) * float(row.volume) for row in rows)
+    threshold = MIN_VOLUME_USD.get(asset_class, MIN_VOLUME_USD["default"])
+
+    if total_volume_usd < threshold:
+        return True, f"24h volume ${total_volume_usd:,.0f} below minimum ${threshold:,.0f} for {asset_class}"
     return False, None
 
 
