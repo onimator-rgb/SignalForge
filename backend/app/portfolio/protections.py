@@ -15,12 +15,10 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from sqlalchemy import text as sa_text
-
 from app.assets.models import Asset
 from app.logging_config import get_logger
-from app.market_data.models import PriceBar  # noqa: F401 — used in raw SQL reference
-from app.portfolio.models import PortfolioPosition, ProtectionEvent
+from app.portfolio.models import Portfolio, PortfolioPosition, ProtectionEvent
+from app.portfolio.rules import DAILY_DRAWDOWN_LIMIT_PCT
 
 log = get_logger(__name__)
 
@@ -36,13 +34,6 @@ MAX_PER_CLASS = 3  # max open positions per asset_class
 MAX_NEW_POSITIONS_PER_6H = 2
 CONSECUTIVE_SL_THRESHOLD = 3
 CONSECUTIVE_SL_LOCK_MINUTES = 120
-
-# Market-wide circuit breaker
-MARKET_CB_DROP_PCT = -0.03          # 3 % drop threshold
-MARKET_CB_ASSET_PCT = 0.60          # 60 % of assets must be dropping
-MARKET_CB_LOOKBACK_MINUTES = 60
-MARKET_CB_LOCK_HOURS = 2
-MARKET_CB_RULE = "market_circuit_breaker"
 
 
 async def check_protections(
@@ -62,10 +53,6 @@ async def check_protections(
 
     # Expire old protections
     await _expire_protections(db, now)
-
-    # Market-wide circuit breaker (before individual asset checks)
-    if await check_market_circuit_breaker(db, now):
-        return False, "market_circuit_breaker", "Market-wide circuit breaker active — broad selloff detected"
 
     # A. Asset cooldown (loss-aware)
     blocked, reason, cooldown_hours = await _check_asset_cooldown(db, portfolio_id, asset_id, now)
@@ -94,6 +81,11 @@ async def check_protections(
     blocked, reason = await _check_entry_frequency(db, portfolio_id, now)
     if blocked:
         return False, "entry_frequency_cap", reason
+
+    # F. Daily drawdown guard
+    allowed, ptype, dd_reason = await _daily_drawdown_guard(db, portfolio_id, now)
+    if not allowed:
+        return False, ptype, dd_reason
 
     # E. Risk-off extra restriction
     if regime == "risk_off":
@@ -273,103 +265,95 @@ async def _check_consecutive_sl(
     return False, None
 
 
-# ── Market-wide circuit breaker ──────────────────
+async def _daily_drawdown_guard(
+    db: AsyncSession, portfolio_id: uuid.UUID, now: datetime
+) -> tuple[bool, str | None, str | None]:
+    """Halt all new entries if equity dropped >DAILY_DRAWDOWN_LIMIT_PCT from day-open.
 
-
-def market_circuit_breaker_guard(
-    asset_drops: list[dict[str, object]],
-    threshold_drop_pct: float = MARKET_CB_DROP_PCT,
-    threshold_asset_pct: float = MARKET_CB_ASSET_PCT,
-) -> dict[str, object] | None:
-    """Pure guard: returns blocking dict when broad market selloff detected."""
-    total = len(asset_drops)
-    if total == 0:
-        return None
-
-    dropping = [d for d in asset_drops if float(d["drop_pct"]) <= threshold_drop_pct]  # type: ignore[arg-type]
-    dropping_count = len(dropping)
-
-    if dropping_count / total >= threshold_asset_pct:
-        worst = sorted(dropping, key=lambda d: float(d["drop_pct"]))[:3]  # type: ignore[arg-type]
-        return {
-            "blocked": True,
-            "rule": MARKET_CB_RULE,
-            "dropping_count": dropping_count,
-            "total_count": total,
-            "drop_pct_threshold": threshold_drop_pct,
-            "worst_drops": worst,
-        }
-    return None
-
-
-async def check_market_circuit_breaker(
-    session: AsyncSession, now: datetime | None = None,
-) -> bool:
-    """Check / activate market-wide circuit breaker.
-
-    Returns True when new entries should be blocked.
+    Returns (allowed, protection_type, reason).
     """
-    now = now or datetime.now(timezone.utc)
+    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    day_end = day_start + timedelta(days=1)
 
-    # Already active?
-    active = await session.execute(
+    # 1. Already blocked today?
+    active_block = await db.execute(
         select(func.count()).where(
-            ProtectionEvent.protection_type == MARKET_CB_RULE,
+            ProtectionEvent.protection_type == "daily_drawdown",
             ProtectionEvent.status == "active",
+            ProtectionEvent.triggered_at >= day_start,
         )
     )
-    if active.scalar_one() > 0:
-        return True
+    if active_block.scalar_one() > 0:
+        return False, "daily_drawdown", "Daily drawdown circuit breaker active — entries halted for remainder of UTC day"
 
-    # Compute per-asset 1 h price change via raw SQL (LATERAL join)
-    cutoff = now - timedelta(minutes=MARKET_CB_LOOKBACK_MINUTES)
-    query = sa_text("""
-        SELECT a.id   AS asset_id,
-               a.symbol,
-               curr.close                              AS current_close,
-               prev.close                              AS prev_close,
-               (curr.close - prev.close) / prev.close  AS drop_pct
-        FROM assets a
-        JOIN LATERAL (
-            SELECT close FROM price_bars
-            WHERE asset_id = a.id AND interval = '1h'
-            ORDER BY time DESC LIMIT 1
-        ) curr ON true
-        JOIN LATERAL (
-            SELECT close FROM price_bars
-            WHERE asset_id = a.id AND interval = '1h' AND time <= :cutoff
-            ORDER BY time DESC LIMIT 1
-        ) prev ON true
-        WHERE a.is_active = true AND prev.close > 0
-    """)
-    result = await session.execute(query, {"cutoff": cutoff})
-    rows = result.mappings().all()
+    # 2. Compute current equity = cash + sum(open position entry values)
+    portfolio_result = await db.execute(
+        select(Portfolio.current_cash).where(Portfolio.id == portfolio_id)
+    )
+    current_cash = portfolio_result.scalar_one()
 
-    asset_drops: list[dict[str, object]] = [
-        {"asset_id": str(r["asset_id"]), "symbol": r["symbol"], "drop_pct": float(r["drop_pct"])}
-        for r in rows
-    ]
-
-    guard = market_circuit_breaker_guard(asset_drops)
-    if guard is not None:
-        expires = now + timedelta(hours=MARKET_CB_LOCK_HOURS)
-        event = ProtectionEvent(
-            protection_type=MARKET_CB_RULE,
-            status="active",
-            reason=(
-                f"Market circuit breaker: {guard['dropping_count']}/{guard['total_count']} "
-                f"assets dropped >{abs(MARKET_CB_DROP_PCT)*100:.0f}% in last "
-                f"{MARKET_CB_LOOKBACK_MINUTES} min"
-            ),
-            context_data=guard,
-            triggered_at=now,
-            expires_at=expires,
+    positions_sum_result = await db.execute(
+        select(func.coalesce(func.sum(PortfolioPosition.entry_value_usd), 0)).where(
+            PortfolioPosition.portfolio_id == portfolio_id,
+            PortfolioPosition.status == "open",
         )
-        session.add(event)
-        log.info("portfolio.market_circuit_breaker", dropping=guard["dropping_count"],
-                 total=guard["total_count"])
-        return True
-    return False
+    )
+    positions_value = positions_sum_result.scalar_one()
+    current_equity = float(current_cash) + float(positions_value)
+
+    # 3. Get or create day-open equity snapshot
+    snapshot_result = await db.execute(
+        select(ProtectionEvent).where(
+            ProtectionEvent.protection_type == "daily_equity_snapshot",
+            ProtectionEvent.triggered_at >= day_start,
+            ProtectionEvent.triggered_at < day_end,
+        ).limit(1)
+    )
+    snapshot = snapshot_result.scalars().first()
+
+    if snapshot is None:
+        snapshot = ProtectionEvent(
+            protection_type="daily_equity_snapshot",
+            status="expired",
+            reason="Day-open equity snapshot",
+            context_data={"day_open_equity": current_equity, "date": now.date().isoformat()},
+            triggered_at=now,
+            expires_at=day_end,
+        )
+        db.add(snapshot)
+        await db.flush()
+
+    day_open_equity = float(snapshot.context_data["day_open_equity"])  # type: ignore[index]
+
+    # 4. Calculate drawdown
+    if day_open_equity <= 0:
+        return True, None, None
+
+    dd_pct = ((day_open_equity - current_equity) / day_open_equity) * 100.0
+
+    if dd_pct >= DAILY_DRAWDOWN_LIMIT_PCT:
+        reason = (
+            f"Equity dropped {dd_pct:.1f}% from day open "
+            f"(${day_open_equity:.2f} -> ${current_equity:.2f})"
+        )
+        event = ProtectionEvent(
+            protection_type="daily_drawdown",
+            status="active",
+            reason=reason,
+            context_data={
+                "day_open_equity": day_open_equity,
+                "current_equity": current_equity,
+                "drawdown_pct": round(dd_pct, 2),
+            },
+            triggered_at=now,
+            expires_at=day_end,
+        )
+        db.add(event)
+        await db.flush()
+        log.info("portfolio.daily_drawdown_triggered", drawdown_pct=dd_pct, reason=reason)
+        return False, "daily_drawdown", reason
+
+    return True, None, None
 
 
 # ── Helpers ───────────────────────────────────────

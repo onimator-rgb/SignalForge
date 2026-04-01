@@ -12,6 +12,7 @@ MIN_SCORE_FOR_ENTRY = 65       # recommendation score threshold
 ALLOWED_CONFIDENCE = {"medium", "high"}
 BLOCKED_RISK = {"high"}        # don't enter high risk
 COOLDOWN_HOURS = 24            # hours after closing before re-entering same asset
+DAILY_DRAWDOWN_LIMIT_PCT = 5.0 # halt entries when equity drops >5% intraday
 
 # ── Exit criteria ────────────────────────────────
 STOP_LOSS_PCT = -0.08          # -8%

@@ -1,146 +1,230 @@
-"""Tests for daily drawdown circuit breaker guard.
+"""Tests for daily drawdown circuit breaker protection guard.
 
-Task: marketpulse-task-2026-04-01-0017
+Task: marketpulse-task-2026-04-01-0029
 """
 
 import uuid
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock
+from datetime import datetime, timedelta, timezone
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-# Import AnomalyEvent so SQLAlchemy mapper registers it before ProtectionEvent is used
-import app.anomalies.models  # noqa: F401
-
-from app.portfolio.protections import (
-    DAILY_DD_LIMIT_PCT,
-    DAILY_DD_RULE,
-    check_daily_drawdown,
-    daily_drawdown_guard,
-)
+import app.anomalies.models  # noqa: F401 — ensure all mappers are registered
+from app.portfolio.protections import _daily_drawdown_guard
+from app.portfolio.rules import DAILY_DRAWDOWN_LIMIT_PCT
 
 
 # ── Helpers ──────────────────────────────────────────
 
 
-def _make_scalar_result(value: object) -> MagicMock:
+NOW = datetime(2026, 4, 1, 14, 30, 0, tzinfo=timezone.utc)
+DAY_START = NOW.replace(hour=0, minute=0, second=0, microsecond=0)
+DAY_END = DAY_START + timedelta(days=1)
+PORTFOLIO_ID = uuid.uuid4()
+
+
+def _make_scalar_result(value: Any) -> MagicMock:
+    """Build a mock DB result whose .scalar_one() returns *value*."""
     result = MagicMock()
     result.scalar_one.return_value = value
     return result
 
 
-PORTFOLIO_ID = uuid.uuid4()
-NOW = datetime(2026, 4, 1, 14, 30, 0, tzinfo=timezone.utc)
+def _make_scalars_result_first(value: Any) -> MagicMock:
+    """Build a mock DB result whose .scalars().first() returns *value*."""
+    result = MagicMock()
+    scalars_mock = MagicMock()
+    scalars_mock.first.return_value = value
+    result.scalars.return_value = scalars_mock
+    return result
 
 
-# ── Pure function tests ──────────────────────────────
+def _make_snapshot(day_open_equity: float) -> MagicMock:
+    """Create a mock ProtectionEvent snapshot with context_data."""
+    snap = MagicMock()
+    snap.context_data = {"day_open_equity": day_open_equity, "date": "2026-04-01"}
+    return snap
 
 
-class TestDailyDrawdownGuard:
-    def test_no_block_when_equity_above_threshold(self) -> None:
-        # 4% drop — within 5% limit
-        assert daily_drawdown_guard(1000.0, 960.0) is None
+def _build_db_no_block(
+    day_open_equity: float,
+    current_cash: float,
+    positions_value: float,
+    *,
+    snapshot_exists: bool = True,
+) -> AsyncMock:
+    """Build AsyncSession mock for a scenario where no block is triggered.
 
-    def test_blocks_at_exact_threshold(self) -> None:
-        # Exactly 5% drop
-        result = daily_drawdown_guard(1000.0, 950.0)
-        assert result is not None
-        assert result["blocked"] is True
-        assert result["rule"] == DAILY_DD_RULE
-        assert result["drawdown_pct"] == -0.05
+    Execute calls in order:
+    1. active block count → 0
+    2. portfolio current_cash
+    3. sum of open position values
+    4. snapshot query → existing or None
+    (if snapshot_exists=False: flush is called after db.add)
+    """
+    db = AsyncMock()
+    db.add = MagicMock()  # add() is synchronous on AsyncSession
+    results: list[Any] = [
+        # 1. active daily_drawdown count
+        _make_scalar_result(0),
+        # 2. portfolio current_cash
+        _make_scalar_result(current_cash),
+        # 3. sum open positions
+        _make_scalar_result(positions_value),
+    ]
 
-    def test_blocks_below_threshold(self) -> None:
-        # 10% drop
-        result = daily_drawdown_guard(1000.0, 900.0)
-        assert result is not None
-        assert result["blocked"] is True
-        assert result["drawdown_pct"] == -0.1
+    if snapshot_exists:
+        # 4. snapshot query returns existing snapshot
+        results.append(_make_scalars_result_first(_make_snapshot(day_open_equity)))
+    else:
+        # 4. snapshot query returns None (will create new)
+        results.append(_make_scalars_result_first(None))
 
-    def test_no_block_when_equity_increased(self) -> None:
-        assert daily_drawdown_guard(1000.0, 1100.0) is None
-
-    def test_zero_opening_equity_returns_none(self) -> None:
-        assert daily_drawdown_guard(0.0, 100.0) is None
-
-    def test_negative_opening_equity_returns_none(self) -> None:
-        assert daily_drawdown_guard(-50.0, 100.0) is None
-
-    def test_custom_threshold(self) -> None:
-        # 3% drop with 3% threshold
-        result = daily_drawdown_guard(1000.0, 970.0, threshold_pct=-0.03)
-        assert result is not None
-        assert result["blocked"] is True
-        assert result["threshold_pct"] == -0.03
-
-    def test_custom_threshold_not_breached(self) -> None:
-        # 2% drop with 3% threshold — not breached
-        assert daily_drawdown_guard(1000.0, 980.0, threshold_pct=-0.03) is None
-
-    def test_return_dict_has_required_keys(self) -> None:
-        result = daily_drawdown_guard(1000.0, 940.0)
-        assert result is not None
-        expected_keys = {
-            "blocked", "rule", "drawdown_pct",
-            "threshold_pct", "opening_equity", "current_equity",
-        }
-        assert set(result.keys()) == expected_keys
+    db.execute = AsyncMock(side_effect=results)
+    return db
 
 
-# ── Async function tests ─────────────────────────────
+def _build_db_already_blocked() -> AsyncMock:
+    """Build AsyncSession mock for scenario where daily_drawdown is already active."""
+    db = AsyncMock()
+    db.add = MagicMock()
+    db.execute = AsyncMock(side_effect=[
+        # 1. active daily_drawdown count → 1
+        _make_scalar_result(1),
+    ])
+    return db
 
 
-class TestCheckDailyDrawdown:
+# ── Tests ────────────────────────────────────────────
+
+
+class TestNoBlockWhenEquityAboveThreshold:
+    """4% drop (below 5% threshold) → entry allowed."""
+
     @pytest.mark.asyncio
-    async def test_creates_protection_event_on_breach(self) -> None:
-        db = AsyncMock()
-        db.execute = AsyncMock(return_value=_make_scalar_result(0))
-
-        blocked = await check_daily_drawdown(
-            db, PORTFOLIO_ID, 1000.0, 900.0, now=NOW,
+    async def test_allows_entry(self) -> None:
+        # day_open=1000, current=960 → 4% drop
+        db = _build_db_no_block(
+            day_open_equity=1000.0,
+            current_cash=460.0,
+            positions_value=500.0,
+            snapshot_exists=True,
         )
 
-        assert blocked is True
+        allowed, ptype, reason = await _daily_drawdown_guard(db, PORTFOLIO_ID, NOW)
+
+        assert allowed is True
+        assert ptype is None
+        assert reason is None
+
+
+class TestBlockWhenEquityBelowThreshold:
+    """6% drop (above 5% threshold) → entry blocked."""
+
+    @pytest.mark.asyncio
+    async def test_blocks_entry(self) -> None:
+        # day_open=1000, current=940 → 6% drop
+        db = _build_db_no_block(
+            day_open_equity=1000.0,
+            current_cash=440.0,
+            positions_value=500.0,
+            snapshot_exists=True,
+        )
+
+        allowed, ptype, reason = await _daily_drawdown_guard(db, PORTFOLIO_ID, NOW)
+
+        assert allowed is False
+        assert ptype == "daily_drawdown"
+        assert reason is not None
+        assert "6.0%" in reason
+        assert "$1000.00" in reason
+        assert "$940.00" in reason
+        # Verify a ProtectionEvent was added
+        db.add.assert_called()
+        db.flush.assert_awaited()
+
+
+class TestBlockAtExactThreshold:
+    """Exactly 5% drop → entry blocked (>= comparison)."""
+
+    @pytest.mark.asyncio
+    async def test_exact_threshold_blocks(self) -> None:
+        # day_open=1000, current=950 → exactly 5% drop
+        db = _build_db_no_block(
+            day_open_equity=1000.0,
+            current_cash=450.0,
+            positions_value=500.0,
+            snapshot_exists=True,
+        )
+
+        allowed, ptype, reason = await _daily_drawdown_guard(db, PORTFOLIO_ID, NOW)
+
+        assert allowed is False
+        assert ptype == "daily_drawdown"
+        assert reason is not None
+        assert "5.0%" in reason
+
+
+class TestCreatesSnapshotOnFirstCall:
+    """When no snapshot exists for today, one is created."""
+
+    @pytest.mark.asyncio
+    async def test_creates_snapshot(self) -> None:
+        # No snapshot exists, current equity = 1000 (no drop)
+        db = _build_db_no_block(
+            day_open_equity=1000.0,  # won't be used since snapshot_exists=False
+            current_cash=500.0,
+            positions_value=500.0,
+            snapshot_exists=False,
+        )
+
+        allowed, ptype, reason = await _daily_drawdown_guard(db, PORTFOLIO_ID, NOW)
+
+        assert allowed is True
+        assert ptype is None
+        # Verify snapshot was created via db.add
         db.add.assert_called_once()
-        event = db.add.call_args[0][0]
-        assert event.protection_type == DAILY_DD_RULE
-        assert event.status == "active"
-        assert "exceeded" in event.reason
-        assert event.context_data is not None
-        assert event.expires_at is not None
+        added_event = db.add.call_args[0][0]
+        assert added_event.protection_type == "daily_equity_snapshot"
+        assert added_event.status == "expired"
+        assert added_event.context_data["day_open_equity"] == 1000.0
+        assert added_event.context_data["date"] == "2026-04-01"
+        db.flush.assert_awaited()
+
+
+class TestReusesExistingSnapshot:
+    """When snapshot already exists for today, uses stored day_open_equity value."""
 
     @pytest.mark.asyncio
-    async def test_returns_true_when_already_blocked_today(self) -> None:
-        db = AsyncMock()
-        db.execute = AsyncMock(return_value=_make_scalar_result(1))
-
-        blocked = await check_daily_drawdown(
-            db, PORTFOLIO_ID, 1000.0, 900.0, now=NOW,
+    async def test_reuses_snapshot(self) -> None:
+        # Snapshot has day_open=1000, but current equity is 980 (2% drop, no block)
+        db = _build_db_no_block(
+            day_open_equity=1000.0,
+            current_cash=480.0,
+            positions_value=500.0,
+            snapshot_exists=True,
         )
 
-        assert blocked is True
+        allowed, ptype, reason = await _daily_drawdown_guard(db, PORTFOLIO_ID, NOW)
+
+        assert allowed is True
+        # db.add should NOT be called (no new snapshot needed, no block event)
         db.add.assert_not_called()
 
-    @pytest.mark.asyncio
-    async def test_returns_false_when_within_limit(self) -> None:
-        db = AsyncMock()
-        db.execute = AsyncMock(return_value=_make_scalar_result(0))
 
-        blocked = await check_daily_drawdown(
-            db, PORTFOLIO_ID, 1000.0, 980.0, now=NOW,
-        )
-
-        assert blocked is False
-        db.add.assert_not_called()
+class TestAlreadyBlockedReturnsEarly:
+    """When active daily_drawdown event exists, returns blocked without recomputing."""
 
     @pytest.mark.asyncio
-    async def test_event_expires_at_end_of_utc_day(self) -> None:
-        db = AsyncMock()
-        db.execute = AsyncMock(return_value=_make_scalar_result(0))
+    async def test_already_blocked(self) -> None:
+        db = _build_db_already_blocked()
 
-        await check_daily_drawdown(
-            db, PORTFOLIO_ID, 1000.0, 900.0, now=NOW,
-        )
+        allowed, ptype, reason = await _daily_drawdown_guard(db, PORTFOLIO_ID, NOW)
 
-        event = db.add.call_args[0][0]
-        expected_eod = datetime(2026, 4, 2, 0, 0, 0, tzinfo=timezone.utc)
-        assert event.expires_at == expected_eod
+        assert allowed is False
+        assert ptype == "daily_drawdown"
+        assert reason is not None
+        assert "circuit breaker active" in reason
+        # Only 1 DB call (the active block check) — no equity computation
+        assert db.execute.await_count == 1
