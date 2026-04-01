@@ -1,82 +1,84 @@
-# Rationale for `marketpulse-task-2026-04-01-0015`
+# Rationale for `marketpulse-task-2026-04-01-0001`
 
-**author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0015-implementation
-**commit_sha:** 
+**author:** coder-agent (MarketPulse Coder)
+**branch:** task/marketpulse-task-2026-04-01-0001-implementation
+**commit_sha:** b99f99bb2bbd5e72ab5016349f1b14b6fd25ed25
 **date:** 2026-04-01
 **model_calls:** 1
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0015 via coder_worker.py with model integration.
+Regression test suite locking down compute_recommendation() behavior for all four classification buckets.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** build_equity_curve([]) returns a single initial EquityPoint with equity == initial_capital and drawdown_pct == 0
+- **Criteria:** All 8 test functions pass
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `pytest tests/test_scoring_regression.py -v` — 9 passed (8 tests + 2 parametrized = 9 items)
 
-- **Criteria:** A buy transaction reduces cash and increases positions_value; a sell does the inverse
+- **Criteria:** Tests cover all 4 recommendation types: candidate_buy, watch_only, neutral, avoid
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_strong_buy_signals→candidate_buy, test_strong_avoid_signals→avoid, test_neutral_mixed_signals→neutral/watch_only, test_watch_only_mild_bullish→watch_only/candidate_buy
 
-- **Criteria:** equity always equals cash + positions_value at every point
+- **Criteria:** Determinism test confirms identical outputs for identical inputs
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_determinism runs 10 iterations, asserts single unique score and type
 
-- **Criteria:** drawdown_pct is correctly calculated as (equity - peak) / peak, always <= 0
+- **Criteria:** Score range test confirms composite_score in [0, 100]
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_score_range_bounds parametrized with extreme bullish and extreme bearish inputs
 
-- **Criteria:** EquityCurveOut.max_drawdown_pct equals the worst drawdown across all points
+- **Criteria:** Anomaly penalty test confirms anomalies reduce score
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_anomaly_penalty compares 0 vs 5 anomalies, asserts clean > dirty
 
-- **Criteria:** GET /equity-curve returns 200 with valid JSON matching EquityCurveOut schema
+- **Criteria:** Volume impact test confirms volume affects score
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_volume_impact compares 3x vs 0.2x volume, asserts high > low
 
-- **Criteria:** All tests pass, mypy clean
+- **Criteria:** mypy passes with no errors
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `mypy tests/test_scoring_regression.py --ignore-missing-imports` — Success: no issues found
+
+- **Criteria:** No database or external dependencies — pure function tests only
+- **Status:** `pass`
+- **Evidence:** Only imports from app.indicators.schemas and app.recommendations.scoring, no DB/network calls
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/equity_curve.py`
-- `backend/app/portfolio/router.py`
-- `backend/tests/test_equity_curve.py`
-- `rationale.md`
+- `backend/tests/test_scoring_regression.py` — New file: 8 regression test functions (9 test items with parametrize) covering all scoring classification buckets, determinism, bounds, anomaly penalty, and volume impact.
+- `rationale.md` — Updated for this task.
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_equity_curve.py -q` � passed
-  - `cd backend && uv run python -m mypy app/portfolio/equity_curve.py --ignore-missing-imports` � passed
+  - `cd backend && uv run python -m pytest tests/test_scoring_regression.py -v` → 9 passed
+  - `cd backend && uv run python -m mypy tests/test_scoring_regression.py --ignore-missing-imports` → Success: no issues found
 
 ---
 
 ## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
+- All test data is hardcoded indicator values (no fixtures, no DB, no external data).
 
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code � **Severity:** medium � **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+- **Risk:** Hardcoded score thresholds may drift if scoring weights change — **Severity:** low — **Mitigation:** Used range assertions (>=63, <40) instead of exact values per task spec guidance.
 
 ---
 
 ## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
+- New test file only, no production code changes.
 
 ---
 
 ## 8) Performance considerations
-- No performance impact expected.
+- Pure function tests, sub-second execution (~0.05s total).
 
 ---
 
@@ -84,21 +86,21 @@ Automated implementation for task marketpulse-task-2026-04-01-0015 via coder_wor
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
-- API key logged: `no` (only presence check)
+- API key logged: `no`
 
 ---
 
 ## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
+1. If scoring weights are recalibrated in the future, some threshold assertions may need updating.
 
 ---
 
 ## 11) Short changelog
-- `N/A` � feat(marketpulse-task-2026-04-01-0015): implementation
+- `b99f99b` — test(scoring): add regression tests for compute_recommendation [marketpulse-task-2026-04-01-0001]
 
 ---
 
 ## 12) Final verdict (developer self-check)
 - **I confirm** that all acceptance criteria marked `pass` have test evidence attached: `yes`
 - **I confirm** no forbidden paths were modified: `yes`
-- **I request** next step: `validate`
+- **I request** next step: `approve`
