@@ -76,6 +76,32 @@ class RiskMetricsOut(BaseModel):
     breakdown_by_reason: dict[str, int]
 
 
+class JournalEntryOut(BaseModel):
+    position_id: str
+    symbol: str | None = None
+    entry_price: float
+    exit_price: float | None = None
+    quantity: float
+    entry_value_usd: float
+    exit_value_usd: float | None = None
+    realized_pnl_usd: float | None = None
+    realized_pnl_pct: float | None = None
+    pnl_class: str
+    close_reason: str | None = None
+    close_reason_label: str
+    opened_at: str | None = None
+    closed_at: str | None = None
+    hold_duration_hours: float | None = None
+    entry_signals: dict | None = None
+    exit_signals: dict | None = None
+    transactions: list[dict] = []
+
+
+class JournalResponse(BaseModel):
+    entries: list[JournalEntryOut]
+    total: int
+
+
 class PortfolioSummaryOut(BaseModel):
     stats: PortfolioStatsOut
     open_positions: list[PositionOut]
