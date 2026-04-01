@@ -14,7 +14,7 @@ from app.indicators.calculators.rsi import calc_rsi
 from app.indicators.calculators.stochrsi import calc_stochrsi
 from app.indicators.calculators.squeeze import KeltnerResult, calc_keltner
 from app.indicators.calculators.vwap import calc_vwap
-from app.indicators.schemas import BollingerOut, IndicatorSnapshot, KeltnerOut, MACDOut
+from app.indicators.schemas import BollingerOut, IndicatorHistory, IndicatorSnapshot, KeltnerOut, MACDOut
 from app.logging_config import get_logger
 from app.market_data.models import PriceBar
 
@@ -102,6 +102,68 @@ async def get_indicators(
         vwap=vwap_res.vwap if vwap_res else None,
         keltner=_kc_to_out(kc_res),
         bars_available=len(bars),
+    )
+
+
+async def get_indicator_history(
+    db: AsyncSession,
+    asset_id: uuid.UUID,
+    asset_symbol: str,
+    interval: str = "1h",
+    lookback: int = DEFAULT_LOOKBACK,
+) -> IndicatorHistory | None:
+    """Compute rolling indicator values for sparkline display."""
+    result = await db.execute(
+        select(PriceBar)
+        .where(PriceBar.asset_id == asset_id, PriceBar.interval == interval)
+        .order_by(PriceBar.time.desc())
+        .limit(lookback)
+    )
+    bars = list(result.scalars().all())
+    if not bars:
+        return None
+
+    bars.reverse()
+    closes = pd.Series([float(b.close) for b in bars])
+    highs = pd.Series([float(b.high) for b in bars])
+    lows = pd.Series([float(b.low) for b in bars])
+    bar_times = [b.time for b in bars]
+
+    # Rolling RSI
+    rsi_series: list[float | None] = []
+    for i in range(len(closes)):
+        if i < 14:
+            rsi_series.append(None)
+        else:
+            val = calc_rsi(closes[: i + 1], period=14)
+            rsi_series.append(round(val, 2) if val is not None else None)
+
+    # Rolling MACD histogram
+    macd_hist: list[float | None] = []
+    for i in range(len(closes)):
+        if i < 35:
+            macd_hist.append(None)
+        else:
+            res = calc_macd(closes[: i + 1])
+            macd_hist.append(round(res.histogram, 4) if res else None)
+
+    # Rolling ADX
+    adx_series: list[float | None] = []
+    for i in range(len(closes)):
+        if i < 28:
+            adx_series.append(None)
+        else:
+            res = calc_adx(highs[: i + 1], lows[: i + 1], closes[: i + 1], period=14)
+            adx_series.append(round(res.adx, 2) if res else None)
+
+    return IndicatorHistory(
+        asset_id=asset_id,
+        interval=interval,
+        bars_used=len(bars),
+        rsi_14=rsi_series,
+        macd_histogram=macd_hist,
+        adx_14=adx_series,
+        bar_times=bar_times,
     )
 
 
