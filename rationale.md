@@ -1,112 +1,92 @@
-# Rationale for `marketpulse-task-2026-04-01-0005`
+# Rationale for `marketpulse-task-2026-04-01-0031`
 
-**author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0005-implementation
-**commit_sha:** 
+**author:** coder-agent (MarketPulse Coder)
+**branch:** task/marketpulse-task-2026-04-01-0031-implementation
 **date:** 2026-04-01
-**model_calls:** 1
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0005 via coder_worker.py with model integration.
+Integrate OBV (On-Balance Volume) indicator into the indicator service, schema, and tests.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** StrategyProfile dataclass has slippage_buy_pct and slippage_sell_pct float fields
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** calc_obv returns None when fewer than 2 data points
+- **Status:** `pass`
+- **Evidence:** `test_obv_insufficient_data` passes
 
-- **Criteria:** All three profile instances (conservative, balanced, aggressive) have appropriate slippage values
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** calc_obv returns correct cumulative OBV for a known series
+- **Status:** `pass`
+- **Evidence:** `test_obv_mixed`, `test_obv_uptrend`, `test_obv_downtrend` all pass with manually verified values
 
-- **Criteria:** mypy passes with no errors
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Entry price for new positions includes buy slippage (price * (1 + slippage_buy_pct))
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Exit price for closed positions includes sell slippage (price * (1 - slippage_sell_pct))
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Original market prices and slippage details are stored in exit_context JSONB
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Stop-loss/take-profit triggers still use raw market price (exits.py unchanged)
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** calc_obv is exported from calculators __init__.py
+- **Status:** `pass`
+- **Evidence:** `from app.indicators.calculators import calc_obv` succeeds
 
 - **Criteria:** mypy passes with no errors
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** `mypy` passes on all 4 files with no errors
 
-- **Criteria:** All 5 tests pass
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** IndicatorSnapshot schema includes obv field (float | None, default None)
+- **Status:** `pass`
+- **Evidence:** Field added to schemas.py
 
-- **Criteria:** Tests verify buy slippage increases entry price
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** get_indicators() calls calc_obv with closes and volumes series
+- **Status:** `pass`
+- **Evidence:** `obv_val = calc_obv(closes, volumes)` added to service.py
 
-- **Criteria:** Tests verify sell slippage decreases exit price
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** OBV value appears in the IndicatorSnapshot response when sufficient data exists
+- **Status:** `pass`
+- **Evidence:** `obv=obv_val` included in IndicatorSnapshot construction
 
-- **Criteria:** Tests verify slippage audit data in exit_context JSONB
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** All 6 test cases pass
+- **Status:** `pass`
+- **Evidence:** `6 passed in 0.37s`
 
-- **Criteria:** Tests verify per-profile slippage values
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Tests cover: insufficient data, uptrend, downtrend, mixed, flat price, minimal input
+- **Status:** `pass`
+- **Evidence:** All 6 test functions present and passing
 
-- **Criteria:** Tests verify zero slippage is a no-op
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** No test uses mocking
+- **Status:** `pass`
+- **Evidence:** All tests use direct `pd.Series` inputs
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/service.py`
-- `backend/app/strategy/profiles.py`
-- `backend/tests/test_slippage.py`
-- `rationale.md`
+- `backend/app/indicators/schemas.py` â€” Added `mfi_14` (pre-existing gap) and `obv` fields to IndicatorSnapshot
+- `backend/app/indicators/service.py` â€” Imported calc_obv, called it in get_indicators(), added to logging and snapshot
+- `backend/tests/test_obv.py` â€” Added `test_obv_single_pair` test case (6th test)
 
 ---
 
 ## 4) Tests run & results
-- **Commands run:**
-  - `cd backend && uv run python -m mypy app/strategy/profiles.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/service.py --ignore-missing-imports` — FAILED
-  - `cd backend && uv run python -m pytest tests/test_slippage.py -q` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/service.py --ignore-missing-imports` — FAILED
+- `cd backend && uv run python -c "from app.indicators.calculators import calc_obv; print('import ok')"` â€” passed
+- `cd backend && uv run python -m pytest tests/test_obv.py -q` â€” 6 passed
+- `cd backend && uv run python -m mypy app/indicators/calculators/obv.py app/indicators/schemas.py app/indicators/service.py tests/test_obv.py --ignore-missing-imports` â€” Success, no issues
 
 ---
 
 ## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
+- Pure unit tests with synthetic pd.Series data, no external data needed.
 
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code — **Severity:** medium — **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+- **Risk:** Integration â€” **Severity:** low â€” **Mitigation:** Follows exact same pattern as existing indicators (MFI, ADX, etc.)
 
 ---
 
 ## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
+- `obv` field defaults to `None`, so existing API consumers are unaffected.
+- `mfi_14` field addition fixes a pre-existing gap (service was already setting it).
 
 ---
 
 ## 8) Performance considerations
-- No performance impact expected.
+- OBV is O(n) single-pass computation. No performance concerns.
 
 ---
 
@@ -114,21 +94,23 @@ Automated implementation for task marketpulse-task-2026-04-01-0005 via coder_wor
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
-- API key logged: `no` (only presence check)
+- API key logged: `no`
 
 ---
 
 ## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
+- None.
 
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0005): implementation
+- feat(indicators): integrate OBV into indicator service and schema
+- test(obv): add test_obv_single_pair for 2-element edge case
+- fix(schemas): add missing mfi_14 field to IndicatorSnapshot
 
 ---
 
 ## 12) Final verdict (developer self-check)
 - **I confirm** that all acceptance criteria marked `pass` have test evidence attached: `yes`
 - **I confirm** no forbidden paths were modified: `yes`
-- **I request** next step: `validate`
+- **I request** next step: `approve`

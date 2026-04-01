@@ -39,6 +39,14 @@ def test_obv_mixed() -> None:
     assert result == 0.0
 
 
+def test_obv_single_pair() -> None:
+    """Exactly 2 data points — verify correct sign."""
+    # Up close
+    assert calc_obv(pd.Series([10.0, 12.0]), pd.Series([100.0, 250.0])) == 250.0
+    # Down close
+    assert calc_obv(pd.Series([12.0, 10.0]), pd.Series([100.0, 250.0])) == -250.0
+
+
 def test_obv_flat_close() -> None:
     """When close[i] == close[i-1], volume is not added to OBV."""
     closes = pd.Series([10.0, 10.0, 12.0])
