@@ -1,84 +1,90 @@
 # Rationale for `marketpulse-task-2026-04-01-0035`
 
-**author:** coder-worker (MarketPulse Coder)
+**author:** coder-agent (MarketPulse Coder)
 **branch:** task/marketpulse-task-2026-04-01-0035-implementation
-**commit_sha:** 
 **date:** 2026-04-01
-**model_calls:** 1
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0035 via coder_worker.py with model integration.
+Add avg win/loss % and best/worst trade % to RiskMetricsResult, frontend types, and PortfolioView display.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** KeltnerOut model has upper, middle, lower float fields
+- **Criteria:** RiskMetricsResult has avg_win_pct, avg_loss_pct, best_trade_pct, worst_trade_pct fields
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Dataclass updated with 4 new `float | None` fields, mypy passes
 
-- **Criteria:** IndicatorSnapshot has keltner: KeltnerOut | None = None field
+- **Criteria:** compute_risk_metrics returns correct values for all edge cases
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** 7 tests pass covering empty, only-wins, only-losses, mixed, extremes, zero-pnl, regression
 
-- **Criteria:** get_indicators() computes Keltner and includes it in the returned snapshot
+- **Criteria:** All existing tests still pass (no regression)
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** 15/15 existing tests in test_risk_metrics.py pass
 
-- **Criteria:** mypy passes on both files
+- **Criteria:** mypy passes with no errors
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `mypy app/portfolio/risk_metrics.py --ignore-missing-imports` â†’ Success
 
-- **Criteria:** All 6 tests pass
+- **Criteria:** RiskMetrics TypeScript interface includes all four new fields
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** 4 fields added to RiskMetrics in api.ts
 
-- **Criteria:** Tests cover insufficient data, valid output structure, channel width properties, and module exports
+- **Criteria:** PortfolioView displays avg win, avg loss, best trade, worst trade in the metrics grid
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** 4 new metric cards added after existing grid rows
 
-- **Criteria:** mypy passes on the test file
+- **Criteria:** Values are color-coded: green for positive, red for negative
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Conditional classes: text-green-400 for positive, text-red-400 for negative
+
+- **Criteria:** Null values show '--' gracefully
+- **Status:** `pass`
+- **Evidence:** Ternary checks in template with text-gray-500 for null
+
+- **Criteria:** vue-tsc passes with no type errors
+- **Status:** `pass`
+- **Evidence:** `npx vue-tsc --noEmit` â†’ no errors
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/indicators/schemas.py`
-- `backend/app/indicators/service.py`
-- `backend/tests/test_keltner.py`
-- `rationale.md`
+- `backend/app/portfolio/risk_metrics.py` â€” Added 4 fields to dataclass + computation logic from realized_pnl_pct
+- `backend/tests/test_risk_dashboard_metrics.py` â€” New test file: 7 tests for edge cases
+- `frontend/src/types/api.ts` â€” Added 4 fields to RiskMetrics interface
+- `frontend/src/views/PortfolioView.vue` â€” Added 4 metric cards in risk metrics grid
+- `rationale.md` â€” Updated for this task
 
 ---
 
 ## 4) Tests run & results
-- **Commands run:**
-  - `cd backend && uv run python -m mypy app/indicators/schemas.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m pytest tests/test_keltner.py -q` — passed
-  - `cd backend && uv run python -m mypy tests/test_keltner.py --ignore-missing-imports` — passed
+- `cd backend && uv run python -m pytest tests/test_risk_dashboard_metrics.py -q` â†’ 7 passed
+- `cd backend && uv run python -m pytest tests/test_risk_metrics.py -q` â†’ 15 passed
+- `cd backend && uv run python -m mypy app/portfolio/risk_metrics.py --ignore-missing-imports` â†’ Success
+- `cd frontend && npx vue-tsc --noEmit` â†’ Success
 
 ---
 
 ## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
+- Synthetic SimpleNamespace fixtures used in tests (no real data)
 
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code — **Severity:** medium — **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+- **Risk:** regression on existing consumers â€” **Severity:** low â€” **Mitigation:** named field access means new fields don't break existing code
 
 ---
 
 ## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
+- New fields default to None when no positions exist. No DB migration needed.
 
 ---
 
 ## 8) Performance considerations
-- No performance impact expected.
+- O(n) single pass over positions list, negligible overhead.
 
 ---
 
@@ -86,21 +92,20 @@ Automated implementation for task marketpulse-task-2026-04-01-0035 via coder_wor
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
-- API key logged: `no` (only presence check)
 
 ---
 
 ## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
+None.
 
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0035): implementation
+- feat(risk-metrics): add avg_win_pct, avg_loss_pct, best_trade_pct, worst_trade_pct to backend + frontend
 
 ---
 
 ## 12) Final verdict (developer self-check)
 - **I confirm** that all acceptance criteria marked `pass` have test evidence attached: `yes`
 - **I confirm** no forbidden paths were modified: `yes`
-- **I request** next step: `validate`
+- **I request** next step: `approve`

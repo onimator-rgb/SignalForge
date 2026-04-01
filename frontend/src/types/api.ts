@@ -300,6 +300,10 @@ export interface RiskMetrics {
   wins: number
   losses: number
   win_rate: number | null
+  avg_win_pct: number | null
+  avg_loss_pct: number | null
+  best_trade_pct: number | null
+  worst_trade_pct: number | null
   breakdown_by_reason: Record<string, number>
 }
 
