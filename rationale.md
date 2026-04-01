@@ -42,7 +42,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0009 via coder_wor
 ---
 
 ## 3) Files changed (and rationale per file)
-
+- `rationale.md`
 
 ---
 
