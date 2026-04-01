@@ -19,6 +19,16 @@ class BollingerOut(BaseModel):
     width: float
 
 
+class PivotOut(BaseModel):
+    pp: float
+    r1: float
+    r2: float
+    r3: float
+    s1: float
+    s2: float
+    s3: float
+
+
 class IndicatorSnapshot(BaseModel):
     asset_id: UUID
     asset_symbol: str
@@ -34,4 +44,5 @@ class IndicatorSnapshot(BaseModel):
     stoch_rsi_k: float | None = None
     stoch_rsi_d: float | None = None
     vwap: float | None = None
+    pivot: PivotOut | None = None
     bars_available: int  # how many bars were used
