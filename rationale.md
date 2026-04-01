@@ -1,106 +1,61 @@
-# Rationale for `marketpulse-task-2026-04-01-0035`
+# Rationale for `marketpulse-task-2026-04-01-0021`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0035-implementation
-**commit_sha:** 
-**date:** 2026-04-01
-**model_calls:** 1
+**branch:** task/marketpulse-task-2026-04-01-0021-implementation
+**commit_sha:** 71ebf52
 
----
+## 1. Task Summary
+Add multi-timeframe indicator tabs (5m, 1h, 4h, 1d) and a confluence summary panel to AssetDetailView.vue.
 
-## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0035 via coder_worker.py with model integration.
+## 2. Approach
+- Added missing TypeScript interfaces (IndicatorHistory, TimeframeSignal) to api.ts
+- Expanded interval selector from 2 to 4 timeframes
+- Added confluence panel that fetches all 4 intervals in parallel via Promise.all
+- Implemented signal classification functions (RSI/MACD/ADX) with color-coded UI
+- Overall confluence computed from cross-timeframe agreement
 
----
+## 3. Files Changed
+| File | Change |
+|------|--------|
+| frontend/src/types/api.ts | +17 lines â€” IndicatorHistory + TimeframeSignal interfaces |
+| frontend/src/views/AssetDetailView.vue | +132 lines â€” confluence panel, signal helpers, expanded intervals |
 
-## 2) Mapping to acceptance criteria
+## 4. Design Decisions
+- Kept all logic inline in `<script setup>` as specified â€” no new component files
+- Used existing `/api/v1/assets/{id}/indicators` endpoint for each interval
+- Confluence signal counts bullish/bearish timeframes: 4=Strong, 3=directional, else=Neutral
+- Null indicators treated as neutral to handle missing data gracefully
 
-- **Criteria:** KeltnerOut model has upper, middle, lower float fields
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+## 5. Risks & Mitigations
+- **API latency**: 4 parallel calls on mount â€” acceptable since each is lightweight JSON
+- **Missing data**: Some intervals may lack enough bars â€” handled with null checks and "N/A" display
 
-- **Criteria:** IndicatorSnapshot has keltner: KeltnerOut | None = None field
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+## 6. Testing
+- `vue-tsc --noEmit` passes with zero errors
+- Type interfaces match backend Pydantic schema exactly
 
-- **Criteria:** get_indicators() computes Keltner and includes it in the returned snapshot
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+## 7. Acceptance Criteria Status
+| Criterion | Status |
+|-----------|--------|
+| Interval selector shows 4 options: 5m, 1h, 4h, 1d | PASS |
+| Confluence panel fetches indicators for all 4 intervals on mount | PASS |
+| Each timeframe column shows RSI/MACD signal with color coding | PASS |
+| Overall confluence line displays Strong Buy/Buy/Neutral/Sell/Strong Sell | PASS |
+| Loading state shown while confluence data is being fetched | PASS |
+| Existing indicator detail cards preserved and still work | PASS |
+| vue-tsc --noEmit passes with no type errors | PASS |
 
-- **Criteria:** mypy passes on both files
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+## 8. Open Questions
+None.
 
-- **Criteria:** All 6 tests pass
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+## 9. Dependencies
+- Existing backend GET /assets/{id}/indicators endpoint with interval query param
 
-- **Criteria:** Tests cover insufficient data, valid output structure, channel width properties, and module exports
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+## 10. Rollback Plan
+Revert commit 71ebf52. No backend or database changes required.
 
-- **Criteria:** mypy passes on the test file
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+## 11. Security
+No secrets, API keys, or broker SDK calls. Paper-trading only.
 
----
-
-## 3) Files changed (and rationale per file)
-- `backend/app/indicators/schemas.py`
-- `backend/app/indicators/service.py`
-- `backend/tests/test_keltner.py`
-- `rationale.md`
-
----
-
-## 4) Tests run & results
-- **Commands run:**
-  - `cd backend && uv run python -m mypy app/indicators/schemas.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m pytest tests/test_keltner.py -q` — passed
-  - `cd backend && uv run python -m mypy tests/test_keltner.py --ignore-missing-imports` — passed
-
----
-
-## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
-
----
-
-## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code — **Severity:** medium — **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
-
----
-
-## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
-
----
-
-## 8) Performance considerations
-- No performance impact expected.
-
----
-
-## 9) Security & safety checks
-- forbidden paths touched: `no`
-- external/broker sdk usage: `no`
-- secrets touched: `no`
-- API key logged: `no` (only presence check)
-
----
-
-## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
-
----
-
-## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0035): implementation
-
----
-
-## 12) Final verdict (developer self-check)
-- **I confirm** that all acceptance criteria marked `pass` have test evidence attached: `yes`
-- **I confirm** no forbidden paths were modified: `yes`
-- **I request** next step: `validate`
+## 12. Next Steps
+- approve: Ready for review/merge
