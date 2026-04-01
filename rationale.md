@@ -1,134 +1,132 @@
-# Rationale for `marketpulse-task-2026-04-01-0005`
+# Rationale for `marketpulse-task-2026-04-01-0017`
 
-**author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0005-implementation
-**commit_sha:** 
+**author:** coder-agent (MarketPulse Coder)
+**branch:** task/marketpulse-task-2026-04-01-0017-implementation
+**commit_sha:** e068b27
 **date:** 2026-04-01
 **model_calls:** 1
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0005 via coder_worker.py with model integration.
+Add Strategy Management View (StrategyView.vue) displaying active profile, market regime, effective settings, auto-switch status, and all-profiles comparison table.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** StrategyProfile dataclass has slippage_buy_pct and slippage_sell_pct float fields
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** StrategyView.vue exists and compiles without TypeScript errors
+- **Status:** `pass`
+- **Evidence:** File created; `npx vue-tsc --noEmit` passes with zero errors
 
-- **Criteria:** All three profile instances (conservative, balanced, aggressive) have appropriate slippage values
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** View fetches /api/v1/strategy/summary on mount and displays all sections
+- **Status:** `pass`
+- **Evidence:** `onMounted(load)` calls `api.get('/strategy/summary')` and renders regime, profile, effective, auto_switch, and comparison sections
 
-- **Criteria:** mypy passes with no errors
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Market regime is color-coded (green/yellow/red)
+- **Status:** `pass`
+- **Evidence:** Computed properties `regimeColor` and `regimeBg` map risk_on->green, neutral->yellow, risk_off->red
 
-- **Criteria:** Entry price for new positions includes buy slippage (price * (1 + slippage_buy_pct))
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** All 15 profile parameters are displayed in the active profile section
+- **Status:** `pass`
+- **Evidence:** Active Profile card shows all 15 fields in a 4-column grid (Entry, Position, Trailing, Entry Trailing/Slippage)
 
-- **Criteria:** Exit price for closed positions includes sell slippage (price * (1 - slippage_sell_pct))
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** All 3 profiles are shown in a comparison table with active column highlighted
+- **Status:** `pass`
+- **Evidence:** ALL_PROFILES array contains all 3 profiles; table highlights active column with `text-blue-400` and `bg-blue-500/5`
 
-- **Criteria:** Original market prices and slippage details are stored in exit_context JSONB
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Effective settings show regime adjustments with deltas
+- **Status:** `pass`
+- **Evidence:** Effective Settings card shows `threshold -> adjusted (delta regime adj)` and `position -> adjusted (x multiplier)`
 
-- **Criteria:** Stop-loss/take-profit triggers still use raw market price (exits.py unchanged)
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Loading spinner and error handling are present
+- **Status:** `pass`
+- **Evidence:** `<LoadingSpinner v-if="loading" />` and `<ErrorBox v-else-if="error" :message="error" />`
 
-- **Criteria:** mypy passes with no errors
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Route /strategy exists and lazy-loads StrategyView
+- **Status:** `pass`
+- **Evidence:** Added to router/index.ts: `{ path: '/strategy', name: 'strategy', component: () => import('../views/StrategyView.vue') }`
 
-- **Criteria:** All 5 tests pass
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Navigation includes a Strategy link visible alongside other nav items
+- **Status:** `pass`
+- **Evidence:** Added to AppLayout.vue navItems: `{ to: '/strategy', label: 'Strategia', icon: 'ðŸŽ¯', badge: false }`
 
-- **Criteria:** Tests verify buy slippage increases entry price
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Tests verify sell slippage decreases exit price
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Tests verify slippage audit data in exit_context JSONB
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Tests verify per-profile slippage values
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Tests verify zero slippage is a no-op
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** TypeScript compilation passes
+- **Status:** `pass`
+- **Evidence:** `npx vue-tsc --noEmit` exits with code 0
 
 ---
 
-## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/service.py`
-- `backend/app/strategy/profiles.py`
-- `backend/tests/test_slippage.py`
-- `rationale.md`
+## 3) Design decisions
+
+- Used static ALL_PROFILES array in frontend rather than adding a new backend endpoint, since profiles are frozen config values.
+- Followed Polish naming convention for nav label ("Strategia") consistent with existing labels like "Aktywa", "Anomalie", "Alerty".
+- Used 4-column grid layout for active profile parameters grouped by category (Entry, Position, Trailing, Entry Trailing/Slippage).
+- Comparison table uses 14 rows (all numeric/boolean params) with active column visually highlighted.
 
 ---
 
-## 4) Tests run & results
-- **Commands run:**
-  - `cd backend && uv run python -m mypy app/strategy/profiles.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/service.py --ignore-missing-imports` — FAILED
-  - `cd backend && uv run python -m pytest tests/test_slippage.py -q` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/service.py --ignore-missing-imports` — FAILED
+## 4) Files changed
+
+| File | Action | LOC |
+|------|--------|-----|
+| frontend/src/views/StrategyView.vue | created | ~240 |
+| frontend/src/router/index.ts | modified | +1 |
+| frontend/src/components/AppLayout.vue | modified | +1 |
 
 ---
 
-## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
+## 5) Tests / checks executed
+
+| Command | Exit code |
+|---------|-----------|
+| `cd frontend && npx vue-tsc --noEmit` | 0 |
 
 ---
 
-## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code — **Severity:** medium — **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+## 6) Risks and mitigations
+
+- **Low risk**: Pure frontend view consuming existing API endpoint â€” no backend changes needed.
+- **Low risk**: Static profile data in frontend could drift from backend. Mitigation: values are frozen dataclass defaults unlikely to change frequently.
 
 ---
 
-## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
+## 7) Security review
+
+- No secrets accessed or committed.
+- No broker API calls.
+- No external service calls.
+- Read-only display â€” no mutation endpoints called.
 
 ---
 
-## 8) Performance considerations
-- No performance impact expected.
+## 8) Rollback plan
+
+Revert commit e068b27 to remove all changes cleanly.
 
 ---
 
-## 9) Security & safety checks
-- forbidden paths touched: `no`
-- external/broker sdk usage: `no`
-- secrets touched: `no`
-- API key logged: `no` (only presence check)
+## 9) Open questions
+
+None â€” all acceptance criteria met.
 
 ---
 
-## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
+## 10) Dependencies verified
+
+- `frontend/src/api/client.ts` â€” axios client exists, baseURL includes `/api/v1`
+- `frontend/src/components/LoadingSpinner.vue` â€” exists, no props
+- `frontend/src/components/ErrorBox.vue` â€” exists, takes optional `message` prop
+- `backend/app/strategy/router.py` â€” `/api/v1/strategy/summary` endpoint exists
 
 ---
 
-## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0005): implementation
+## 11) Performance notes
+
+- Single API call on mount. No polling. Lightweight render.
 
 ---
 
-## 12) Final verdict (developer self-check)
-- **I confirm** that all acceptance criteria marked `pass` have test evidence attached: `yes`
-- **I confirm** no forbidden paths were modified: `yes`
-- **I request** next step: `validate`
+## 12) Next recommended step
+
+`approve` â€” all criteria pass, TypeScript clean, follows existing patterns.
