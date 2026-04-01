@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0001`
+# Rationale for `marketpulse-task-2026-04-01-0003`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0001-implementation
+**branch:** task/marketpulse-task-2026-04-01-0003-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,33 +9,33 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0001 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0003 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** All 8 test functions pass
+- **Criteria:** All 4 detectors have at least 4 test cases each
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Tests cover all 4 recommendation types: candidate_buy, watch_only, neutral, avoid
+- **Criteria:** Edge cases covered: empty/short data, at-threshold, zero-std, None RSI
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Determinism test confirms identical outputs for identical inputs
+- **Criteria:** PriceSpikeDetector: both spike and crash directions tested
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Score range test confirms composite_score in [0, 100]
+- **Criteria:** RSIExtremeDetector: both overbought and oversold tested
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Anomaly penalty test confirms anomalies reduce score
+- **Criteria:** SqueezeDetector: uses mocks for detect_squeeze dependency
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Volume impact test confirms volume affects score
+- **Criteria:** All tests pass with pytest
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
@@ -43,23 +43,18 @@ Automated implementation for task marketpulse-task-2026-04-01-0001 via coder_wor
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** No database or external dependencies â€” pure function tests only
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/tests/test_scoring_regression.py`
-- `marketpulse-orchestrator/roadmap/v5_advanced_platform.json`
+- `backend/tests/test_anomaly_detectors_full.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_scoring_regression.py -q` — passed
-  - `cd backend && uv run python -m mypy tests/test_scoring_regression.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_anomaly_detectors_full.py -q` — passed
+  - `cd backend && uv run python -m mypy tests/test_anomaly_detectors_full.py --ignore-missing-imports` — passed
 
 ---
 
@@ -97,7 +92,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0001 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0001): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0003): implementation
 
 ---
 
