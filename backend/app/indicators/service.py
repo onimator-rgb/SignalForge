@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.indicators.calculators.adx import calc_adx
 from app.indicators.calculators.bollinger import BollingerResult, calc_bollinger
 from app.indicators.calculators.macd import MACDResult, calc_macd
-from app.indicators.calculators.obv import calc_obv
+from app.indicators.calculators.mfi import calc_mfi
 from app.indicators.calculators.rsi import calc_rsi
 from app.indicators.calculators.stochrsi import calc_stochrsi
 from app.indicators.schemas import BollingerOut, IndicatorSnapshot, MACDOut
@@ -63,8 +63,8 @@ async def get_indicators(
     macd_res = calc_macd(closes, fast=12, slow=26, signal_period=9)
     bb_res = calc_bollinger(closes, period=20, num_std=2.0)
     adx_res = calc_adx(highs, lows, closes, period=14)
+    mfi_val = calc_mfi(highs, lows, closes, volumes, period=14)
     stochrsi_res = calc_stochrsi(closes)
-    obv_val = calc_obv(closes, volumes)
 
     log.debug(
         "indicators_calc_done",
@@ -74,8 +74,8 @@ async def get_indicators(
         has_macd=macd_res is not None,
         has_bb=bb_res is not None,
         has_adx=adx_res is not None,
+        mfi=mfi_val,
         has_stochrsi=stochrsi_res is not None,
-        has_obv=obv_val is not None,
     )
 
     return IndicatorSnapshot(
@@ -90,9 +90,9 @@ async def get_indicators(
         adx_14=adx_res.adx if adx_res else None,
         plus_di=adx_res.plus_di if adx_res else None,
         minus_di=adx_res.minus_di if adx_res else None,
+        mfi_14=mfi_val,
         stoch_rsi_k=stochrsi_res.k if stochrsi_res else None,
         stoch_rsi_d=stochrsi_res.d if stochrsi_res else None,
-        obv=obv_val,
         bars_available=len(bars),
     )
 
