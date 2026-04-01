@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0007`
+# Rationale for `marketpulse-task-2026-04-01-0009`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0007-implementation
+**branch:** task/marketpulse-task-2026-04-01-0009-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,62 +9,49 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0009 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** GET /api/v1/portfolio/protection-history returns 200 with a JSON list
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** MIN_VOLUME_USD config dict exists with crypto, stock, and default keys
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** Each item in the list has fields: id, protection_type, status, reason, created_at
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** _check_volume_filter queries last 24 1h price_bars and computes USD volume
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** The limit query parameter caps the number of results (default 20)
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** check_protections calls _check_volume_filter and blocks entry when volume is insufficient
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** Results are ordered by created_at descending (newest first)
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** ProtectionEvent with type='low_volume_guard' is logged when entry is blocked
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** PortfolioView.vue has a collapsible 'Protection History' section
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** All 5 test cases pass
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** Protection events are color-coded by type using protectionColor()
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Each event card shows protection_type, reason, timestamp, and expires_at if present
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** All backend tests pass, mypy passes, vue-tsc passes
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** mypy passes with no errors
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/router.py`
-- `backend/app/portfolio/schemas.py`
-- `backend/tests/test_protection_history.py`
-- `frontend/src/types/api.ts`
-- `frontend/src/views/PortfolioView.vue`
+- `backend/app/portfolio/protections.py`
+- `backend/tests/test_volume_filter_guard.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_protection_history.py -q` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/router.py --ignore-missing-imports` — FAILED
-  - `cd backend && uv run python -m mypy app/portfolio/schemas.py --ignore-missing-imports` — passed
-  - `cd frontend && npx vue-tsc --noEmit` — passed
+  - `cd backend && uv run python -m pytest tests/test_volume_filter.py -q` — passed
+  - `cd backend && uv run python -m mypy app/portfolio/protections.py --ignore-missing-imports` — passed
 
 ---
 
@@ -102,7 +89,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0007): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0009): implementation
 
 ---
 
