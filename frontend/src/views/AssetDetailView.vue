@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import api from '../api/client'
 import { fetchAssetDetail, fetchOHLCV } from '../api/assets'
@@ -7,7 +7,7 @@ import { fetchAnomalies } from '../api/anomalies'
 import { generateReport } from '../api/reports'
 import { fetchWatchlists, addAssetToWatchlist } from '../api/watchlists'
 import { fetchAssetRecommendation } from '../api/recommendations'
-import type { AssetDetail, PriceBar, AnomalyEvent, Watchlist, Recommendation, IndicatorHistory } from '../types/api'
+import type { AssetDetail, PriceBar, AnomalyEvent, Watchlist, Recommendation, IndicatorHistory, AssetIndicatorsSummary } from '../types/api'
 import { fmtPrice, fmtPriceDetail, fmtVol, fmtTime } from '../utils/format'
 import PriceChange from '../components/PriceChange.vue'
 import SeverityBadge from '../components/SeverityBadge.vue'
@@ -34,11 +34,80 @@ const showWatchlistMenu = ref(false)
 const watchlistAdding = ref(false)
 const recommendation = ref<Recommendation | null>(null)
 const indicatorHistory = ref<IndicatorHistory | null>(null)
+const confluenceData = ref<Record<string, AssetIndicatorsSummary | null>>({})
+const confluenceLoading = ref(false)
+const allIntervals = ['5m', '1h', '4h', '1d']
+
+function getRsiSignal(rsi: number | null | undefined): 'bullish' | 'bearish' | 'neutral' {
+  if (rsi == null) return 'neutral'
+  if (rsi < 30) return 'bullish'
+  if (rsi > 70) return 'bearish'
+  return 'neutral'
+}
+
+function getMacdSignal(histogram: number | null | undefined): 'bullish' | 'bearish' | 'neutral' {
+  if (histogram == null) return 'neutral'
+  return histogram > 0 ? 'bullish' : 'bearish'
+}
+
+function getAdxStrength(adx: number | null | undefined): 'strong' | 'weak' | 'none' {
+  if (adx == null) return 'none'
+  return adx > 25 ? 'strong' : 'weak'
+}
+
+function getDiDirection(plusDi: number | null | undefined, minusDi: number | null | undefined): 'bullish' | 'bearish' {
+  return (plusDi ?? 0) > (minusDi ?? 0) ? 'bullish' : 'bearish'
+}
+
+function computeConfluence(data: Record<string, AssetIndicatorsSummary | null>): { label: string; color: string } {
+  let bullish = 0
+  let bearish = 0
+  for (const iv of allIntervals) {
+    const ind = data[iv]
+    if (!ind) continue
+    const rsi = getRsiSignal(ind.rsi_14)
+    const macd = getMacdSignal(ind.macd?.histogram)
+    // Count timeframe as bullish if at least RSI or MACD is bullish and neither is bearish
+    const signals = [rsi, macd]
+    if (signals.includes('bullish') && !signals.includes('bearish')) bullish++
+    else if (signals.includes('bearish') && !signals.includes('bullish')) bearish++
+  }
+  if (bullish >= 4) return { label: 'Strong Buy', color: 'text-green-400' }
+  if (bullish >= 3) return { label: 'Buy', color: 'text-green-400' }
+  if (bearish >= 4) return { label: 'Strong Sell', color: 'text-red-400' }
+  if (bearish >= 3) return { label: 'Sell', color: 'text-red-400' }
+  return { label: 'Neutral', color: 'text-yellow-400' }
+}
+
+const overallConfluence = computed(() => computeConfluence(confluenceData.value))
+
+async function loadConfluence() {
+  confluenceLoading.value = true
+  try {
+    const results = await Promise.all(
+      allIntervals.map(iv =>
+        api.get<AssetIndicatorsSummary>(`/assets/${assetId.value}/indicators`, {
+          params: { interval: iv },
+        }).then(r => r.data).catch(() => null)
+      )
+    )
+    const data: Record<string, AssetIndicatorsSummary | null> = {}
+    allIntervals.forEach((iv, i) => { data[iv] = results[i] })
+    confluenceData.value = data
+  } finally {
+    confluenceLoading.value = false
+  }
+}
 
 onMounted(() => {
   loadAll()
+  loadConfluence()
   fetchWatchlists().then(wls => watchlists.value = wls).catch(() => {})
   fetchAssetRecommendation(assetId.value).then(r => recommendation.value = r).catch(() => {})
+})
+
+watch(assetId, () => {
+  loadConfluence()
 })
 
 async function loadAll() {
@@ -195,7 +264,7 @@ function normalizeSparkline(values: (number | null)[]): { height: number; value:
               <h2 class="text-sm font-semibold">Cena ({{ interval }})</h2>
               <div class="flex gap-1">
                 <button
-                  v-for="iv in ['1h', '1d']"
+                  v-for="iv in allIntervals"
                   :key="iv"
                   class="px-2 py-0.5 text-xs rounded"
                   :class="interval === iv ? 'bg-blue-500/20 text-blue-400' : 'text-gray-500 hover:text-gray-300'"
@@ -215,6 +284,66 @@ function normalizeSparkline(values: (number | null)[]): { height: number; value:
             <div v-else class="h-24 flex items-center justify-center text-sm text-gray-600">
               Brak danych dla interwalu {{ interval }}.
             </div>
+          </div>
+
+          <!-- Timeframe Confluence -->
+          <div class="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4">
+            <h2 class="text-sm font-semibold mb-3">Timeframe Confluence</h2>
+            <div v-if="confluenceLoading" class="text-sm text-gray-500">Loading...</div>
+            <template v-else>
+              <div class="grid grid-cols-4 gap-3 mb-3">
+                <div
+                  v-for="iv in allIntervals"
+                  :key="iv"
+                  class="bg-gray-900/60 rounded-lg p-2.5 text-center"
+                >
+                  <div class="text-[10px] text-gray-500 font-medium mb-1.5">{{ iv.toUpperCase() }}</div>
+                  <template v-if="confluenceData[iv]">
+                    <div class="text-xs mb-1">
+                      <span class="text-gray-500">RSI </span>
+                      <span
+                        class="font-medium tabular-nums"
+                        :class="{
+                          'text-green-400': getRsiSignal(confluenceData[iv]?.rsi_14) === 'bullish',
+                          'text-red-400': getRsiSignal(confluenceData[iv]?.rsi_14) === 'bearish',
+                          'text-gray-400': getRsiSignal(confluenceData[iv]?.rsi_14) === 'neutral',
+                        }"
+                      >{{ confluenceData[iv]?.rsi_14?.toFixed(0) ?? '—' }}</span>
+                    </div>
+                    <div class="text-xs mb-1">
+                      <span class="text-gray-500">MACD </span>
+                      <span
+                        class="font-medium"
+                        :class="{
+                          'text-green-400': getMacdSignal(confluenceData[iv]?.macd?.histogram) === 'bullish',
+                          'text-red-400': getMacdSignal(confluenceData[iv]?.macd?.histogram) === 'bearish',
+                          'text-gray-400': getMacdSignal(confluenceData[iv]?.macd?.histogram) === 'neutral',
+                        }"
+                      >{{ getMacdSignal(confluenceData[iv]?.macd?.histogram) === 'bullish' ? '+' : getMacdSignal(confluenceData[iv]?.macd?.histogram) === 'bearish' ? '-' : '—' }}</span>
+                    </div>
+                    <div class="text-xs">
+                      <span class="text-gray-500">ADX </span>
+                      <span
+                        class="font-medium tabular-nums"
+                        :class="{
+                          'text-green-400': getAdxStrength(confluenceData[iv]?.adx_14) === 'strong',
+                          'text-gray-500': getAdxStrength(confluenceData[iv]?.adx_14) !== 'strong',
+                        }"
+                      >{{ confluenceData[iv]?.adx_14?.toFixed(0) ?? '—' }}</span>
+                      <span
+                        class="text-[10px] ml-0.5"
+                        :class="getDiDirection(confluenceData[iv]?.plus_di, confluenceData[iv]?.minus_di) === 'bullish' ? 'text-green-400' : 'text-red-400'"
+                      >{{ getDiDirection(confluenceData[iv]?.plus_di, confluenceData[iv]?.minus_di) === 'bullish' ? '▲' : '▼' }}</span>
+                    </div>
+                  </template>
+                  <div v-else class="text-xs text-gray-600">N/A</div>
+                </div>
+              </div>
+              <div class="flex items-center justify-between border-t border-gray-700/50 pt-2">
+                <span class="text-xs text-gray-500">Overall Signal</span>
+                <span class="text-sm font-bold" :class="overallConfluence.color">{{ overallConfluence.label }}</span>
+              </div>
+            </template>
           </div>
 
           <!-- OHLCV table -->

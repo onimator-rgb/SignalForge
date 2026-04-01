@@ -38,6 +38,23 @@ export interface BollingerOut {
   width: number
 }
 
+export interface IndicatorHistory {
+  asset_id: string
+  interval: string
+  bars_used: number
+  rsi_14: (number | null)[]
+  macd_histogram: (number | null)[]
+  adx_14: (number | null)[]
+  bar_times: string[]
+}
+
+export interface TimeframeSignal {
+  interval: string
+  rsi_signal: 'bullish' | 'bearish' | 'neutral'
+  macd_signal: 'bullish' | 'bearish' | 'neutral'
+  adx_trend_strength: 'strong' | 'weak' | 'none'
+}
+
 export interface AssetIndicatorsSummary {
   interval: string
   bar_time: string
