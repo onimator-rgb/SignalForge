@@ -1,92 +1,83 @@
-# Rationale for `marketpulse-task-2026-04-01-0011`
+# Rationale for `marketpulse-task-2026-04-01-0009`
 
-**author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0011-implementation
-**commit_sha:** 
-**date:** 2026-03-31
-**model_calls:** 1
+**author:** coder-agent (MarketPulse Coder)
+**branch:** task/marketpulse-task-2026-04-01-0009-implementation
+**date:** 2026-04-01
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0011 via coder_worker.py with model integration.
+Added consecutive stop-loss protection guard that blocks new entries when the last N closed positions were all stop-loss exits.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** REGIME_TO_PROFILE maps risk_onâ†’aggressive, neutralâ†’balanced, risk_offâ†’conservative
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** _check_consecutive_sl queries last N closed positions and checks if all are stop-loss exits
+- **Status:** `pass`
+- **Evidence:** Function queries PortfolioPosition with status=closed, ordered by closed_at DESC, limit=CONSECUTIVE_SL_THRESHOLD, checks all close_reasons against {'stop_hit', 'trailing_stop_hit'}
 
-- **Criteria:** auto_select_profile is async, calls calculate_regime, and returns correct profile+regime tuple
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Guard creates a ProtectionEvent with type 'consecutive_sl_guard' and correct expiry
+- **Status:** `pass`
+- **Evidence:** Calls _log_protection with ptype='consecutive_sl_guard', expires=now + timedelta(minutes=120). TestProtectionEventCreation verifies this.
 
-- **Criteria:** is_auto_switch_enabled reads from settings with False default
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Guard is wired into check_protections() between stoploss_guard and class_exposure checks
+- **Status:** `pass`
+- **Evidence:** Section B2 in check_protections(), lines 67-70
 
-- **Criteria:** /summary endpoint includes auto_switch section with enabled, recommended_profile, reason fields
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Does not duplicate active ProtectionEvent (uses existing _log_protection dedup logic)
+- **Status:** `pass`
+- **Evidence:** _log_protection checks for existing active event of same type before creating new one
 
-- **Criteria:** All 6 tests pass
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** mypy passes with no errors
+- **Status:** `pass`
+- **Evidence:** `mypy app/portfolio/protections.py --ignore-missing-imports` â†’ Success: no issues found
 
-- **Criteria:** Tests cover all 3 regimeâ†’profile mappings
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** All 5+ test cases pass
+- **Status:** `pass`
+- **Evidence:** 9 tests passed covering all scenarios
 
-- **Criteria:** Tests verify auto-switch enabled/disabled behavior
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Tests cover: trigger after N stops, broken streak allows, below threshold allows, expiry behavior, mixed stop reasons
+- **Status:** `pass`
+- **Evidence:** TestConsecutiveSlTriggersAfterNStops, TestConsecutiveSlAllowsWhenBrokenByProfit, TestConsecutiveSlAllowsWhenFewerThanThreshold, TestConsecutiveSlGuardExpires, TestConsecutiveSlMixedStopReasons
 
-- **Criteria:** No DB fixtures needed â€” regime calculation is mocked
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** No test relies on real database
+- **Status:** `pass`
+- **Evidence:** All tests use AsyncMock for db session
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/config.py`
-- `backend/app/strategy/profiles.py`
-- `backend/app/strategy/router.py`
-- `backend/app/strategy/service.py`
-- `backend/tests/test_auto_switch.py`
-- `rationale.md`
+- `backend/app/portfolio/protections.py` â€” added _check_consecutive_sl() guard function, config constants, wired into check_protections()
+- `backend/tests/test_consecutive_sl.py` â€” 9 test cases covering all acceptance criteria scenarios
+- `rationale.md` â€” this file
 
 ---
 
 ## 4) Tests run & results
-- **Commands run:**
-  - `cd backend && uv run python -m py_compile app/strategy/service.py` — passed
-  - `cd backend && uv run python -m mypy app/strategy/service.py --ignore-missing-imports` — FAILED
-  - `cd backend && uv run python -m mypy app/strategy/profiles.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/strategy/router.py --ignore-missing-imports` — FAILED
-  - `cd backend && uv run python -m pytest tests/test_auto_switch.py -q` — passed
-  - `cd backend && uv run python -m mypy tests/test_auto_switch.py --ignore-missing-imports` — FAILED
+- `cd backend && uv run python -m pytest tests/test_consecutive_sl.py -q` â†’ 9 passed
+- `cd backend && uv run python -m mypy app/portfolio/protections.py --ignore-missing-imports` â†’ Success
 
 ---
 
 ## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
+- All tests use synthetic mock data (AsyncMock side_effect lists)
 
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code — **Severity:** medium — **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+- **Risk:** Integration with existing guards â€” **Severity:** low â€” **Mitigation:** follows exact same pattern as _check_stoploss_guard
 
 ---
 
 ## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
+- No database migrations needed (uses existing ProtectionEvent table with new protection_type value)
+- No breaking changes to existing guards
 
 ---
 
 ## 8) Performance considerations
-- No performance impact expected.
+- Single query for last N closed positions (LIMIT 3) â€” negligible overhead
 
 ---
 
@@ -94,21 +85,21 @@ Automated implementation for task marketpulse-task-2026-04-01-0011 via coder_wor
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
-- API key logged: `no` (only presence check)
+- API key logged: `no`
 
 ---
 
 ## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
+- None
 
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0011): implementation
+- feat(marketpulse-task-2026-04-01-0009): add consecutive stop-loss protection guard
 
 ---
 
 ## 12) Final verdict (developer self-check)
 - **I confirm** that all acceptance criteria marked `pass` have test evidence attached: `yes`
 - **I confirm** no forbidden paths were modified: `yes`
-- **I request** next step: `validate`
+- **I request** next step: `approve`

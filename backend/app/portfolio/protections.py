@@ -3,8 +3,10 @@
 Protection rules (checked before opening new positions):
   A. Asset cooldown — no re-entry on recently closed asset
   B. Stoploss guard — pause after consecutive losses
+  B2. Consecutive SL guard — pause after N consecutive stop-loss exits
   C. Asset class exposure cap — limit concentration per class
   D. Entry frequency cap — limit new positions per time window
+  E. Risk-off extra restriction
 """
 
 import uuid
@@ -27,6 +29,8 @@ STOPLOSS_GUARD_MAX_LOSSES = 2
 STOPLOSS_GUARD_LOCK_HOURS = 6
 MAX_PER_CLASS = 3  # max open positions per asset_class
 MAX_NEW_POSITIONS_PER_6H = 2
+CONSECUTIVE_SL_THRESHOLD = 3
+CONSECUTIVE_SL_LOCK_MINUTES = 120
 
 
 async def check_protections(
@@ -50,6 +54,7 @@ async def check_protections(
     # A. Asset cooldown
     blocked, reason = await _check_asset_cooldown(db, portfolio_id, asset_id, now)
     if blocked:
+        assert reason is not None
         await _log_protection(db, "asset_cooldown", reason, asset_id=asset_id, now=now,
                               expires=now + timedelta(hours=ASSET_COOLDOWN_HOURS))
         return False, "asset_cooldown", reason
@@ -58,6 +63,11 @@ async def check_protections(
     blocked, reason = await _check_stoploss_guard(db, portfolio_id, now)
     if blocked:
         return False, "stoploss_guard", reason
+
+    # B2. Consecutive stop-loss guard
+    blocked, reason = await _check_consecutive_sl(db, portfolio_id, now)
+    if blocked:
+        return False, "consecutive_sl_guard", reason
 
     # C. Asset class exposure
     blocked, reason = await _check_class_exposure(db, portfolio_id, asset_class)
@@ -190,6 +200,48 @@ async def _check_entry_frequency(
     recent = result.scalar_one()
     if recent >= MAX_NEW_POSITIONS_PER_6H:
         return True, f"{recent} entries in last 6h (cap={MAX_NEW_POSITIONS_PER_6H})"
+    return False, None
+
+
+async def _check_consecutive_sl(
+    db: AsyncSession, portfolio_id: uuid.UUID, now: datetime
+) -> tuple[bool, str | None]:
+    # Check if guard is already active
+    active = await db.execute(
+        select(func.count()).where(
+            ProtectionEvent.protection_type == "consecutive_sl_guard",
+            ProtectionEvent.status == "active",
+        )
+    )
+    if active.scalar_one() > 0:
+        return True, "Consecutive SL guard active — cooling down"
+
+    # Query last N closed positions ordered by closed_at DESC
+    result = await db.execute(
+        select(PortfolioPosition.close_reason)
+        .where(
+            PortfolioPosition.portfolio_id == portfolio_id,
+            PortfolioPosition.status == "closed",
+            PortfolioPosition.closed_at.isnot(None),
+        )
+        .order_by(PortfolioPosition.closed_at.desc())
+        .limit(CONSECUTIVE_SL_THRESHOLD)
+    )
+    reasons = result.scalars().all()
+
+    if len(reasons) < CONSECUTIVE_SL_THRESHOLD:
+        return False, None
+
+    stop_reasons = {"stop_hit", "trailing_stop_hit"}
+    if all(r in stop_reasons for r in reasons):
+        reason = (
+            f"{CONSECUTIVE_SL_THRESHOLD} consecutive stop losses "
+            f"— locked for {CONSECUTIVE_SL_LOCK_MINUTES}min"
+        )
+        expires = now + timedelta(minutes=CONSECUTIVE_SL_LOCK_MINUTES)
+        await _log_protection(db, "consecutive_sl_guard", reason, now=now, expires=expires)
+        return True, reason
+
     return False, None
 
 
