@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0011`
+# Rationale for `marketpulse-task-2026-04-01-0005`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0011-implementation
+**branch:** task/marketpulse-task-2026-04-01-0005-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,72 +9,84 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0011 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0005 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** calc_vwap returns VWAPResult with correct vwap value for a known dataset
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** StrategyProfile dataclass has slippage_buy_pct and slippage_sell_pct float fields
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** calc_vwap returns None when fewer than 2 bars
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** All three profile instances (conservative, balanced, aggressive) have appropriate slippage values
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** calc_vwap returns None when total volume is zero
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** mypy passes with no errors
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** VWAPResult and calc_vwap are exported from calculators __init__
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Entry price for new positions includes buy slippage (price * (1 + slippage_buy_pct))
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** IndicatorSnapshot has a vwap field of type float | None
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Exit price for closed positions includes sell slippage (price * (1 - slippage_sell_pct))
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** get_indicators() computes and returns vwap in the snapshot
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Original market prices and slippage details are stored in exit_context JSONB
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** mypy passes on both files with no errors
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Stop-loss/take-profit triggers still use raw market price (exits.py unchanged)
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** mypy passes with no errors
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** All 5 tests pass
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Tests cover: normal case, insufficient data, zero volume, single-volume bar, uniform volume
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Tests verify buy slippage increases entry price
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** No test uses mocks â€” pure unit tests against calc_vwap
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Tests verify sell slippage decreases exit price
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** Tests verify slippage audit data in exit_context JSONB
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** Tests verify per-profile slippage values
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** Tests verify zero slippage is a no-op
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/indicators/calculators/__init__.py`
-- `backend/app/indicators/calculators/vwap.py`
-- `backend/app/indicators/schemas.py`
-- `backend/app/indicators/service.py`
-- `backend/tests/test_vwap.py`
+- `backend/app/portfolio/service.py`
+- `backend/app/strategy/profiles.py`
+- `backend/tests/test_slippage.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -c "from app.indicators.calculators.vwap import calc_vwap, VWAPResult; print('import ok')"` — passed
-  - `cd backend && uv run python -m mypy app/indicators/calculators/vwap.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/indicators/schemas.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m pytest tests/test_vwap.py -q` — passed
-  - `cd backend && uv run python -m mypy app/indicators/calculators/vwap.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m mypy app/strategy/profiles.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m mypy app/portfolio/service.py --ignore-missing-imports` — FAILED
+  - `cd backend && uv run python -m pytest tests/test_slippage.py -q` — passed
+  - `cd backend && uv run python -m mypy app/portfolio/service.py --ignore-missing-imports` — FAILED
 
 ---
 
@@ -112,7 +124,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0011 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0011): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0005): implementation
 
 ---
 

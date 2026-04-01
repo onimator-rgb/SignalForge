@@ -28,6 +28,9 @@ class StrategyProfile:
     # Trailing buy entry
     trailing_buy_bounce_pct: float
     trailing_buy_max_hours: int
+    # Slippage simulation
+    slippage_buy_pct: float
+    slippage_sell_pct: float
 
 
 PROFILES: dict[str, StrategyProfile] = {
@@ -45,6 +48,8 @@ PROFILES: dict[str, StrategyProfile] = {
         break_even_arm_pct=0.03,
         trailing_buy_bounce_pct=0.02,
         trailing_buy_max_hours=12,
+        slippage_buy_pct=0.0005,
+        slippage_sell_pct=0.0005,
     ),
     "balanced": StrategyProfile(
         name="balanced",
@@ -60,6 +65,8 @@ PROFILES: dict[str, StrategyProfile] = {
         break_even_arm_pct=0.04,
         trailing_buy_bounce_pct=0.015,
         trailing_buy_max_hours=18,
+        slippage_buy_pct=0.001,
+        slippage_sell_pct=0.001,
     ),
     "aggressive": StrategyProfile(
         name="aggressive",
@@ -75,6 +82,8 @@ PROFILES: dict[str, StrategyProfile] = {
         break_even_arm_pct=0.05,
         trailing_buy_bounce_pct=0.01,
         trailing_buy_max_hours=24,
+        slippage_buy_pct=0.0015,
+        slippage_sell_pct=0.0015,
     ),
 }
 
@@ -104,4 +113,6 @@ def get_profile_dict(profile: StrategyProfile) -> dict:
         "break_even_arm_pct": profile.break_even_arm_pct,
         "trailing_buy_bounce_pct": profile.trailing_buy_bounce_pct,
         "trailing_buy_max_hours": profile.trailing_buy_max_hours,
+        "slippage_buy_pct": profile.slippage_buy_pct,
+        "slippage_sell_pct": profile.slippage_sell_pct,
     }

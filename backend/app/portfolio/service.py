@@ -142,13 +142,29 @@ async def _close_position(
     db: AsyncSession, portfolio: Portfolio, pos: PortfolioPosition,
     exit_price: float, reason: str, now: datetime,
 ) -> None:
+    profile = get_active_profile()
+    adjusted_exit = round(exit_price * (1 - profile.slippage_sell_pct), 8)
+
     qty = float(pos.quantity)
-    exit_value = round(exit_price * qty, 2)
+    exit_value = round(adjusted_exit * qty, 2)
     entry_value = float(pos.entry_value_usd)
     pnl_usd = round(exit_value - entry_value, 2)
-    pnl_pct = round((exit_price - float(pos.entry_price)) / float(pos.entry_price) * 100, 4)
+    pnl_pct = round((adjusted_exit - float(pos.entry_price)) / float(pos.entry_price) * 100, 4)
 
-    pos.exit_price = exit_price
+    # Merge exit slippage info into exit_context
+    exit_slippage = {
+        "exit_slippage": {
+            "market_price": exit_price,
+            "slippage_pct": profile.slippage_sell_pct,
+            "adjusted_price": adjusted_exit,
+        }
+    }
+    if pos.exit_context:
+        pos.exit_context = {**pos.exit_context, **exit_slippage}
+    else:
+        pos.exit_context = exit_slippage
+
+    pos.exit_price = adjusted_exit
     pos.exit_value_usd = exit_value
     pos.closed_at = now
     pos.close_reason = reason
@@ -163,7 +179,7 @@ async def _close_position(
         position_id=pos.id,
         tx_type="sell",
         asset_id=pos.asset_id,
-        price=exit_price,
+        price=adjusted_exit,
         quantity=qty,
         value_usd=exit_value,
         executed_at=now,
@@ -425,25 +441,35 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
             continue
 
         price = price_data.close
+        adjusted_price = round(price * (1 + profile.slippage_buy_pct), 8)
 
         max_size = equity * effective_position_pct
         size_usd = min(max_size, available)
         if size_usd < MIN_POSITION_USD:
             break
 
-        quantity = size_usd / price
+        quantity = size_usd / adjusted_price
+
+        entry_slippage = {
+            "entry_slippage": {
+                "market_price": price,
+                "slippage_pct": profile.slippage_buy_pct,
+                "adjusted_price": adjusted_price,
+            }
+        }
 
         pos = PortfolioPosition(
             portfolio_id=portfolio.id,
             asset_id=asset_id,
             recommendation_id=recommendation_id,
-            entry_price=price,
+            entry_price=adjusted_price,
             quantity=quantity,
             entry_value_usd=round(size_usd, 2),
             opened_at=now,
-            stop_loss_price=round(price * (1 + profile.stop_loss_pct), 8),
-            take_profit_price=round(price * (1 + profile.take_profit_pct), 8),
+            stop_loss_price=round(adjusted_price * (1 + profile.stop_loss_pct), 8),
+            take_profit_price=round(adjusted_price * (1 + profile.take_profit_pct), 8),
             max_hold_until=now + timedelta(hours=profile.max_hold_hours),
+            exit_context=entry_slippage,
         )
         db.add(pos)
         await db.flush()
@@ -453,7 +479,7 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
             position_id=pos.id,
             tx_type="buy",
             asset_id=asset_id,
-            price=price,
+            price=adjusted_price,
             quantity=quantity,
             value_usd=round(size_usd, 2),
             executed_at=now,
@@ -468,7 +494,7 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
         symbol = asset_res.scalar_one_or_none() or "?"
         log.info(
             "portfolio.position_opened",
-            symbol=symbol, price=price,
+            symbol=symbol, price=adjusted_price, market_price=price,
             quantity=round(quantity, 8), value_usd=round(size_usd, 2),
             score=float(trail_rec.score), entry_type="trailing_buy",
         )
