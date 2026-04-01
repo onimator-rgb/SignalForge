@@ -16,44 +16,44 @@ Automated implementation for task marketpulse-task-2026-04-01-0029 via coder_wor
 ## 2) Mapping to acceptance criteria
 
 - **Criteria:** Open position dict in get_portfolio_summary includes 'exit_context' key with value from pos.exit_context (dict or None)
-- **Status:** `pass`
-- **Evidence:** service.py line 622: `"exit_context": pos.exit_context` in open_positions.append()
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** Test verifies exit_context is present in open position output
-- **Status:** `pass`
-- **Evidence:** pytest tests/test_portfolio_exit_context.py â€” 2 passed
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** mypy passes with no errors
-- **Status:** `pass`
-- **Evidence:** mypy reports 0 new errors from exit_context addition (7 pre-existing errors in unrelated code: lines 300, 341, 648 in service.py + other files)
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** PortfolioPosition type includes exit_context, peak_price, trailing_stop_price, break_even_armed, badges, hours_open, hours_remaining fields
-- **Status:** `pass`
-- **Evidence:** frontend/src/types/api.ts lines 239-265: all fields present in PortfolioPosition interface
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** Position detail panel shows 4-column Position Mechanics grid with trailing stop, trailing TP, break-even, and slippage cards
-- **Status:** `pass`
-- **Evidence:** PortfolioView.vue lines 288-329: 4-column grid with bg-gray-900/50 cards
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** Trailing stop card shows price and distance % from current price when armed
-- **Status:** `pass`
-- **Evidence:** PortfolioView.vue lines 290-297: shows price in yellow-400, distance % calculated from current
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** Trailing TP card shows armed/waiting status with peak and retracement when armed
-- **Status:** `pass`
-- **Evidence:** PortfolioView.vue lines 299-308: Armed in emerald-400 with peak price and retrace %
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** Entry slippage card shows market vs fill price with cost in basis points
-- **Status:** `pass`
-- **Evidence:** PortfolioView.vue lines 320-328: market â†’ adjusted with slippage in bps, red/green coloring
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** vue-tsc passes with no type errors
-- **Status:** `pass`
-- **Evidence:** `npx vue-tsc --noEmit` exits 0 with no output
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** Dark theme styling consistent with existing panels (bg-gray-900, border-gray-800, text-gray-500 labels)
-- **Status:** `pass`
-- **Evidence:** All 4 cards use bg-gray-900/50, border-gray-800, text-gray-500 labels
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 ---
 
@@ -68,9 +68,9 @@ Automated implementation for task marketpulse-task-2026-04-01-0029 via coder_wor
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_portfolio_exit_context.py -q` ï¿½ passed
-  - `cd backend && uv run python -m mypy app/portfolio/service.py --ignore-missing-imports` ï¿½ 0 new errors (7 pre-existing in unrelated code)
-  - `cd frontend && npx vue-tsc --noEmit` ï¿½ passed
+  - `cd backend && uv run python -m pytest tests/test_portfolio_exit_context.py -q` — passed
+  - `cd backend && uv run python -m mypy app/portfolio/service.py --ignore-missing-imports` — FAILED
+  - `cd frontend && npx vue-tsc --noEmit` — passed
 
 ---
 
@@ -80,7 +80,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0029 via coder_wor
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code ï¿½ **Severity:** medium ï¿½ **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+- **Risk:** LLM-generated code — **Severity:** medium — **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
 
 ---
 
@@ -108,7 +108,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0029 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` ï¿½ feat(marketpulse-task-2026-04-01-0029): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0029): implementation
 
 ---
 
