@@ -361,3 +361,15 @@ export interface ProtectionsResponse {
   active: ProtectionEventItem[]
   count: number
 }
+
+export interface ProtectionEvent {
+  id: string
+  protection_type: string
+  status: string
+  asset_id: string | null
+  asset_class: string | null
+  reason: string | null
+  triggered_at: string | null
+  expires_at: string | null
+  created_at: string
+}
