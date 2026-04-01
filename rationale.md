@@ -1,84 +1,93 @@
-# Rationale for `marketpulse-task-2026-04-01-0035`
+# Rationale for `marketpulse-task-2026-04-01-0009`
 
-**author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0035-implementation
-**commit_sha:** 
+**author:** coder-agent (MarketPulse Coder)
+**branch:** task/marketpulse-task-2026-04-01-0009-implementation
 **date:** 2026-04-01
-**model_calls:** 1
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0035 via coder_worker.py with model integration.
+Position Scaling Up â€” add to winning positions with pure functions mirroring the DCA pattern.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** KeltnerOut model has upper, middle, lower float fields
+- **Criteria:** scaling.py has 5 exported functions: get_scale_state, should_scale_up, calculate_scale_buy, apply_scale_to_position, plus constants
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** All 4 functions + 3 constants exported, import check passed
 
-- **Criteria:** IndicatorSnapshot has keltner: KeltnerOut | None = None field
+- **Criteria:** should_scale_up returns False when scale_level >= max_levels
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** TestShouldScaleUp::test_no_trigger_at_max_level passes
 
-- **Criteria:** get_indicators() computes Keltner and includes it in the returned snapshot
+- **Criteria:** should_scale_up returns False when profit < threshold
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** TestShouldScaleUp::test_no_trigger_below_threshold passes
 
-- **Criteria:** mypy passes on both files
+- **Criteria:** apply_scale_to_position moves stop_loss to original entry price (break-even)
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** TestApplyScaleToPosition::test_stop_loss_moves_to_break_even â€” asserts stop_loss_price == 100.0 (original entry)
 
-- **Criteria:** All 6 tests pass
+- **Criteria:** Scale state stored in exit_context['scale'] JSONB (not a new column)
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** TestApplyScaleToPosition::test_scale_state_stored_in_exit_context
 
-- **Criteria:** Tests cover insufficient data, valid output structure, channel width properties, and module exports
+- **Criteria:** mypy passes with no errors
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `mypy app/portfolio/scaling.py --ignore-missing-imports` â€” Success: no issues found in 1 source file
 
-- **Criteria:** mypy passes on the test file
+- **Criteria:** All tests pass with pytest
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** 26 passed in 0.04s
+
+- **Criteria:** At least 10 test cases covering happy path, edge cases, and boundary conditions
+- **Status:** `pass`
+- **Evidence:** 26 test cases across 5 test classes
+
+- **Criteria:** Tests use lightweight fakes (no database required)
+- **Status:** `pass`
+- **Evidence:** Uses unittest.mock.MagicMock â€” same pattern as test_dca.py
+
+- **Criteria:** 100% function coverage of scaling.py
+- **Status:** `pass`
+- **Evidence:** All 4 functions + constants tested
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/indicators/schemas.py`
-- `backend/app/indicators/service.py`
-- `backend/tests/test_keltner.py`
-- `rationale.md`
+- `backend/app/portfolio/scaling.py` â€” new module: constants, get_scale_state, should_scale_up, calculate_scale_buy, apply_scale_to_position
+- `backend/tests/test_scaling.py` â€” 26 unit tests mirroring test_dca.py structure
+- `rationale.md` â€” this file
 
 ---
 
 ## 4) Tests run & results
-- **Commands run:**
-  - `cd backend && uv run python -m mypy app/indicators/schemas.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m pytest tests/test_keltner.py -q` — passed
-  - `cd backend && uv run python -m mypy tests/test_keltner.py --ignore-missing-imports` — passed
+- `cd backend && uv run python -c "from app.portfolio.scaling import ..."` â€” imports OK
+- `cd backend && uv run python -m mypy app/portfolio/scaling.py --ignore-missing-imports` â€” passed
+- `cd backend && uv run python -m pytest tests/test_scaling.py -q` â€” 26 passed
 
 ---
 
-## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
+## 5) Key decisions
+- **Break-even stop loss**: After scale-up, stop loss = original entry price (not profile-based %). This protects the profit the position already earned.
+- **Scale state before mutation**: `get_scale_state()` captured before modifying `pos.entry_price` so `original_entry` is correct.
+- **JSONB storage**: `exit_context['scale']` mirrors `exit_context['dca']` pattern.
 
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code — **Severity:** medium — **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+- **Risk:** Integration with service.py â€” **Severity:** low â€” **Mitigation:** Pure functions with no DB calls; integration is a separate task
 
 ---
 
 ## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
+- New files only, no schema changes, backward compatible.
 
 ---
 
 ## 8) Performance considerations
-- No performance impact expected.
+- No performance impact expected â€” pure functions, O(1) operations.
 
 ---
 
@@ -86,21 +95,22 @@ Automated implementation for task marketpulse-task-2026-04-01-0035 via coder_wor
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
-- API key logged: `no` (only presence check)
+- API key logged: `no`
 
 ---
 
 ## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
+1. Integration into service.py evaluate_portfolio loop (separate task)
+2. Schema addition of ScaleUpInfo to PositionOut (optional, deferred)
 
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0035): implementation
+- feat(marketpulse-task-2026-04-01-0009): add position scaling-up module with pure functions
 
 ---
 
 ## 12) Final verdict (developer self-check)
 - **I confirm** that all acceptance criteria marked `pass` have test evidence attached: `yes`
 - **I confirm** no forbidden paths were modified: `yes`
-- **I request** next step: `validate`
+- **I request** next step: `approve`
