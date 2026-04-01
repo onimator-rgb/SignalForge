@@ -298,6 +298,32 @@ const reasonLabels: Record<string, string> = {
               <div class="text-sm tabular-nums mt-0.5 text-gray-300">{{ riskMetrics.total_closed }}</div>
             </div>
           </div>
+          <div class="grid grid-cols-4 gap-3 mb-3">
+            <div class="bg-gray-800/50 rounded-lg p-3">
+              <div class="text-xs text-gray-500 uppercase">Avg Win</div>
+              <div class="text-sm font-bold tabular-nums mt-0.5" :class="riskMetrics.avg_win_pct != null ? 'text-green-400' : 'text-gray-500'">
+                {{ riskMetrics.avg_win_pct != null ? '+' + riskMetrics.avg_win_pct.toFixed(2) + '%' : '--' }}
+              </div>
+            </div>
+            <div class="bg-gray-800/50 rounded-lg p-3">
+              <div class="text-xs text-gray-500 uppercase">Avg Loss</div>
+              <div class="text-sm font-bold tabular-nums mt-0.5" :class="riskMetrics.avg_loss_pct != null ? 'text-red-400' : 'text-gray-500'">
+                {{ riskMetrics.avg_loss_pct != null ? riskMetrics.avg_loss_pct.toFixed(2) + '%' : '--' }}
+              </div>
+            </div>
+            <div class="bg-gray-800/50 rounded-lg p-3">
+              <div class="text-xs text-gray-500 uppercase">Best Trade</div>
+              <div class="text-sm font-bold tabular-nums mt-0.5" :class="riskMetrics.best_trade_pct != null && riskMetrics.best_trade_pct >= 0 ? 'text-green-400' : riskMetrics.best_trade_pct != null ? 'text-red-400' : 'text-gray-500'">
+                {{ riskMetrics.best_trade_pct != null ? (riskMetrics.best_trade_pct >= 0 ? '+' : '') + riskMetrics.best_trade_pct.toFixed(2) + '%' : '--' }}
+              </div>
+            </div>
+            <div class="bg-gray-800/50 rounded-lg p-3">
+              <div class="text-xs text-gray-500 uppercase">Worst Trade</div>
+              <div class="text-sm font-bold tabular-nums mt-0.5" :class="riskMetrics.worst_trade_pct != null && riskMetrics.worst_trade_pct >= 0 ? 'text-green-400' : riskMetrics.worst_trade_pct != null ? 'text-red-400' : 'text-gray-500'">
+                {{ riskMetrics.worst_trade_pct != null ? (riskMetrics.worst_trade_pct >= 0 ? '+' : '') + riskMetrics.worst_trade_pct.toFixed(2) + '%' : '--' }}
+              </div>
+            </div>
+          </div>
           <!-- Breakdown by reason -->
           <div v-if="Object.keys(riskMetrics.breakdown_by_reason).length > 0">
             <div class="text-xs text-gray-500 mb-1">Close Reasons</div>
