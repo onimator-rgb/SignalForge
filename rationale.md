@@ -1,85 +1,89 @@
-# Rationale for `marketpulse-task-2026-04-01-0007`
+# Rationale for `marketpulse-task-2026-04-02-0043`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0007-implementation
-**commit_sha:** 
-**date:** 2026-04-01
+**branch:** task/marketpulse-task-2026-04-02-0043-implementation
+**commit_sha:** (pending)
+**date:** 2026-04-02
 **model_calls:** 1
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_worker.py with model integration.
+Marketplace View â€” browse ranked public strategies with Sharpe ratio, style tags, and copy-to-account functionality.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** DCAConfig dataclass is frozen with sensible defaults
+- **Criteria:** MarketplaceView.vue exists and compiles without vue-tsc errors
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** File created; `npx vue-tsc --noEmit` exits 0 with no output
 
-- **Criteria:** DCAConfig post-init validates lengths match max_levels and tranche_pcts sum to ~1.0
+- **Criteria:** View fetches from /api/v1/strategies/marketplace/ranking on mount
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `onMounted(load)` calls `api.get('/strategies/marketplace/ranking')`
 
-- **Criteria:** should_dca returns True only when drop exceeds the threshold for the current level
+- **Criteria:** Each strategy card displays rank, name, description, style tag, and Sharpe ratio
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Template renders rank badge (#N), name, description, style pill, and Sharpe with tabular-nums
 
-- **Criteria:** should_dca returns False when all DCA levels are exhausted
+- **Criteria:** Copy button calls POST /api/v1/strategies/marketplace/{id}/copy and shows feedback
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `copyStrategy(id)` calls `api.post(...)`, shows green/red feedback text inline
 
-- **Criteria:** compute_dca_order returns correct tranche USD amount
+- **Criteria:** Sort toggle allows switching between Sharpe and name ordering
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Two sort buttons toggle `sortBy` ref; `sorted` computed property sorts accordingly
 
-- **Criteria:** compute_dca_order raises ValueError when levels exhausted
+- **Criteria:** Route /marketplace is registered and navigable
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Route added to `frontend/src/router/index.ts`
 
-- **Criteria:** compute_new_avg_price returns correct weighted average
+- **Criteria:** Nav link appears in AppLayout sidebar/header
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Nav item added to `navItems` array in `AppLayout.vue`
 
-- **Criteria:** All tests pass, mypy passes with no errors
+- **Criteria:** Dark theme with TailwindCSS v4 classes consistent with existing views
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Uses bg-gray-900, border-gray-800, text-gray-300/400/500 consistent with StrategyView
+
+- **Criteria:** Numbers use tabular-nums class, color-coded green/yellow/red
+- **Status:** `pass`
+- **Evidence:** Sharpe ratio uses `tabular-nums` + `sharpeColor()` returning green/yellow/red classes
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/dca.py`
-- `backend/tests/test_dca.py`
-- `rationale.md`
+- `frontend/src/views/MarketplaceView.vue` â€” new view: marketplace browse + copy
+- `frontend/src/router/index.ts` â€” register /marketplace route
+- `frontend/src/components/AppLayout.vue` â€” add Marketplace nav link
+- `rationale.md` â€” task documentation
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_dca.py -q` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/dca.py --ignore-missing-imports` — passed
+  - `cd frontend && npx vue-tsc --noEmit` â†’ passed (exit 0, no errors)
 
 ---
 
 ## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
+- No synthetic data needed; view consumes API response directly
 
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code — **Severity:** medium — **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+- **Risk:** Backend API not returning expected shape â†’ **Severity:** low â†’ **Mitigation:** TypeScript interface enforces expected fields; ErrorBox handles API errors gracefully
 
 ---
 
 ## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
+- New files only + additive changes to router and nav. Fully backward compatible.
 
 ---
 
 ## 8) Performance considerations
-- No performance impact expected.
+- Client-side sorting on small dataset (marketplace strategies). No performance concerns.
 
 ---
 
@@ -87,17 +91,18 @@ Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_wor
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
-- API key logged: `no` (only presence check)
+- API key logged: `no`
 
 ---
 
 ## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
+1. Pagination may be needed if marketplace grows beyond ~50 strategies.
+2. Consider adding search/filter by style tag in future iteration.
 
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0007): implementation
+- `feat(marketpulse-task-2026-04-02-0043)`: MarketplaceView with ranking display, copy, and sort
 
 ---
 
