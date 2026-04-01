@@ -261,6 +261,19 @@ export interface PortfolioTransaction {
   executed_at: string
 }
 
+export interface RiskMetrics {
+  sharpe_ratio: number | null
+  sortino_ratio: number | null
+  max_drawdown_pct: number
+  profit_factor: number | null
+  avg_hold_hours: number
+  total_closed: number
+  wins: number
+  losses: number
+  win_rate: number | null
+  breakdown_by_reason: Record<string, number>
+}
+
 export interface PortfolioSummary {
   stats: PortfolioStats
   open_positions: PortfolioPosition[]

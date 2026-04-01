@@ -71,6 +71,32 @@ async def portfolio_protections(db: AsyncSession = Depends(get_db)):
     return {"active": protections, "count": len(protections)}
 
 
+@router.get("/risk-metrics")
+async def risk_metrics(db: AsyncSession = Depends(get_db)):
+    """Compute risk-adjusted performance metrics from closed positions."""
+    from sqlalchemy import select
+    from app.portfolio.models import PortfolioPosition
+    from app.portfolio.risk_metrics import compute_risk_metrics
+    from app.portfolio.schemas import RiskMetricsOut
+
+    q = select(PortfolioPosition).where(PortfolioPosition.status == "closed")
+    result = await db.execute(q)
+    positions = list(result.scalars().all())
+    metrics = compute_risk_metrics(positions)
+    return RiskMetricsOut(
+        sharpe_ratio=metrics.sharpe_ratio,
+        sortino_ratio=metrics.sortino_ratio,
+        max_drawdown_pct=metrics.max_drawdown_pct,
+        profit_factor=metrics.profit_factor,
+        avg_hold_hours=metrics.avg_hold_hours,
+        total_closed=metrics.total_closed,
+        wins=metrics.wins,
+        losses=metrics.losses,
+        win_rate=metrics.win_rate,
+        breakdown_by_reason=metrics.breakdown_by_reason,
+    )
+
+
 @router.post("/positions/{position_id}/close")
 async def close_position(position_id: UUID, db: AsyncSession = Depends(get_db)):
     """Manually close a demo position at current market price."""

@@ -1,112 +1,99 @@
-# Rationale for `marketpulse-task-2026-04-01-0005`
+# Rationale for `marketpulse-task-2026-04-01-0025`
 
-**author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0005-implementation
-**commit_sha:** 
+**author:** coder-agent (MarketPulse Coder)
+**branch:** task/marketpulse-task-2026-04-01-0025-implementation
 **date:** 2026-04-01
-**model_calls:** 1
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0005 via coder_worker.py with model integration.
+Add portfolio risk metrics endpoint (Sharpe, Sortino, max drawdown, profit factor) and frontend display card.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** StrategyProfile dataclass has slippage_buy_pct and slippage_sell_pct float fields
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** compute_risk_metrics returns correct Sharpe ratio for known trades (5%, -3%, 8%, -2%, 4%)
+- **Status:** `pass`
+- **Evidence:** `test_known_returns` validates against manual calculation
 
-- **Criteria:** All three profile instances (conservative, balanced, aggressive) have appropriate slippage values
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Max drawdown correctly identifies largest peak-to-trough in cumulative PnL sequence
+- **Status:** `pass`
+- **Evidence:** `test_peak_to_trough` verifies +100/-30/+20 => 30% drawdown
 
-- **Criteria:** mypy passes with no errors
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Profit factor = gross_profit / gross_loss, returns None when no losses
+- **Status:** `pass`
+- **Evidence:** `test_profit_factor_normal` and `test_no_losses_none`
 
-- **Criteria:** Entry price for new positions includes buy slippage (price * (1 + slippage_buy_pct))
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Returns None for ratios when fewer than 2 closed positions
+- **Status:** `pass`
+- **Evidence:** `test_single_position_no_ratios` and `test_empty_positions`
 
-- **Criteria:** Exit price for closed positions includes sell slippage (price * (1 - slippage_sell_pct))
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** GET /risk-metrics endpoint returns RiskMetricsOut JSON
+- **Status:** `pass`
+- **Evidence:** Endpoint defined in router.py, returns RiskMetricsOut schema
 
-- **Criteria:** Original market prices and slippage details are stored in exit_context JSONB
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** breakdown_by_reason correctly counts close_reason values
+- **Status:** `pass`
+- **Evidence:** `test_breakdown_by_reason`
 
-- **Criteria:** Stop-loss/take-profit triggers still use raw market price (exits.py unchanged)
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** RiskMetrics interface in api.ts matches backend RiskMetricsOut schema
+- **Status:** `pass`
+- **Evidence:** Field-by-field match verified
 
-- **Criteria:** mypy passes with no errors
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** PortfolioView fetches and displays risk metrics on mount
+- **Status:** `pass`
+- **Evidence:** api.get('/portfolio/risk-metrics') in load() function
 
-- **Criteria:** All 5 tests pass
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Numbers use tabular-nums class and appropriate color coding
+- **Status:** `pass`
+- **Evidence:** All numeric values use tabular-nums; Sharpe green/yellow/red, drawdown red, profit factor green/red
 
-- **Criteria:** Tests verify buy slippage increases entry price
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Handles loading and empty states gracefully
+- **Status:** `pass`
+- **Evidence:** riskLoading state + "No closed trades yet" message
 
-- **Criteria:** Tests verify sell slippage decreases exit price
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Tests verify slippage audit data in exit_context JSONB
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Tests verify per-profile slippage values
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Tests verify zero slippage is a no-op
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** vue-tsc passes with no type errors
+- **Status:** `pass`
+- **Evidence:** `npx vue-tsc --noEmit` passed clean
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/service.py`
-- `backend/app/strategy/profiles.py`
-- `backend/tests/test_slippage.py`
-- `rationale.md`
+- `backend/app/portfolio/risk_metrics.py` â€” New: pure compute function + dataclass
+- `backend/app/portfolio/schemas.py` â€” Added RiskMetricsOut Pydantic model
+- `backend/app/portfolio/router.py` â€” Added GET /risk-metrics endpoint
+- `backend/tests/test_risk_metrics.py` â€” 15 unit tests for all metrics + edge cases
+- `frontend/src/types/api.ts` â€” Added RiskMetrics TypeScript interface
+- `frontend/src/views/PortfolioView.vue` â€” Added risk metrics card section
+- `rationale.md` â€” This file
 
 ---
 
 ## 4) Tests run & results
-- **Commands run:**
-  - `cd backend && uv run python -m mypy app/strategy/profiles.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/service.py --ignore-missing-imports` — FAILED
-  - `cd backend && uv run python -m pytest tests/test_slippage.py -q` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/service.py --ignore-missing-imports` — FAILED
+- `cd backend && uv run python -m pytest tests/test_risk_metrics.py -q` â€” 15 passed
+- `cd backend && uv run python -m mypy app/portfolio/risk_metrics.py --ignore-missing-imports` â€” Success
+- `cd frontend && npx vue-tsc --noEmit` â€” passed
 
 ---
 
 ## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
+- All tests use synthetic SimpleNamespace objects mimicking PortfolioPosition fields.
 
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code — **Severity:** medium — **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+- **Risk:** Read-only query â€” **Severity:** low â€” **Mitigation:** No mutations, no migrations
 
 ---
 
 ## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
+- Additive only. No existing endpoints or schemas modified. No DB migration needed.
 
 ---
 
 ## 8) Performance considerations
-- No performance impact expected.
+- On-the-fly computation. Acceptable for demo portfolios. Cache if >1000 positions.
 
 ---
 
@@ -114,21 +101,23 @@ Automated implementation for task marketpulse-task-2026-04-01-0005 via coder_wor
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
-- API key logged: `no` (only presence check)
+- API key logged: `no`
 
 ---
 
 ## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
+None.
 
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0005): implementation
+- feat(portfolio): add risk metrics computation module
+- feat(portfolio): add GET /risk-metrics endpoint
+- feat(frontend): add risk metrics card to PortfolioView
 
 ---
 
 ## 12) Final verdict (developer self-check)
-- **I confirm** that all acceptance criteria marked `pass` have test evidence attached: `yes`
+- **I confirm** all acceptance criteria pass with test evidence: `yes`
 - **I confirm** no forbidden paths were modified: `yes`
-- **I request** next step: `validate`
+- **I request** next step: `approve`
