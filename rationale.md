@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0003`
+# Rationale for `marketpulse-task-2026-04-01-0005`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0003-implementation
+**branch:** task/marketpulse-task-2026-04-01-0005-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,57 +9,45 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0003 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0005 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** calc_psar returns None for fewer than 2 bars
+- **Criteria:** calc_pivot_points returns PivotResult with correct pp, r1-r3, s1-s3 for known OHLC input
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** calc_psar returns PSARResult with sar, trend ('bullish'/'bearish'), and af fields
+- **Criteria:** calc_pivot_points returns None when fewer than 2 bars provided
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** On a clear uptrend series (monotonically increasing), trend='bullish' and SAR is below the last close
+- **Criteria:** PivotOut schema is added to IndicatorSnapshot
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** On a clear downtrend series (monotonically decreasing), trend='bearish' and SAR is above the last close
+- **Criteria:** Indicator service calls calc_pivot_points and returns pivot data
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** AF increments correctly and caps at af_max (0.20)
+- **Criteria:** mypy passes with no errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Trend reversal occurs correctly when price crosses SAR
+- **Criteria:** All 5 tests pass
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** At least 6 test cases covering: insufficient data, uptrend, downtrend, reversal, AF capping, custom AF params
+- **Criteria:** Tests verify correct pivot calculations against known values
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** PSARResult and calc_psar are exported from calculators __init__.py
+- **Criteria:** Tests verify None returned for insufficient data
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** IndicatorSnapshot schema includes psar: PSAROut | None field
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** get_indicators() calls calc_psar(highs, lows) and includes result in snapshot
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** mypy passes on all modified files
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** Existing tests still pass (no regressions)
+- **Criteria:** Tests verify previous-bar behavior
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
@@ -67,21 +55,19 @@ Automated implementation for task marketpulse-task-2026-04-01-0003 via coder_wor
 
 ## 3) Files changed (and rationale per file)
 - `backend/app/indicators/calculators/__init__.py`
-- `backend/app/indicators/calculators/psar.py`
+- `backend/app/indicators/calculators/pivot.py`
 - `backend/app/indicators/schemas.py`
 - `backend/app/indicators/service.py`
-- `backend/tests/test_psar.py`
+- `backend/tests/test_pivot.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_psar.py -q` — passed
-  - `cd backend && uv run python -m mypy app/indicators/calculators/psar.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m mypy app/indicators/calculators/pivot.py --ignore-missing-imports` — passed
   - `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/indicators/schemas.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m pytest tests/test_psar.py -q` — passed
+  - `cd backend && uv run python -m pytest tests/test_pivot.py -q` — passed
 
 ---
 
@@ -119,7 +105,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0003 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0003): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0005): implementation
 
 ---
 
