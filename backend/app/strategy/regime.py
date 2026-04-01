@@ -1,19 +1,84 @@
-"""Market regime calculator — simple breadth-based regime detection.
+"""Market regime calculator — breadth + ADX + price-trend regime detection.
 
 Computes risk_on / neutral / risk_off from current system data.
 No ML, no external data — pure internal signal aggregation.
 """
 
+import statistics
+
+import pandas as pd
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.anomalies.models import AnomalyEvent
 from app.assets.models import Asset
+from app.indicators.calculators.adx import calc_adx
 from app.live.cache import get_all_prices
 from app.logging_config import get_logger
+from app.market_data.models import PriceBar
 from app.recommendations.models import Recommendation
 
 log = get_logger(__name__)
+
+
+async def _calc_avg_adx(db: AsyncSession) -> float | None:
+    """Calculate average ADX across all active assets.
+
+    Fetches last 30 bars (1h) per active asset, computes ADX for each,
+    and returns the mean. Returns None if insufficient data.
+    """
+    active_res = await db.execute(
+        select(Asset.id).where(Asset.is_active.is_(True))
+    )
+    asset_ids = [row[0] for row in active_res.all()]
+    if not asset_ids:
+        return None
+
+    adx_values: list[float] = []
+    for asset_id in asset_ids:
+        try:
+            bars_res = await db.execute(
+                select(PriceBar)
+                .where(PriceBar.asset_id == asset_id, PriceBar.interval == "1h")
+                .order_by(PriceBar.time.desc())
+                .limit(30)
+            )
+            bars = list(bars_res.scalars().all())
+            if len(bars) < 16:  # need at least period+2 bars for ADX
+                continue
+            bars.reverse()  # oldest first
+            highs = pd.Series([float(b.high) for b in bars])
+            lows = pd.Series([float(b.low) for b in bars])
+            closes = pd.Series([float(b.close) for b in bars])
+            result = calc_adx(highs, lows, closes, period=14)
+            if result is not None:
+                adx_values.append(result.adx)
+        except Exception:
+            log.warning("strategy.adx_calc_failed", asset_id=str(asset_id))
+            continue
+
+    if not adx_values:
+        return None
+    return round(statistics.mean(adx_values), 2)
+
+
+def _calc_price_trend_score(cache: dict) -> int:
+    """Score based on median 24h price change from live cache.
+
+    Returns +1 if median > 2%, -1 if median < -2%, else 0.
+    """
+    changes = [
+        p.change_24h_pct for p in cache.values()
+        if p.change_24h_pct is not None
+    ]
+    if not changes:
+        return 0
+    median = statistics.median(changes)
+    if median > 2.0:
+        return 1
+    if median < -2.0:
+        return -1
+    return 0
 
 
 async def calculate_regime(db: AsyncSession) -> dict:
@@ -91,6 +156,23 @@ async def calculate_regime(db: AsyncSession) -> dict:
     elif anomaly_ratio > 0.15:
         score -= 1
 
+    # ADX trend strength
+    avg_adx: float | None = None
+    try:
+        avg_adx = await _calc_avg_adx(db)
+    except Exception:
+        log.warning("strategy.adx_calculation_skipped")
+
+    if avg_adx is not None and avg_adx > 30:
+        if breadth_ratio > 0.55:
+            score += 2
+        elif breadth_ratio < 0.40:
+            score -= 2
+
+    # Price trend from live cache
+    price_trend_score = _calc_price_trend_score(cache)
+    score += price_trend_score
+
     # Classify
     if score >= 4:
         regime = "risk_on"
@@ -109,6 +191,8 @@ async def calculate_regime(db: AsyncSession) -> dict:
             "unresolved_anomalies": unresolved_anomalies,
             "anomaly_ratio": anomaly_ratio,
             "cached_prices": total_cached,
+            "avg_adx": avg_adx,
+            "price_trend_score": price_trend_score,
         },
     }
 
