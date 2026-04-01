@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0009`
+# Rationale for `marketpulse-task-2026-04-01-0011`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0009-implementation
+**branch:** task/marketpulse-task-2026-04-01-0011-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,49 +9,55 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0009 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0011 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** MIN_VOLUME_USD config dict exists with crypto, stock, and default keys
+- **Criteria:** format_journal_entry correctly computes hold_duration_hours from opened_at and closed_at
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** _check_volume_filter queries last 24 1h price_bars and computes USD volume
+- **Criteria:** format_journal_entry maps close_reason to human-readable close_reason_label for stop_loss, take_profit, max_hold, manual
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** check_protections calls _check_volume_filter and blocks entry when volume is insufficient
+- **Criteria:** format_journal_entry classifies pnl into profit/loss/breakeven via pnl_class field
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** ProtectionEvent with type='low_volume_guard' is logged when entry is blocked
+- **Criteria:** format_journal_entry extracts entry_signals and exit_signals from exit_context JSONB when present, returns None when absent
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** All 5 test cases pass
+- **Criteria:** format_journal returns entries sorted by closed_at descending
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** mypy passes with no errors
+- **Criteria:** GET /journal endpoint returns paginated results with limit and offset
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** All tests pass and mypy reports no errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/protections.py`
-- `backend/tests/test_volume_filter_guard.py`
+- `backend/app/portfolio/journal.py`
+- `backend/app/portfolio/router.py`
+- `backend/app/portfolio/schemas.py`
+- `backend/tests/test_trade_journal.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_volume_filter.py -q` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/protections.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_trade_journal.py -q` — passed
+  - `cd backend && uv run python -m mypy app/portfolio/journal.py --ignore-missing-imports` — passed
 
 ---
 
@@ -89,7 +95,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0009 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0009): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0011): implementation
 
 ---
 

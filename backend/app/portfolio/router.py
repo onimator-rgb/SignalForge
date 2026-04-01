@@ -101,36 +101,60 @@ async def risk_metrics(db: AsyncSession = Depends(get_db)):
     )
 
 
-@router.get("/protection-history")
-async def protection_history(
-    limit: int = 20,
+@router.get("/journal")
+async def trade_journal(
+    limit: int = 50,
+    offset: int = 0,
     db: AsyncSession = Depends(get_db),
-) -> list[dict[str, object]]:
-    """Return the last N protection events (all statuses), newest first."""
-    from sqlalchemy import select
-    from app.portfolio.models import ProtectionEvent
+):
+    """Closed-position trade journal with rich context."""
+    from sqlalchemy import func, select
+    from app.assets.models import Asset
+    from app.portfolio.journal import format_journal
+    from app.portfolio.models import PortfolioPosition, PortfolioTransaction
+    from app.portfolio.schemas import JournalResponse
 
-    q = (
-        select(ProtectionEvent)
-        .order_by(ProtectionEvent.created_at.desc())
+    # Total count of closed positions
+    count_q = select(func.count()).select_from(PortfolioPosition).where(
+        PortfolioPosition.status == "closed"
+    )
+    total = (await db.execute(count_q)).scalar_one()
+
+    # Fetch closed positions with asset symbol
+    pos_q = (
+        select(PortfolioPosition, Asset.symbol)
+        .join(Asset, PortfolioPosition.asset_id == Asset.id)
+        .where(PortfolioPosition.status == "closed")
+        .order_by(PortfolioPosition.closed_at.desc())
+        .offset(offset)
         .limit(limit)
     )
-    result = await db.execute(q)
-    rows = list(result.scalars().all())
-    return [
-        {
-            "id": str(r.id),
-            "protection_type": r.protection_type,
-            "status": r.status,
-            "asset_id": str(r.asset_id) if r.asset_id else None,
-            "asset_class": r.asset_class,
-            "reason": r.reason,
-            "triggered_at": r.triggered_at.isoformat() if r.triggered_at else None,
-            "expires_at": r.expires_at.isoformat() if r.expires_at else None,
-            "created_at": r.created_at.isoformat(),
-        }
-        for r in rows
-    ]
+    pos_result = await db.execute(pos_q)
+    rows = pos_result.all()
+
+    positions = []
+    position_ids = []
+    for row in rows:
+        pos = row.PortfolioPosition
+        pos.symbol = row.symbol  # type: ignore[attr-defined]
+        positions.append(pos)
+        position_ids.append(pos.id)
+
+    # Fetch related transactions
+    transactions_by_position: dict[str, list] = {}
+    if position_ids:
+        tx_q = (
+            select(PortfolioTransaction)
+            .where(PortfolioTransaction.position_id.in_(position_ids))
+            .order_by(PortfolioTransaction.executed_at)
+        )
+        tx_result = await db.execute(tx_q)
+        for tx in tx_result.scalars().all():
+            key = str(tx.position_id)
+            transactions_by_position.setdefault(key, []).append(tx)
+
+    entries = format_journal(positions, transactions_by_position)
+    return JournalResponse(entries=entries, total=total)
 
 
 @router.post("/positions/{position_id}/close")
