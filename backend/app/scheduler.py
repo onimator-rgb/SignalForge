@@ -4,8 +4,12 @@ Replaces APScheduler with simple asyncio.create_task loops.
 This avoids event loop ownership issues between APScheduler and uvicorn.
 
 Jobs:
-  - crypto ingestion: every INGESTION_INTERVAL_MINUTES (default 5min)
-  - stock ingestion: every 15min
+  - crypto ingestion 1h: every INGESTION_INTERVAL_MINUTES (default 5min)
+  - stock ingestion 1h: every 15min
+  - crypto ingestion 4h: every 4 hours
+  - stock ingestion 4h: every 4 hours
+  - crypto ingestion 1d: every 24 hours
+  - stock ingestion 1d: every 24 hours
 """
 
 import asyncio
@@ -119,11 +123,39 @@ async def start_scheduler() -> None:
     )
     _tasks.append(task)
 
+    # Crypto 4h: every 4 hours
+    task = asyncio.create_task(
+        _periodic_loop("ingest_crypto_4h", "4h", "crypto", 4 * 3600)
+    )
+    _tasks.append(task)
+
+    # Stocks 4h: every 4 hours
+    task = asyncio.create_task(
+        _periodic_loop("ingest_stock_4h", "4h", "stock", 4 * 3600)
+    )
+    _tasks.append(task)
+
+    # Crypto 1d: every 24 hours
+    task = asyncio.create_task(
+        _periodic_loop("ingest_crypto_1d", "1d", "crypto", 24 * 3600)
+    )
+    _tasks.append(task)
+
+    # Stocks 1d: every 24 hours
+    task = asyncio.create_task(
+        _periodic_loop("ingest_stock_1d", "1d", "stock", 24 * 3600)
+    )
+    _tasks.append(task)
+
     log.info(
         "scheduler_started",
         crypto_interval_sec=interval_sec,
         stock_interval_sec=15 * 60,
-        jobs=["ingest_crypto_1h", "ingest_stock_1h"],
+        jobs=[
+            "ingest_crypto_1h", "ingest_stock_1h",
+            "ingest_crypto_4h", "ingest_stock_4h",
+            "ingest_crypto_1d", "ingest_stock_1d",
+        ],
     )
 
 
