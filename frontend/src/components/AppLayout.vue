@@ -17,6 +17,7 @@ const navItems = [
   { to: '/portfolio', label: 'Portfolio', icon: '💼', badge: false },
   { to: '/performance', label: 'Performance', icon: '📈', badge: false },
   { to: '/strategy', label: 'Strategia', icon: '🎯', badge: false },
+  { to: '/backtest', label: 'Backtest', icon: '🧪', badge: false },
   { to: '/watchlists', label: 'Watchlisty', icon: '📋', badge: false },
   { to: '/reports', label: 'Raporty AI', icon: '📄', badge: false },
   { to: '/ingestion', label: 'Data Sync', icon: '🔄', badge: false },
