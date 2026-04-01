@@ -35,6 +35,12 @@ class IndicatorHistory(BaseModel):
     bar_times: list[datetime]
 
 
+class MultiTimeframeIndicators(BaseModel):
+    asset_id: UUID
+    timeframes: dict[str, "IndicatorSnapshot | None"]
+    computed_at: datetime
+
+
 class IndicatorSnapshot(BaseModel):
     asset_id: UUID
     asset_symbol: str

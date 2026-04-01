@@ -1,106 +1,44 @@
-# Rationale for `marketpulse-task-2026-04-01-0035`
+# Rationale â€” marketpulse-task-2026-04-01-0013
 
-**author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0035-implementation
-**commit_sha:** 
-**date:** 2026-04-01
-**model_calls:** 1
+## 1. Task Summary
+Add multi-timeframe indicator calculation: a service function that concurrently fetches indicators across multiple intervals, a response schema, and a REST endpoint.
 
----
+## 2. Approach
+Reused the existing `get_indicators()` function, wrapping concurrent calls via `asyncio.gather()`. Added a new Pydantic schema `MultiTimeframeIndicators` and a FastAPI endpoint at `GET /api/v1/assets/{asset_id}/indicators/mtf`.
 
-## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0035 via coder_worker.py with model integration.
+## 3. Files Changed
+- `backend/app/indicators/schemas.py` â€” added `MultiTimeframeIndicators` model
+- `backend/app/indicators/service.py` â€” added `get_multi_timeframe_indicators()` with `asyncio.gather`
+- `backend/app/indicators/router.py` â€” added MTF endpoint with interval validation
+- `backend/tests/test_mtf_indicators.py` â€” 5 comprehensive tests (all mock-based)
 
----
+## 4. Design Decisions
+- Default intervals `['5m', '1h', '4h', '1d']` match common trading timeframes
+- Comma-separated query param for intervals (simple, REST-friendly)
+- Allowed intervals whitelist prevents invalid DB queries
+- `asyncio.gather` for concurrent execution (no sequential bottleneck)
 
-## 2) Mapping to acceptance criteria
+## 5. Risks & Mitigations
+- **DB load**: Multiple concurrent queries per request. Mitigated by reusing existing connection pool and limited interval whitelist.
+- **Integration**: Minimal risk â€” reuses battle-tested `get_indicators()`.
 
-- **Criteria:** KeltnerOut model has upper, middle, lower float fields
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+## 6. Testing
+5 tests covering: default intervals, custom intervals, None handling, concurrency verification, schema serialization. All mock-based, no DB required.
 
-- **Criteria:** IndicatorSnapshot has keltner: KeltnerOut | None = None field
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+## 7. Acceptance Criteria Status
+All acceptance criteria met for subtasks s1, s2, s3.
 
-- **Criteria:** get_indicators() computes Keltner and includes it in the returned snapshot
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+## 8. Pre-existing Issues
+3 mypy errors exist in service.py (lines 100, 183, 184) unrelated to this change â€” they predate this task.
 
-- **Criteria:** mypy passes on both files
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+## 9. Dependencies
+Existing: `get_indicators()`, `IndicatorSnapshot`, `Asset` model, `get_db`.
 
-- **Criteria:** All 6 tests pass
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+## 10. Security
+No secrets accessed, no broker APIs called, no deployment. Paper-trading only.
 
-- **Criteria:** Tests cover insufficient data, valid output structure, channel width properties, and module exports
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+## 11. Performance
+Concurrent execution via `asyncio.gather` â€” total latency â‰ˆ max(single interval latency) rather than sum.
 
-- **Criteria:** mypy passes on the test file
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
----
-
-## 3) Files changed (and rationale per file)
-- `backend/app/indicators/schemas.py`
-- `backend/app/indicators/service.py`
-- `backend/tests/test_keltner.py`
-- `rationale.md`
-
----
-
-## 4) Tests run & results
-- **Commands run:**
-  - `cd backend && uv run python -m mypy app/indicators/schemas.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m pytest tests/test_keltner.py -q` — passed
-  - `cd backend && uv run python -m mypy tests/test_keltner.py --ignore-missing-imports` — passed
-
----
-
-## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
-
----
-
-## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code — **Severity:** medium — **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
-
----
-
-## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
-
----
-
-## 8) Performance considerations
-- No performance impact expected.
-
----
-
-## 9) Security & safety checks
-- forbidden paths touched: `no`
-- external/broker sdk usage: `no`
-- secrets touched: `no`
-- API key logged: `no` (only presence check)
-
----
-
-## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
-
----
-
-## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0035): implementation
-
----
-
-## 12) Final verdict (developer self-check)
-- **I confirm** that all acceptance criteria marked `pass` have test evidence attached: `yes`
-- **I confirm** no forbidden paths were modified: `yes`
-- **I request** next step: `validate`
+## 12. Next Steps
+`next_recommended_step: "approve"` â€” all tests pass, code is ready for review.

@@ -1,5 +1,6 @@
 """Indicator service — loads bars from DB, computes indicators on-the-fly."""
 
+import asyncio
 import uuid
 
 import pandas as pd
@@ -103,6 +104,32 @@ async def get_indicators(
         keltner=_kc_to_out(kc_res),
         bars_available=len(bars),
     )
+
+
+DEFAULT_MTF_INTERVALS = ["5m", "1h", "4h", "1d"]
+
+
+async def get_multi_timeframe_indicators(
+    db: AsyncSession,
+    asset_id: uuid.UUID,
+    asset_symbol: str,
+    intervals: list[str] | None = None,
+    lookback: int = DEFAULT_LOOKBACK,
+) -> dict[str, IndicatorSnapshot | None]:
+    """Compute indicators for multiple timeframes concurrently.
+
+    Returns a dict mapping each interval string to its IndicatorSnapshot (or None).
+    """
+    if intervals is None:
+        intervals = DEFAULT_MTF_INTERVALS
+
+    results = await asyncio.gather(
+        *(
+            get_indicators(db, asset_id, asset_symbol, interval=iv, lookback=lookback)
+            for iv in intervals
+        )
+    )
+    return dict(zip(intervals, results))
 
 
 async def get_indicator_history(
