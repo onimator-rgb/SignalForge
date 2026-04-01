@@ -7,6 +7,7 @@ no API, no side-effects — pure logic only.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 from app.strategy.profiles import StrategyProfile
@@ -23,6 +24,101 @@ class Trade:
     pnl: float
     pnl_pct: float
     exit_reason: str  # 'stop_loss' | 'take_profit' | 'max_hold' | 'end_of_data'
+
+
+@dataclass(frozen=True)
+class BacktestResult:
+    total_return: float
+    total_return_pct: float
+    max_drawdown_pct: float
+    sharpe_ratio: float
+    win_rate: float
+    profit_factor: float
+    total_trades: int
+    avg_trade_pnl_pct: float
+    best_trade_pnl_pct: float
+    worst_trade_pnl_pct: float
+
+
+def backtest_metrics(
+    trades: list[Trade], initial_capital: float = 1000.0
+) -> BacktestResult:
+    """Summarise a list of trades into a BacktestResult."""
+    if not trades:
+        return BacktestResult(
+            total_return=0.0,
+            total_return_pct=0.0,
+            max_drawdown_pct=0.0,
+            sharpe_ratio=0.0,
+            win_rate=0.0,
+            profit_factor=0.0,
+            total_trades=0,
+            avg_trade_pnl_pct=0.0,
+            best_trade_pnl_pct=0.0,
+            worst_trade_pnl_pct=0.0,
+        )
+
+    n = len(trades)
+    pnls = [t.pnl for t in trades]
+    pnl_pcts = [t.pnl_pct for t in trades]
+
+    total_return = sum(pnls)
+    total_return_pct = total_return / initial_capital
+
+    # --- equity curve & max drawdown ---
+    equity = initial_capital
+    peak = equity
+    max_dd = 0.0
+    for pnl in pnls:
+        equity += pnl
+        if equity > peak:
+            peak = equity
+        dd = (equity - peak) / peak if peak != 0.0 else 0.0
+        if dd < max_dd:
+            max_dd = dd
+
+    # --- win rate ---
+    wins = sum(1 for p in pnls if p > 0)
+    win_rate = wins / n
+
+    # --- profit factor ---
+    gross_profit = sum(p for p in pnls if p > 0)
+    gross_loss = sum(p for p in pnls if p < 0)
+    if gross_loss < 0:
+        profit_factor = gross_profit / abs(gross_loss)
+    elif gross_profit > 0:
+        profit_factor = float("inf")
+    else:
+        profit_factor = 0.0
+
+    # --- sharpe ratio (annualized) ---
+    sharpe = 0.0
+    if n >= 2:
+        mean_pct = sum(pnl_pcts) / n
+        var = sum((x - mean_pct) ** 2 for x in pnl_pcts) / (n - 1)
+        std_pct = math.sqrt(var)
+        if std_pct > 0:
+            avg_bars = sum(t.exit_index - t.entry_index for t in trades) / n
+            bars_per_year = 8760
+            annualization = math.sqrt(bars_per_year / max(avg_bars, 1.0))
+            sharpe = (mean_pct / std_pct) * annualization
+
+    avg_pnl_pct = sum(pnl_pcts) / n
+    best_pnl_pct = max(pnl_pcts)
+    worst_pnl_pct = min(pnl_pcts)
+
+    return BacktestResult(
+        total_return=total_return,
+        total_return_pct=total_return_pct,
+        max_drawdown_pct=max_dd,
+        sharpe_ratio=sharpe,
+        win_rate=win_rate,
+        profit_factor=profit_factor,
+        total_trades=n,
+        avg_trade_pnl_pct=avg_pnl_pct,
+        best_trade_pnl_pct=best_pnl_pct,
+        worst_trade_pnl_pct=worst_pnl_pct,
+    )
 
 
 def simulate_trades(

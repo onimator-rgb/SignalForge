@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0005`
+# Rationale for `marketpulse-task-2026-04-01-0007`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0005-implementation
+**branch:** task/marketpulse-task-2026-04-01-0007-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,49 +9,41 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0005 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** Trade dataclass is frozen with all specified fields
+- **Criteria:** BacktestResult is a frozen dataclass with all 10 specified fields
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** simulate_trades returns empty list for empty/single price input
+- **Criteria:** backtest_metrics([]) returns BacktestResult with all zeros
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Stop loss triggers when price drops by stop_loss_pct from entry
+- **Criteria:** backtest_metrics with mixed trades returns correct max_drawdown_pct (negative value)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Take profit triggers when price rises by take_profit_pct from entry
+- **Criteria:** Sharpe ratio is annualized and returns 0.0 when std is 0 or < 2 trades
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Max hold exit triggers after max_hold_hours bars
+- **Criteria:** profit_factor is float('inf') when no losing trades, 0.0 when no winning trades
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** End of data closes any open position
+- **Criteria:** win_rate is between 0.0 and 1.0 inclusive
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Slippage is applied to both entry and exit prices
+- **Criteria:** All tests pass, mypy passes with no errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** PnL and PnL% are calculated correctly including slippage
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** 1-bar cooldown between consecutive trades
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** All tests pass, mypy clean
+- **Criteria:** No imports beyond stdlib (math, statistics allowed, no numpy)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
@@ -60,14 +52,14 @@ Automated implementation for task marketpulse-task-2026-04-01-0005 via coder_wor
 ## 3) Files changed (and rationale per file)
 - `backend/app/backtest/__init__.py`
 - `backend/app/backtest/engine.py`
-- `backend/tests/test_backtest_engine.py`
+- `backend/tests/test_backtest_metrics.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_backtest_engine.py -q` — passed
+  - `cd backend && uv run python -m pytest tests/test_backtest_metrics.py -q` — passed
   - `cd backend && uv run python -m mypy app/backtest/engine.py --ignore-missing-imports` — passed
 
 ---
@@ -106,7 +98,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0005 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0005): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0007): implementation
 
 ---
 
