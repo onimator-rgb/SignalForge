@@ -11,6 +11,7 @@ const router = createRouter({
     { path: '/recommendations', name: 'recommendations', component: () => import('../views/RecommendationsView.vue') },
     { path: '/portfolio', name: 'portfolio', component: () => import('../views/PortfolioView.vue') },
     { path: '/performance', name: 'performance', component: () => import('../views/PerformanceView.vue') },
+    { path: '/strategy', name: 'strategy', component: () => import('../views/StrategyView.vue') },
     { path: '/watchlists', name: 'watchlists', component: () => import('../views/WatchlistsView.vue') },
     { path: '/reports', name: 'reports', component: () => import('../views/ReportsView.vue') },
     { path: '/reports/:id', name: 'report-detail', component: () => import('../views/ReportDetailView.vue') },
