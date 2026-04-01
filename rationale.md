@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0005`
+# Rationale for `marketpulse-task-2026-04-01-0007`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0005-implementation
+**branch:** task/marketpulse-task-2026-04-01-0007-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,53 +9,57 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0005 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** start_scheduler() creates 6 asyncio tasks (2 existing 1h + 2 new 4h + 2 new 1d)
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** DCAConfig dataclass is frozen with sensible defaults
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** 4h jobs use interval_seconds=14400 (4*3600)
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** DCAConfig post-init validates lengths match max_levels and tranche_pcts sum to ~1.0
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** 1d jobs use interval_seconds=86400 (24*3600)
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** should_dca returns True only when drop exceeds the threshold for the current level
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** get_scheduler_status() reports all 6 jobs
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** should_dca returns False when all DCA levels are exhausted
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** stop_scheduler() cancels all 6 tasks
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** compute_dca_order returns correct tranche USD amount
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** All tests pass with pytest
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** compute_dca_order raises ValueError when levels exhausted
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** mypy passes with no errors
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** compute_new_avg_price returns correct weighted average
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** All tests pass, mypy passes with no errors
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/scheduler.py`
-- `backend/tests/test_scheduler_intervals.py`
+- `backend/app/portfolio/dca.py`
+- `backend/tests/test_dca.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_scheduler_intervals.py -q` — passed
-  - `cd backend && uv run python -m mypy app/scheduler.py --ignore-missing-imports` — FAILED
+  - `cd backend && uv run python -m pytest tests/test_dca.py -q` — passed
+  - `cd backend && uv run python -m mypy app/portfolio/dca.py --ignore-missing-imports` — passed
 
 ---
 
@@ -93,7 +97,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0005 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0005): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0007): implementation
 
 ---
 
