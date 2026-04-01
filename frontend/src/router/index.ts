@@ -14,6 +14,7 @@ const router = createRouter({
     { path: '/watchlists', name: 'watchlists', component: () => import('../views/WatchlistsView.vue') },
     { path: '/reports', name: 'reports', component: () => import('../views/ReportsView.vue') },
     { path: '/reports/:id', name: 'report-detail', component: () => import('../views/ReportDetailView.vue') },
+    { path: '/ingestion', name: 'ingestion', component: () => import('../views/IngestionView.vue') },
   ],
 })
 

@@ -267,3 +267,50 @@ export interface PortfolioSummary {
   recent_closed: PortfolioPosition[]
   recent_transactions: PortfolioTransaction[]
 }
+
+// Ingestion & Diagnostics types
+
+export interface SyncStateOut {
+  asset_id: string
+  asset_symbol: string
+  asset_class: string
+  interval: string
+  last_bar_time: string | null
+  sync_status: string
+  bar_count: number
+  consecutive_errors: number
+  last_error: string | null
+}
+
+export interface IngestionJobOut {
+  id: string
+  started_at: string
+  finished_at: string | null
+  status: string
+  assets_processed: number
+  bars_inserted: number
+  errors: number
+  duration_ms: number | null
+}
+
+export interface IngestionStatusResponse {
+  recent_jobs: IngestionJobOut[]
+  sync_states: SyncStateOut[]
+}
+
+export interface DiagnosticsSyncItem {
+  asset_id: string
+  asset_symbol: string
+  interval: string
+  last_bar_time: string | null
+  staleness_seconds: number | null
+  is_stale: boolean
+  threshold_seconds: number
+}
+
+export interface DiagnosticsError {
+  timestamp: string
+  level: string
+  module: string
+  message: string
+}
