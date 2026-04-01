@@ -17,7 +17,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.assets.models import Asset
 from app.logging_config import get_logger
-from app.portfolio.models import PortfolioPosition, ProtectionEvent
+from app.portfolio.models import Portfolio, PortfolioPosition, ProtectionEvent
+from app.portfolio.rules import DAILY_DRAWDOWN_LIMIT_PCT
 
 log = get_logger(__name__)
 
@@ -80,6 +81,11 @@ async def check_protections(
     blocked, reason = await _check_entry_frequency(db, portfolio_id, now)
     if blocked:
         return False, "entry_frequency_cap", reason
+
+    # F. Daily drawdown guard
+    allowed, ptype, dd_reason = await _daily_drawdown_guard(db, portfolio_id, now)
+    if not allowed:
+        return False, ptype, dd_reason
 
     # E. Risk-off extra restriction
     if regime == "risk_off":
@@ -257,6 +263,97 @@ async def _check_consecutive_sl(
         return True, reason
 
     return False, None
+
+
+async def _daily_drawdown_guard(
+    db: AsyncSession, portfolio_id: uuid.UUID, now: datetime
+) -> tuple[bool, str | None, str | None]:
+    """Halt all new entries if equity dropped >DAILY_DRAWDOWN_LIMIT_PCT from day-open.
+
+    Returns (allowed, protection_type, reason).
+    """
+    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    day_end = day_start + timedelta(days=1)
+
+    # 1. Already blocked today?
+    active_block = await db.execute(
+        select(func.count()).where(
+            ProtectionEvent.protection_type == "daily_drawdown",
+            ProtectionEvent.status == "active",
+            ProtectionEvent.triggered_at >= day_start,
+        )
+    )
+    if active_block.scalar_one() > 0:
+        return False, "daily_drawdown", "Daily drawdown circuit breaker active — entries halted for remainder of UTC day"
+
+    # 2. Compute current equity = cash + sum(open position entry values)
+    portfolio_result = await db.execute(
+        select(Portfolio.current_cash).where(Portfolio.id == portfolio_id)
+    )
+    current_cash = portfolio_result.scalar_one()
+
+    positions_sum_result = await db.execute(
+        select(func.coalesce(func.sum(PortfolioPosition.entry_value_usd), 0)).where(
+            PortfolioPosition.portfolio_id == portfolio_id,
+            PortfolioPosition.status == "open",
+        )
+    )
+    positions_value = positions_sum_result.scalar_one()
+    current_equity = float(current_cash) + float(positions_value)
+
+    # 3. Get or create day-open equity snapshot
+    snapshot_result = await db.execute(
+        select(ProtectionEvent).where(
+            ProtectionEvent.protection_type == "daily_equity_snapshot",
+            ProtectionEvent.triggered_at >= day_start,
+            ProtectionEvent.triggered_at < day_end,
+        ).limit(1)
+    )
+    snapshot = snapshot_result.scalars().first()
+
+    if snapshot is None:
+        snapshot = ProtectionEvent(
+            protection_type="daily_equity_snapshot",
+            status="expired",
+            reason="Day-open equity snapshot",
+            context_data={"day_open_equity": current_equity, "date": now.date().isoformat()},
+            triggered_at=now,
+            expires_at=day_end,
+        )
+        db.add(snapshot)
+        await db.flush()
+
+    day_open_equity = float(snapshot.context_data["day_open_equity"])  # type: ignore[index]
+
+    # 4. Calculate drawdown
+    if day_open_equity <= 0:
+        return True, None, None
+
+    dd_pct = ((day_open_equity - current_equity) / day_open_equity) * 100.0
+
+    if dd_pct >= DAILY_DRAWDOWN_LIMIT_PCT:
+        reason = (
+            f"Equity dropped {dd_pct:.1f}% from day open "
+            f"(${day_open_equity:.2f} -> ${current_equity:.2f})"
+        )
+        event = ProtectionEvent(
+            protection_type="daily_drawdown",
+            status="active",
+            reason=reason,
+            context_data={
+                "day_open_equity": day_open_equity,
+                "current_equity": current_equity,
+                "drawdown_pct": round(dd_pct, 2),
+            },
+            triggered_at=now,
+            expires_at=day_end,
+        )
+        db.add(event)
+        await db.flush()
+        log.info("portfolio.daily_drawdown_triggered", drawdown_pct=dd_pct, reason=reason)
+        return False, "daily_drawdown", reason
+
+    return True, None, None
 
 
 # ── Helpers ───────────────────────────────────────
