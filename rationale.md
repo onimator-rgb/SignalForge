@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0001`
+# Rationale for `marketpulse-task-2026-04-01-0011`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0001-implementation
+**branch:** task/marketpulse-task-2026-04-01-0011-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,49 +9,33 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0001 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0011 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** StrategyCondition validates indicator names against allowed literals
+- **Criteria:** GET /api/v1/strategies/presets returns 200 with a JSON list of 3 preset descriptors (grid, dca, btd)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** StrategyCondition with operator='between' requires value_upper
+- **Criteria:** Each preset descriptor includes preset_type, display_name, description, and params array with name/type/description
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** StrategyAction constrains action to buy/sell/hold with weight 0-2
+- **Criteria:** POST /api/v1/strategies/from-preset with {preset_type: 'dca', params: {interval_hours: 4, amount_per_buy: 50, max_buys: 10}} returns 200 with generated rules
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Strategy requires at least 1 rule (min_length=1)
+- **Criteria:** POST /api/v1/strategies/from-preset with unknown preset_type returns 422
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Strategy.signal_actions returns set of unique action types from rules
+- **Criteria:** POST /api/v1/strategies/from-preset with invalid params (e.g. negative values) returns 422 with descriptive error
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** StrategyStore.add stores and returns strategy with its id
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** StrategyStore.get returns None for unknown id
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** StrategyStore.delete returns True if found, False otherwise
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** All 11 tests pass
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** mypy reports no errors
+- **Criteria:** All tests pass, mypy clean
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
@@ -59,16 +43,21 @@ Automated implementation for task marketpulse-task-2026-04-01-0001 via coder_wor
 
 ## 3) Files changed (and rationale per file)
 - `backend/app/strategies/__init__.py`
-- `backend/app/strategies/models.py`
-- `backend/tests/test_strategy_rules.py`
+- `backend/app/strategies/presets/__init__.py`
+- `backend/app/strategies/presets/btd.py`
+- `backend/app/strategies/presets/dca_bot.py`
+- `backend/app/strategies/presets/grid.py`
+- `backend/app/strategies/router.py`
+- `backend/app/strategies/schemas.py`
+- `backend/tests/test_presets_api.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_strategy_rules.py -q` — passed
-  - `cd backend && uv run python -m mypy app/strategies/models.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_presets_api.py -q` — passed
+  - `cd backend && uv run python -m mypy app/strategies/router.py app/strategies/schemas.py --ignore-missing-imports` — passed
 
 ---
 
@@ -106,7 +95,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0001 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0001): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0011): implementation
 
 ---
 
