@@ -16,32 +16,32 @@ Automated implementation for task marketpulse-task-2026-04-01-0035 via coder_wor
 ## 2) Mapping to acceptance criteria
 
 - **Criteria:** KeltnerOut model has upper, middle, lower float fields
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** IndicatorSnapshot has keltner: KeltnerOut | None = None field
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** get_indicators() computes Keltner and includes it in the returned snapshot
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** mypy passes on both files
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** All 6 tests pass
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** Tests cover insufficient data, valid output structure, channel width properties, and module exports
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** mypy passes on the test file
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 ---
 
@@ -56,7 +56,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0035 via coder_wor
 ## 4) Tests run & results
 - **Commands run:**
   - `cd backend && uv run python -m mypy app/indicators/schemas.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` — FAILED
+  - `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` — passed
   - `cd backend && uv run python -m pytest tests/test_keltner.py -q` — passed
   - `cd backend && uv run python -m mypy tests/test_keltner.py --ignore-missing-imports` — passed
 
