@@ -1,85 +1,79 @@
-# Rationale for `marketpulse-task-2026-04-01-0007`
+# Rationale for `marketpulse-task-2026-04-02-0021`
 
-**author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0007-implementation
-**commit_sha:** 
-**date:** 2026-04-01
-**model_calls:** 1
+**author:** coder-agent (MarketPulse Coder)
+**branch:** task/marketpulse-task-2026-04-02-0021-implementation
+**date:** 2026-04-02
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_worker.py with model integration.
+Grid-search parameter optimizer that iterates StrategyProfile overrides via itertools.product, backtests each, and returns top-N configs ranked by Sharpe ratio.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** DCAConfig dataclass is frozen with sensible defaults
+- **Criteria:** optimize_params() returns list[OptimizationResult] sorted by Sharpe ratio descending
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_optimize_single_param and test_optimize_two_params verify descending Sharpe order
 
-- **Criteria:** DCAConfig post-init validates lengths match max_levels and tranche_pcts sum to ~1.0
+- **Criteria:** Grid search correctly iterates all combinations using itertools.product
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_optimize_two_params generates 3x3=9 combos, top_n=3 returns 3
 
-- **Criteria:** should_dca returns True only when drop exceeds the threshold for the current level
+- **Criteria:** Each result contains the modified StrategyProfile with overridden parameter values
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_result_contains_modified_profile asserts profile fields match params dict
 
-- **Criteria:** should_dca returns False when all DCA levels are exhausted
+- **Criteria:** ValueError raised for invalid param names, too few prices, or >10000 combinations
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_optimize_invalid_param_name, test_optimize_too_few_prices, test_optimize_too_many_combinations
 
-- **Criteria:** compute_dca_order returns correct tranche USD amount
+- **Criteria:** Empty param_ranges returns single result with unmodified base profile
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_optimize_empty_ranges checks len==1, params=={}, profile is base
 
-- **Criteria:** compute_dca_order raises ValueError when levels exhausted
+- **Criteria:** All 7 tests pass
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `pytest tests/test_optimizer.py -q` → 7 passed in 0.04s
 
-- **Criteria:** compute_new_avg_price returns correct weighted average
+- **Criteria:** mypy passes with no errors
 - **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** All tests pass, mypy passes with no errors
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `mypy app/strategies/optimizer.py --ignore-missing-imports` → Success: no issues found
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/dca.py`
-- `backend/tests/test_dca.py`
-- `rationale.md`
+- `backend/app/strategies/optimizer.py` — new module: ParamRange, OptimizationResult dataclasses + optimize_params() grid search function
+- `backend/tests/test_optimizer.py` — 7 tests covering happy path, edge cases, and validation errors
+- `rationale.md` — this file
 
 ---
 
 ## 4) Tests run & results
-- **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_dca.py -q` � passed
-  - `cd backend && uv run python -m mypy app/portfolio/dca.py --ignore-missing-imports` � passed
+- `cd backend && uv run python -m pytest tests/test_optimizer.py -q` → 7 passed
+- `cd backend && uv run python -m mypy app/strategies/optimizer.py --ignore-missing-imports` → Success
 
 ---
 
 ## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
+- Synthetic oscillating price series: `[100.0 + sin(i/10)*10 for i in range(200)]`
+- Uses existing PROFILES["balanced"] as base profile
 
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code � **Severity:** medium � **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+- **Risk:** Grid search performance with many params → **Severity:** low → **Mitigation:** 10,000 combination hard cap with clear ValueError
 
 ---
 
 ## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
+- New files only, fully backward compatible. No existing code modified.
 
 ---
 
 ## 8) Performance considerations
-- No performance impact expected.
+- Grid search is O(combinations × backtest_cost). The 10k cap ensures bounded runtime.
 
 ---
 
@@ -87,17 +81,18 @@ Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_wor
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
-- API key logged: `no` (only presence check)
+- API key logged: `no`
 
 ---
 
 ## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
+1. Future task: expose optimizer via REST API (v5_optimizer_api).
+2. Consider adding parallel execution for large grids.
 
 ---
 
 ## 11) Short changelog
-- `N/A` � feat(marketpulse-task-2026-04-01-0007): implementation
+- feat(marketpulse-task-2026-04-02-0021): strategy parameter optimizer with grid search
 
 ---
 
