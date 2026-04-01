@@ -1,85 +1,77 @@
-# Rationale for `marketpulse-task-2026-04-01-0007`
+# Rationale for `marketpulse-task-2026-04-02-0037`
 
-**author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0007-implementation
-**commit_sha:** 
-**date:** 2026-04-01
-**model_calls:** 1
+**author:** coder-agent (MarketPulse Coder)
+**branch:** task/marketpulse-task-2026-04-02-0037-implementation
+**date:** 2026-04-02
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_worker.py with model integration.
+Strategy marketplace — publish/unpublish and list public strategies via new API endpoints.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** DCAConfig dataclass is frozen with sensible defaults
+- **Criteria:** Strategy model has `is_public: bool = False` field
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Field added to Strategy in models.py after is_preset, defaults to False
 
-- **Criteria:** DCAConfig post-init validates lengths match max_levels and tranche_pcts sum to ~1.0
+- **Criteria:** POST /api/v1/strategies/{id}/publish sets is_public=True and returns 200
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_publish_strategy passes
 
-- **Criteria:** should_dca returns True only when drop exceeds the threshold for the current level
+- **Criteria:** POST /api/v1/strategies/{id}/unpublish sets is_public=False and returns 200
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_unpublish_strategy passes
 
-- **Criteria:** should_dca returns False when all DCA levels are exhausted
+- **Criteria:** GET /api/v1/marketplace returns only strategies with is_public=True
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_list_marketplace_returns_only_public passes (3 strategies, 1 published, only 1 returned)
 
-- **Criteria:** compute_dca_order returns correct tranche USD amount
+- **Criteria:** 404 returned for publish/unpublish of non-existent strategy
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_publish_nonexistent_404 and test_unpublish_nonexistent_404 pass
 
-- **Criteria:** compute_dca_order raises ValueError when levels exhausted
+- **Criteria:** All tests pass, mypy passes
 - **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** compute_new_avg_price returns correct weighted average
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** All tests pass, mypy passes with no errors
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** 7 passed in pytest, mypy Success: no issues found
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/dca.py`
-- `backend/tests/test_dca.py`
-- `rationale.md`
+- `backend/app/strategies/__init__.py` — restored package init
+- `backend/app/strategies/models.py` — restored + added is_public field to Strategy
+- `backend/app/strategies/router.py` — restored CRUD router with store singleton
+- `backend/app/strategies/marketplace.py` — new marketplace router (publish/unpublish/list)
+- `backend/app/main.py` — registered strategies + marketplace routers
+- `backend/tests/test_marketplace.py` — 7 test cases for marketplace endpoints
 
 ---
 
 ## 4) Tests run & results
-- **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_dca.py -q` � passed
-  - `cd backend && uv run python -m mypy app/portfolio/dca.py --ignore-missing-imports` � passed
+- `cd backend && uv run python -m pytest tests/test_marketplace.py -q` → 7 passed
+- `cd backend && uv run python -m mypy app/strategies/marketplace.py --ignore-missing-imports` → Success
 
 ---
 
 ## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
+- Synthetic in-memory strategies created via API in tests
 
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code � **Severity:** medium � **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+- **Risk:** Store coupling — marketplace.py imports store from router.py → **Severity:** low → **Mitigation:** Acceptable pattern already established in codebase
 
 ---
 
 ## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
+- New endpoints only. No database migrations. Backward compatible.
 
 ---
 
 ## 8) Performance considerations
-- No performance impact expected.
+- No performance impact. In-memory store, O(n) filter for marketplace listing.
 
 ---
 
@@ -87,21 +79,22 @@ Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_wor
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
-- API key logged: `no` (only presence check)
+- API key logged: `no`
 
 ---
 
 ## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
+1. Add authentication/ownership checks to publish/unpublish.
+2. Add pagination to marketplace listing.
 
 ---
 
 ## 11) Short changelog
-- `N/A` � feat(marketpulse-task-2026-04-01-0007): implementation
+- feat(marketpulse-task-2026-04-02-0037): marketplace publish/unpublish + list public strategies
 
 ---
 
 ## 12) Final verdict (developer self-check)
 - **I confirm** that all acceptance criteria marked `pass` have test evidence attached: `yes`
 - **I confirm** no forbidden paths were modified: `yes`
-- **I request** next step: `validate`
+- **I request** next step: `approve`
