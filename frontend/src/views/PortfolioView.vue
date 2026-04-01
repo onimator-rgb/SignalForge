@@ -542,7 +542,7 @@ const reasonLabels: Record<string, string> = {
               </div>
             </div>
             <!-- Position Mechanics -->
-            <div class="grid grid-cols-4 gap-2 text-xs mb-3">
+            <div class="grid grid-cols-5 gap-2 text-xs mb-3">
               <!-- Trailing Stop -->
               <div class="bg-gray-900/50 border border-gray-800 rounded-lg p-2">
                 <div class="text-gray-500 mb-1">Trailing Stop</div>
@@ -583,6 +583,31 @@ const reasonLabels: Record<string, string> = {
                   </div>
                 </template>
                 <div v-else class="text-gray-600">N/A</div>
+              </div>
+              <!-- DCA Level -->
+              <div class="bg-gray-900/50 border border-gray-800 rounded-lg p-2">
+                <div class="text-gray-500 mb-1">DCA Level</div>
+                <template v-if="p.exit_context?.dca && p.exit_context.dca.dca_level > 0">
+                  <div class="text-purple-400 font-medium tabular-nums">{{ p.exit_context.dca.dca_level }}/3</div>
+                  <div class="text-gray-500 tabular-nums">{{ p.exit_context.dca.dca_buys?.length ?? 0 }} buys</div>
+                  <div v-if="p.exit_context.dca.dca_buys?.length" class="text-gray-400 tabular-nums">${{ fmtPrice(p.exit_context.dca.dca_buys[p.exit_context.dca.dca_buys.length - 1].price) }}</div>
+                </template>
+                <div v-else class="text-gray-600">No DCA</div>
+              </div>
+            </div>
+            <!-- Entry Signals -->
+            <div v-if="p.exit_context?.entry_snapshot" class="grid grid-cols-3 gap-2 text-xs mb-3">
+              <div class="bg-gray-900/50 border border-gray-800 rounded-lg p-2">
+                <div class="text-gray-500 mb-1">RSI Score</div>
+                <div class="font-medium tabular-nums" :class="p.exit_context.entry_snapshot.rsi_score > 0.1 ? 'text-green-400' : p.exit_context.entry_snapshot.rsi_score < -0.1 ? 'text-red-400' : 'text-gray-400'">{{ p.exit_context.entry_snapshot.rsi_score >= 0 ? '+' : '' }}{{ p.exit_context.entry_snapshot.rsi_score.toFixed(2) }}</div>
+              </div>
+              <div class="bg-gray-900/50 border border-gray-800 rounded-lg p-2">
+                <div class="text-gray-500 mb-1">MACD Score</div>
+                <div class="font-medium tabular-nums" :class="p.exit_context.entry_snapshot.macd_score > 0.1 ? 'text-green-400' : p.exit_context.entry_snapshot.macd_score < -0.1 ? 'text-red-400' : 'text-gray-400'">{{ p.exit_context.entry_snapshot.macd_score >= 0 ? '+' : '' }}{{ p.exit_context.entry_snapshot.macd_score.toFixed(2) }}</div>
+              </div>
+              <div class="bg-gray-900/50 border border-gray-800 rounded-lg p-2">
+                <div class="text-gray-500 mb-1">BB Score</div>
+                <div class="font-medium tabular-nums" :class="p.exit_context.entry_snapshot.bb_score > 0.1 ? 'text-green-400' : p.exit_context.entry_snapshot.bb_score < -0.1 ? 'text-red-400' : 'text-gray-400'">{{ p.exit_context.entry_snapshot.bb_score >= 0 ? '+' : '' }}{{ p.exit_context.entry_snapshot.bb_score.toFixed(2) }}</div>
               </div>
             </div>
             <div class="grid grid-cols-4 gap-4 text-xs mb-3">
