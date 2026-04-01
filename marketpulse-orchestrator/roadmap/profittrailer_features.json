@@ -236,6 +236,166 @@
           "marketpulse_has": "volume used for anomaly only"
         }
       ]
+    },
+    "4": {
+      "label": "Frontend Enhancement",
+      "features": [
+        {
+          "id": "fe_squeeze_anomaly_view",
+          "name": "Squeeze Momentum in Anomalies View",
+          "description": "Display squeeze momentum anomalies in AnomaliesView.vue with squeeze-specific details: BB width, Keltner width, squeeze state (firing/squeezing/none).",
+          "scope": "frontend/src/views/AnomaliesView.vue — add squeeze anomaly type rendering with visual indicator",
+          "files_hint": ["frontend/src/views/AnomaliesView.vue"],
+          "complexity": "small",
+          "depends_on": [],
+          "marketpulse_has": "anomalies shown but no squeeze-specific display"
+        },
+        {
+          "id": "fe_strategy_view",
+          "name": "Strategy Management View",
+          "description": "New view showing full strategy profile details, market regime visualization, auto-switch status, and trailing/slippage parameters. Add to router and nav.",
+          "scope": "frontend/src/views/StrategyView.vue — new view with profile details, regime chart, auto-switch toggle display",
+          "files_hint": ["frontend/src/views/StrategyView.vue", "frontend/src/router/index.ts", "frontend/src/App.vue"],
+          "complexity": "medium",
+          "depends_on": [],
+          "marketpulse_has": "no dedicated strategy view, only summary badge in dashboard"
+        },
+        {
+          "id": "fe_portfolio_trailing_details",
+          "name": "Portfolio Trailing Details Panel",
+          "description": "Expand portfolio position cards to show trailing stop loss price vs current price, trailing TP arm status, peak tracking, DCA state, and slippage impact on P&L.",
+          "scope": "frontend/src/views/PortfolioView.vue — add expanded detail section per position with trailing/DCA/slippage data",
+          "files_hint": ["frontend/src/views/PortfolioView.vue", "frontend/src/types/api.ts"],
+          "complexity": "medium",
+          "depends_on": [],
+          "marketpulse_has": "basic trailing stop badge only"
+        },
+        {
+          "id": "fe_indicator_charts",
+          "name": "Mini Indicator Charts in Asset Detail",
+          "description": "Add small sparkline-style visual charts for RSI, StochRSI, ADX, and MACD histogram in AssetDetailView. Use inline SVG or CSS-only bars — no charting library needed.",
+          "scope": "frontend/src/views/AssetDetailView.vue — add visual mini-charts next to indicator values",
+          "files_hint": ["frontend/src/views/AssetDetailView.vue"],
+          "complexity": "medium",
+          "depends_on": [],
+          "marketpulse_has": "only numeric values, no visual charts for indicators"
+        },
+        {
+          "id": "fe_protection_history",
+          "name": "Protection Events History in Portfolio",
+          "description": "Add a section in PortfolioView showing recent protection events (cooldowns, SL guards, consecutive SL blocks) with timestamps and reasons. Use existing /portfolio/protections endpoint.",
+          "scope": "frontend/src/views/PortfolioView.vue — add protection events list section",
+          "files_hint": ["frontend/src/views/PortfolioView.vue"],
+          "complexity": "small",
+          "depends_on": [],
+          "marketpulse_has": "protections shown as badges but no history"
+        },
+        {
+          "id": "fe_recommendation_signals",
+          "name": "Signal Breakdown in Recommendations View",
+          "description": "Show the 7-signal composite breakdown (RSI, MACD, Bollinger, price trend, volume, anomaly, volatility + new ADX, StochRSI) for each recommendation. Use existing signal_details field.",
+          "scope": "frontend/src/views/RecommendationsView.vue — add expandable signal breakdown per recommendation",
+          "files_hint": ["frontend/src/views/RecommendationsView.vue"],
+          "complexity": "medium",
+          "depends_on": [],
+          "marketpulse_has": "recommendations shown but no signal breakdown visible"
+        },
+        {
+          "id": "fe_ingestion_status_view",
+          "name": "Ingestion Status View",
+          "description": "New view showing per-asset sync freshness, ingestion job history, scheduler status, and error log. Uses existing /diagnostics/sync, /ingestion/status, /ingestion/jobs endpoints.",
+          "scope": "frontend/src/views/IngestionView.vue — new view with sync status table and job history",
+          "files_hint": ["frontend/src/views/IngestionView.vue", "frontend/src/router/index.ts", "frontend/src/App.vue"],
+          "complexity": "medium",
+          "depends_on": [],
+          "marketpulse_has": "no frontend for ingestion monitoring"
+        },
+        {
+          "id": "fe_entry_decisions_view",
+          "name": "Entry Decisions Log in Portfolio",
+          "description": "Display the entry/exit decision log from /portfolio/entry-decisions endpoint. Show what candidates were considered, which passed/failed protections, and why.",
+          "scope": "frontend/src/views/PortfolioView.vue — add entry decisions tab/section",
+          "files_hint": ["frontend/src/views/PortfolioView.vue"],
+          "complexity": "medium",
+          "depends_on": [],
+          "marketpulse_has": "endpoint exists but not displayed in frontend"
+        }
+      ]
+    },
+    "5": {
+      "label": "Backend Remaining",
+      "features": [
+        {
+          "id": "dca_engine",
+          "name": "DCA Engine (Dollar Cost Averaging)",
+          "description": "When a position goes into loss, automatically buy more at lower prices to reduce average entry. Configurable: max DCA levels, buy amount per level, trigger percentage per level.",
+          "scope": "backend/app/portfolio/ — add DCA logic with configurable levels, track average entry price across DCA buys",
+          "files_hint": ["backend/app/portfolio/dca.py", "backend/tests/test_dca.py"],
+          "complexity": "large",
+          "depends_on": [],
+          "marketpulse_has": "no DCA"
+        },
+        {
+          "id": "parabolic_sar",
+          "name": "Parabolic SAR",
+          "description": "Stop and Reverse indicator. Dots above/below price show trend direction. Natural fit for dynamic stop-loss placement.",
+          "scope": "backend/app/indicators/",
+          "files_hint": ["backend/app/indicators/calculators/psar.py", "backend/tests/test_psar.py"],
+          "complexity": "small",
+          "depends_on": [],
+          "marketpulse_has": "no Parabolic SAR"
+        },
+        {
+          "id": "cci",
+          "name": "CCI (Commodity Channel Index)",
+          "description": "Measures deviation from statistical mean. Values above +100 = overbought, below -100 = oversold.",
+          "scope": "backend/app/indicators/",
+          "files_hint": ["backend/app/indicators/calculators/cci.py", "backend/tests/test_cci.py"],
+          "complexity": "small",
+          "depends_on": [],
+          "marketpulse_has": "no CCI"
+        },
+        {
+          "id": "keltner_channels",
+          "name": "Keltner Channels",
+          "description": "ATR-based envelope channels. Used with Bollinger Bands for squeeze detection.",
+          "scope": "backend/app/indicators/",
+          "files_hint": ["backend/app/indicators/calculators/keltner.py", "backend/tests/test_keltner.py"],
+          "complexity": "small",
+          "depends_on": [],
+          "marketpulse_has": "no Keltner Channels"
+        },
+        {
+          "id": "fibonacci_levels",
+          "name": "Fibonacci Retracement Levels",
+          "description": "Calculate support/resistance at Fibonacci ratios (23.6%, 38.2%, 50%, 61.8%) from recent swing high/low.",
+          "scope": "backend/app/indicators/",
+          "files_hint": ["backend/app/indicators/calculators/fibonacci.py", "backend/tests/test_fibonacci.py"],
+          "complexity": "medium",
+          "depends_on": [],
+          "marketpulse_has": "no Fibonacci"
+        },
+        {
+          "id": "pivot_points",
+          "name": "Pivot Points",
+          "description": "Classic support/resistance pivot calculations from previous period high/low/close.",
+          "scope": "backend/app/indicators/",
+          "files_hint": ["backend/app/indicators/calculators/pivot.py", "backend/tests/test_pivot.py"],
+          "complexity": "small",
+          "depends_on": [],
+          "marketpulse_has": "no Pivot Points"
+        },
+        {
+          "id": "min_volume_filter",
+          "name": "Min/Max Buy Volume Filter",
+          "description": "Only allow entries on assets with sufficient trading volume. Prevents bad fills on illiquid assets.",
+          "scope": "backend/app/portfolio/service.py",
+          "files_hint": ["backend/app/portfolio/service.py", "backend/tests/test_volume_filter.py"],
+          "complexity": "small",
+          "depends_on": [],
+          "marketpulse_has": "volume used for anomaly only"
+        }
+      ]
     }
   }
 }

@@ -147,6 +147,24 @@ class Orchestrator:
             self.repo_path,
         )
 
+        # Frontend views
+        _, fe_views = _run_cmd(
+            "find frontend/src/views -name '*.vue' -type f 2>/dev/null | sort",
+            self.repo_path,
+        )
+
+        # Frontend types (what's exposed)
+        _, fe_types = _run_cmd(
+            "grep -n 'interface\\|export type' frontend/src/types/api.ts 2>/dev/null | head -30",
+            self.repo_path,
+        )
+
+        # Frontend router (what routes exist)
+        _, fe_routes = _run_cmd(
+            "grep -n 'path:\\|name:\\|component:' frontend/src/router/index.ts 2>/dev/null | head -30",
+            self.repo_path,
+        )
+
         return {
             "git_log": git_log.strip(),
             "git_diff_from_main": git_diff.strip()[:1000],
@@ -155,6 +173,9 @@ class Orchestrator:
             "indicators_functions": indicators_code.strip(),
             "portfolio_functions": portfolio_code.strip(),
             "strategy_functions": strategy_code.strip(),
+            "frontend_views": fe_views.strip(),
+            "frontend_types": fe_types.strip(),
+            "frontend_routes": fe_routes.strip(),
             "files_changed_this_session": list(self.all_files_changed),
             "time_remaining_minutes": round(self._time_remaining(), 1),
         }
@@ -314,6 +335,15 @@ Portfolio functions:
 
 Strategy functions:
 {project_state['strategy_functions'][:500]}
+
+Frontend views:
+{project_state.get('frontend_views', 'N/A')[:300]}
+
+Frontend types:
+{project_state.get('frontend_types', 'N/A')[:300]}
+
+Frontend routes:
+{project_state.get('frontend_routes', 'N/A')[:300]}
 
 Files changed this session:
 {project_state['files_changed_this_session']}

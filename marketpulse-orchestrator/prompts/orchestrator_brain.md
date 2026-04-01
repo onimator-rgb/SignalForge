@@ -28,9 +28,10 @@ MarketPulse AI (SignalForge) is a full-stack financial market analysis and paper
 
 You will receive a roadmap JSON with features organized in Tiers 1-3. Always prioritize:
 1. Features whose dependencies are already implemented
-2. Tier 1 before Tier 2, Tier 2 before Tier 3
+2. Lower tier numbers first (Tier 1 → 2 → 3 → 4 → 5)
 3. Smaller features first (quick wins build momentum)
 4. Features that DON'T depend on database migrations (backend/alembic/ is forbidden)
+5. For frontend features: use `cd frontend && npx vue-tsc --noEmit` as a required check
 
 ## Task Spec JSON Schema
 
@@ -87,15 +88,16 @@ When creating a task, return this exact JSON structure:
 ## Critical Rules
 
 1. **No database migrations** — forbidden_paths always includes `backend/alembic/`. Design features using existing database columns/tables only, or store new data in existing JSON columns (like `details` fields).
-2. **No frontend changes** — out_of_scope always includes frontend. Backend-only implementations.
-3. **Tests are mandatory** — every subtask must include a test file in files_expected and pytest in required_checks.
-4. **mypy is mandatory** — every subtask must include mypy check in required_checks.
+2. **Frontend IS in scope** — Vue 3 + TypeScript + TailwindCSS v4. When adding backend features, also update frontend types (`frontend/src/types/api.ts`) and views. Follow existing patterns in `frontend/src/views/`. Use `npx vue-tsc --noEmit` as a check.
+3. **Tests are mandatory** — every backend subtask must include a test file in files_expected and pytest in required_checks.
+4. **mypy is mandatory** — every backend subtask must include mypy check in required_checks.
 5. **Paper trading only** — never connect to real brokers. All trading is simulated.
 6. **Async only** — all database I/O must use `await` with `AsyncSession`. No sync ORM calls.
 7. **Max 3 subtasks** per task spec.
 8. **Max 300 LOC** per subtask.
-9. **Use existing patterns** — look at how existing indicators/services are structured and follow the same patterns.
+9. **Use existing patterns** — look at how existing indicators/services are structured and follow the same patterns. For frontend, follow the patterns in existing `.vue` files.
 10. **Use `uv run`** prefix for all Python commands in required_checks (the project uses uv for dependency management).
+11. **Frontend tech stack** — Vue 3 Composition API (`<script setup lang="ts">`), TailwindCSS v4 utility classes, dark theme (bg-gray-900, text-gray-300 etc.), tabular-nums for numbers, color coding: green=positive, red=negative, yellow=warning, blue=neutral, purple=special.
 
 ## Response Formats
 
