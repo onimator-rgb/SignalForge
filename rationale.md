@@ -16,52 +16,52 @@ Automated implementation for task marketpulse-task-2026-04-01-0011 via coder_wor
 ## 2) Mapping to acceptance criteria
 
 - **Criteria:** calc_fibonacci returns None when fewer than lookback bars are provided
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** calc_fibonacci returns None when swing_high equals swing_low (flat price)
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** calc_fibonacci returns FibonacciResult with correct Fibonacci ratios for known uptrend data
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** calc_fibonacci returns FibonacciResult with correct Fibonacci ratios for known downtrend data
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** level_0 == swing_low and level_100 == swing_high always
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** trend field is 'up' when swing_low occurs before swing_high, 'down' otherwise
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** All levels are rounded to 2 decimal places
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** FibonacciResult and calc_fibonacci are exported from calculators __init__.py
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** FibonacciOut schema has all 10 fields (swing_high, swing_low, 7 levels, trend)
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** IndicatorSnapshot includes fibonacci: FibonacciOut | None = None
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** service.py calls calc_fibonacci and maps result via _fib_to_out helper
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** mypy passes on service.py and schemas.py with no errors
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 ---
 
@@ -79,7 +79,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0011 via coder_wor
 - **Commands run:**
   - `cd backend && uv run python -m pytest tests/test_fibonacci.py -q` — passed
   - `cd backend && uv run python -m mypy app/indicators/calculators/fibonacci.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` — FAILED
+  - `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` — passed
   - `cd backend && uv run python -m mypy app/indicators/schemas.py --ignore-missing-imports` — passed
 
 ---
