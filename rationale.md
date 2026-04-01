@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0031`
+# Rationale for `marketpulse-task-2026-04-01-0033`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0031-implementation
+**branch:** task/marketpulse-task-2026-04-01-0033-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,53 +9,49 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0031 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0033 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** calc_obv returns None when fewer than 2 data points
+- **Criteria:** calc_mfi returns MFIResult with mfi float in [0, 100]
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** calc_obv returns correct cumulative OBV for a known series (e.g., closes=[10,11,10.5,12,11], volumes=[100,150,120,200,90] â†’ manually verified result)
+- **Criteria:** Returns None when len(closes) < period + 1
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** calc_obv is exported from calculators __init__.py
+- **Criteria:** MFIResult is a frozen dataclass
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** mypy passes with no errors
+- **Criteria:** Handles zero negative money flow (returns 100.0)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** IndicatorSnapshot schema includes obv field (float | None, default None)
+- **Criteria:** calc_mfi and MFIResult are exported from calculators/__init__.py
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** get_indicators() calls calc_obv with closes and volumes series
+- **Criteria:** IndicatorSnapshot has mfi: float | None = None field
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** OBV value appears in the IndicatorSnapshot response when sufficient data exists
+- **Criteria:** get_indicators() computes MFI and includes it in the returned snapshot
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** mypy passes on both files
+- **Criteria:** mypy passes with no errors on both files
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** All 6 test cases pass
+- **Criteria:** All tests pass
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Tests cover: insufficient data, uptrend, downtrend, mixed, flat price, minimal input
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** No test uses mocking â€” all tests use direct calculation with pd.Series inputs
+- **Criteria:** At least 6 test functions covering edge cases and typical scenarios
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
@@ -66,21 +62,23 @@ Automated implementation for task marketpulse-task-2026-04-01-0031 via coder_wor
 ---
 
 ## 3) Files changed (and rationale per file)
+- `backend/app/indicators/calculators/__init__.py`
+- `backend/app/indicators/calculators/mfi.py`
 - `backend/app/indicators/schemas.py`
 - `backend/app/indicators/service.py`
-- `backend/tests/test_obv.py`
+- `backend/tests/test_mfi.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -c "from app.indicators.calculators import calc_obv; print('import ok')"` — passed
-  - `cd backend && uv run python -m mypy app/indicators/calculators/obv.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -c "from app.indicators.calculators.mfi import calc_mfi, MFIResult; print('import ok')"` — passed
+  - `cd backend && uv run python -m mypy app/indicators/calculators/mfi.py --ignore-missing-imports` — passed
   - `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` — passed
   - `cd backend && uv run python -m mypy app/indicators/schemas.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m pytest tests/test_obv.py -q` — passed
-  - `cd backend && uv run python -m mypy tests/test_obv.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_mfi.py -q` — passed
+  - `cd backend && uv run python -m mypy tests/test_mfi.py --ignore-missing-imports` — passed
 
 ---
 
@@ -118,7 +116,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0031 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0031): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0033): implementation
 
 ---
 

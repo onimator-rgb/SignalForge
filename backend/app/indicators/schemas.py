@@ -19,12 +19,6 @@ class BollingerOut(BaseModel):
     width: float
 
 
-class ADXOut(BaseModel):
-    adx: float
-    plus_di: float
-    minus_di: float
-
-
 class IndicatorSnapshot(BaseModel):
     asset_id: UUID
     asset_symbol: str
@@ -34,14 +28,11 @@ class IndicatorSnapshot(BaseModel):
     rsi_14: float | None = None
     macd: MACDOut | None = None
     bollinger: BollingerOut | None = None
-    adx: ADXOut | None = None
     adx_14: float | None = None
     plus_di: float | None = None
     minus_di: float | None = None
-    mfi_14: float | None = None
     stoch_rsi_k: float | None = None
     stoch_rsi_d: float | None = None
-    mfi_14: float | None = None
+    mfi: float | None = None
     vwap: float | None = None
-    obv: float | None = None
     bars_available: int  # how many bars were used
