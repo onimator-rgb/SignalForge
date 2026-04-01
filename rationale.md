@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0019`
+# Rationale for `marketpulse-task-2026-04-01-0021`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0019-implementation
+**branch:** task/marketpulse-task-2026-04-01-0021-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,66 +9,65 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0019 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0021 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** market_circuit_breaker_guard pure function exists and returns dict when >60% assets drop >3%
+- **Criteria:** IndicatorHistory interface exists in api.ts with all fields matching backend schema
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** market_circuit_breaker_guard returns None when fewer assets are dropping or total is 0
+- **Criteria:** TimeframeSignal interface exists in api.ts
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** check_market_circuit_breaker async function queries price_bars and creates ProtectionEvent
+- **Criteria:** vue-tsc --noEmit passes with no errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** check_market_circuit_breaker returns True if market_circuit_breaker event already active
+- **Criteria:** Interval selector shows 4 options: 5m, 1h, 4h, 1d
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** check_protections calls check_market_circuit_breaker and blocks entries when active
+- **Criteria:** Confluence panel fetches indicators for all 4 intervals on mount
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** mypy passes with no errors
+- **Criteria:** Each timeframe column shows RSI signal (bullish/bearish/neutral) and MACD signal with color coding
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** At least 8 test cases covering pure function edge cases
+- **Criteria:** Overall confluence line displays Strong Buy / Buy / Neutral / Sell / Strong Sell
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** All tests pass with pytest
+- **Criteria:** Loading state shown while confluence data is being fetched
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Tests verify blocking dict structure (blocked, rule, dropping_count, total_count, worst_drops)
+- **Criteria:** Existing single-interval indicator detail cards are preserved and still work
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Tests verify None return for non-triggering scenarios
+- **Criteria:** vue-tsc --noEmit passes with no type errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/protections.py`
-- `backend/tests/test_circuit_breaker.py`
+- `frontend/src/types/api.ts`
+- `frontend/src/views/AssetDetailView.vue`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m mypy app/portfolio/protections.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m pytest tests/test_circuit_breaker.py -q` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/protections.py --ignore-missing-imports` — passed
+  - `cd frontend && npx vue-tsc --noEmit` — passed
+  - `cd frontend && npx vue-tsc --noEmit` — passed
 
 ---
 
@@ -106,7 +105,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0019 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0019): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0021): implementation
 
 ---
 
