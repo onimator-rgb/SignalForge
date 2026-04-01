@@ -66,7 +66,7 @@ class Orchestrator:
         self.max_minutes = max_minutes
         self.max_retries = max_retries
         self.dry_run = dry_run
-        self.tiers = tiers or ["1", "2", "3"]
+        self.tiers = tiers or ["1", "2", "3", "4", "5"]
 
         self.session_id = f"session-{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}"
         self._t_start = time.monotonic()
@@ -297,14 +297,105 @@ class Orchestrator:
         logger.error(f"Could not parse JSON from response: {text[:500]}")
         return None
 
+    # ── Discover new features ────────────────────────
+
+    def discover_new_features(self, project_state: dict) -> list[dict]:
+        """Ask Claude CLI to suggest new features not in the roadmap."""
+        logger.info("Roadmap exhausted — discovering new features...")
+
+        prompt = f"""You are the Orchestrator for MarketPulse AI. The existing feature roadmap is exhausted.
+Analyze the project state below and suggest 5-8 NEW features that would improve the platform.
+Consider: missing tests, UI improvements, new indicators, better error handling, performance,
+user experience, data visualization, API enhancements, and features inspired by ProfitTrailer.
+
+## Project State
+```
+Git log (recent):
+{project_state['git_log'][:800]}
+
+Backend modules:
+{project_state['backend_modules'][:300]}
+
+Existing tests:
+{project_state['existing_tests'][:400]}
+
+Frontend views:
+{project_state.get('frontend_views', 'N/A')[:300]}
+
+Frontend routes:
+{project_state.get('frontend_routes', 'N/A')[:300]}
+```
+
+## Completed Work Log
+{self._build_completed_log()}
+
+RESPOND WITH ONLY a JSON array of feature objects:
+```json
+[
+  {{
+    "id": "unique_snake_case_id",
+    "name": "Feature Name",
+    "description": "What to implement (2-3 sentences)",
+    "scope": "which files/modules to modify",
+    "files_hint": ["path/to/file1.py", "path/to/file2.vue"],
+    "complexity": "small|medium|large",
+    "depends_on": []
+  }}
+]
+```
+Only suggest features that do NOT require database migrations.
+Do NOT suggest features already completed this session.
+Focus on high-value, achievable tasks."""
+
+        raw = self._call_claude(prompt)
+        parsed = self._parse_json_response(raw)
+
+        if parsed and isinstance(parsed, list):
+            logger.info(f"Discovered {len(parsed)} new features")
+            return parsed
+        if parsed and isinstance(parsed, dict) and "features" in parsed:
+            features = parsed["features"]
+            logger.info(f"Discovered {len(features)} new features")
+            return features
+
+        logger.warning("Could not parse discovered features")
+        return []
+
+    def _add_discovered_features(self, features: list[dict]) -> None:
+        """Add discovered features to roadmap tier 6 (dynamic)."""
+        if "6" not in self.roadmap.get("tiers", {}):
+            self.roadmap.setdefault("tiers", {})["6"] = {
+                "label": "Auto-Discovered",
+                "features": [],
+            }
+        tier6 = self.roadmap["tiers"]["6"]
+        existing_ids = {f["id"] for f in tier6["features"]}
+        for f in features:
+            if f.get("id") and f["id"] not in existing_ids:
+                f.setdefault("depends_on", [])
+                f.setdefault("complexity", "medium")
+                f.setdefault("marketpulse_has", "not implemented")
+                tier6["features"].append(f)
+                existing_ids.add(f["id"])
+        # Also add tier 6 to allowed tiers if not already
+        if "6" not in self.tiers:
+            self.tiers.append("6")
+        logger.info(f"Roadmap now has {len(tier6['features'])} auto-discovered features")
+
     # ── Plan next task ────────────────────────────────
 
     def plan_next_task(self, project_state: dict) -> tuple[dict | None, str]:
         """Ask Claude to pick next feature and generate task_spec. Returns (task_spec, feature_id)."""
         available = self._get_available_features()
         if not available:
-            logger.info("No more features available in roadmap.")
-            return None, ""
+            # Try discovering new features before giving up
+            new_features = self.discover_new_features(project_state)
+            if new_features:
+                self._add_discovered_features(new_features)
+                available = self._get_available_features()
+            if not available:
+                logger.info("No more features available even after discovery.")
+                return None, ""
 
         # Build concise feature list for prompt
         feature_lines = []
