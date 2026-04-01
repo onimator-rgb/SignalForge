@@ -11,6 +11,7 @@ from app.indicators.calculators.squeeze import (
     detect_squeeze,
 )
 from app.indicators.calculators.stochrsi import StochRSIResult, calc_stochrsi
+from app.indicators.calculators.vwap import VWAPResult, calc_vwap
 
 __all__ = [
     "ADXResult",
@@ -19,11 +20,13 @@ __all__ = [
     "MACDResult",
     "SqueezeState",
     "StochRSIResult",
+    "VWAPResult",
     "calc_adx",
     "calc_bollinger",
     "calc_keltner",
     "calc_macd",
     "calc_rsi",
     "calc_stochrsi",
+    "calc_vwap",
     "detect_squeeze",
 ]
