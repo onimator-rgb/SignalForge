@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0007`
+# Rationale for `marketpulse-task-2026-04-01-0009`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0007-implementation
+**branch:** task/marketpulse-task-2026-04-01-0009-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,58 +9,48 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0009 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** BacktestResult is a frozen dataclass with all 10 specified fields
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** POST /api/v1/backtest/run returns 200 with BacktestResponse containing metrics and trades list
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** backtest_metrics([]) returns BacktestResult with all zeros
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Invalid profile_name returns 400 with descriptive error
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** backtest_metrics with mixed trades returns correct max_drawdown_pct (negative value)
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Fewer than 2 price bars returns 404 with 'Not enough price data'
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Sharpe ratio is annualized and returns 0.0 when std is 0 or < 2 trades
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** All response fields match BacktestResult dataclass fields plus trades list
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** profit_factor is float('inf') when no losing trades, 0.0 when no winning trades
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Router is registered in main.py
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** win_rate is between 0.0 and 1.0 inclusive
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** All tests pass, mypy passes with no errors
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** No imports beyond stdlib (math, statistics allowed, no numpy)
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** All tests pass, mypy clean
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/backtest/__init__.py`
-- `backend/app/backtest/engine.py`
-- `backend/tests/test_backtest_metrics.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_backtest_metrics.py -q` — passed
-  - `cd backend && uv run python -m mypy app/backtest/engine.py --ignore-missing-imports` — passed
+  - `model_call` — FAILED
+  - `cd backend && uv run python -m pytest tests/test_backtest_api.py -q` — FAILED
+  - `cd backend && uv run python -m mypy app/backtest/router.py app/backtest/schemas.py --ignore-missing-imports` — FAILED
 
 ---
 
@@ -98,7 +88,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0007): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0009): implementation
 
 ---
 
