@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { fetchAssets } from '../api/assets'
 import { fetchAnomalies } from '../api/anomalies'
@@ -77,6 +77,25 @@ function pnlClass(v: number | null): string {
 function pnlPrefix(v: number): string {
   return v >= 0 ? '+' : ''
 }
+
+const aiPanelOpen = ref(false)
+const aiTips = computed<string[]>(() => {
+  if (!overview.value) return []
+  const tips: string[] = []
+  if (overview.value.portfolio.total_return_pct < -5)
+    tips.push('Portfolio drawdown detected — consider reviewing stop-loss settings')
+  if (overview.value.portfolio.open_count === 0)
+    tips.push('No open positions — check top buy signals for opportunities')
+  if (overview.value.alerts.unresolved_anomalies > 3)
+    tips.push('Multiple anomalies active — market may be volatile, proceed with caution')
+  if (overview.value.signals.counts.candidate_buy > 3)
+    tips.push('Several buy signals available — review recommendations for best entries')
+  if (overview.value.portfolio.open_count >= 4)
+    tips.push('Near position limit (4/5) — prioritize managing existing positions')
+  if (tips.length === 0)
+    tips.push('Markets look stable — continue monitoring your watchlist')
+  return tips
+})
 
 const recTypeColors: Record<string, string> = {
   candidate_buy: 'text-green-400 bg-green-500/10 border-green-500/30',
@@ -188,6 +207,55 @@ function expiryMinutes(expiresAt: string): number {
           <span v-if="strategy.profile.slippage_buy_pct" class="tabular-nums text-gray-500">Slip: {{ (strategy.profile.slippage_buy_pct * 100).toFixed(2) }}%</span>
           <span class="tabular-nums">Max Hold: {{ strategy.profile.max_hold_hours }}h</span>
           <span class="tabular-nums">Max Pos: {{ (strategy.profile.max_position_pct * 100).toFixed(0) }}%</span>
+        </div>
+      </div>
+
+      <!-- AI Assistant panel -->
+      <div class="mb-5 border border-purple-500/30 rounded-lg overflow-hidden" v-if="overview">
+        <button
+          class="w-full flex items-center justify-between px-4 py-3 bg-purple-500/10 hover:bg-purple-500/15 transition-colors"
+          @click="aiPanelOpen = !aiPanelOpen"
+        >
+          <div class="flex items-center gap-2">
+            <span class="text-purple-400">✦</span>
+            <span class="font-semibold text-sm text-purple-300">AI Assistant</span>
+          </div>
+          <span class="text-purple-400 text-xs transition-transform" :class="{ 'rotate-180': aiPanelOpen }">▼</span>
+        </button>
+        <div v-show="aiPanelOpen" class="bg-gray-900 p-4">
+          <div class="grid grid-cols-3 gap-4">
+            <!-- Portfolio Insights -->
+            <div>
+              <h3 class="text-xs text-gray-500 uppercase font-semibold mb-2">Portfolio Insights</h3>
+              <div class="space-y-1.5 text-sm">
+                <div class="text-gray-300">Equity: <span class="text-white font-medium tabular-nums">${{ overview.portfolio.equity.toFixed(2) }}</span></div>
+                <div class="text-gray-300">Return: <span class="font-medium tabular-nums" :class="pnlClass(overview.portfolio.total_return_pct)">{{ pnlPrefix(overview.portfolio.total_return_pct) }}{{ overview.portfolio.total_return_pct.toFixed(2) }}%</span></div>
+                <div class="text-gray-300">Positions: <span class="text-white font-medium">{{ overview.portfolio.open_count }}/5</span></div>
+              </div>
+            </div>
+            <!-- Strategy Tips -->
+            <div>
+              <h3 class="text-xs text-gray-500 uppercase font-semibold mb-2">Strategy Tips</h3>
+              <ul class="space-y-1.5 text-sm">
+                <li v-for="(tip, i) in aiTips" :key="i" class="flex items-start gap-1.5">
+                  <span class="text-yellow-400 mt-0.5">•</span>
+                  <span class="text-yellow-400">{{ tip }}</span>
+                </li>
+              </ul>
+            </div>
+            <!-- Quick Actions -->
+            <div>
+              <h3 class="text-xs text-gray-500 uppercase font-semibold mb-2">Quick Actions</h3>
+              <div class="space-y-2">
+                <button
+                  class="w-full px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-lg disabled:opacity-50"
+                  :disabled="generatingSummary"
+                  @click="genSummary"
+                >{{ generatingSummary ? 'Generowanie...' : 'Market Summary AI' }}</button>
+                <RouterLink to="/reports" class="block text-center text-xs text-blue-400 hover:underline">View All Reports</RouterLink>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

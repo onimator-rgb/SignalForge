@@ -1,85 +1,82 @@
-# Rationale for `marketpulse-task-2026-04-01-0007`
+# Rationale for `marketpulse-task-2026-04-02-0049`
 
-**author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0007-implementation
-**commit_sha:** 
-**date:** 2026-04-01
-**model_calls:** 1
+**author:** coder-agent
+**branch:** task/marketpulse-task-2026-04-02-0049-implementation
+**date:** 2026-04-02
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_worker.py with model integration.
+Add a collapsible AI Assistant panel to DashboardView that shows portfolio insights, contextual strategy tips, and quick actions â€” all derived client-side from existing dashboard data.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** DCAConfig dataclass is frozen with sensible defaults
+- **Criteria:** DashboardView contains a collapsible AI Assistant panel with purple-themed header
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Panel uses `bg-purple-500/10 border-purple-500/30` header with `âœ¦` icon and purple text
 
-- **Criteria:** DCAConfig post-init validates lengths match max_levels and tranche_pcts sum to ~1.0
+- **Criteria:** Panel is collapsed by default and toggles on click
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `aiPanelOpen = ref(false)`, `v-show="aiPanelOpen"`, toggle via `@click="aiPanelOpen = !aiPanelOpen"`
 
-- **Criteria:** should_dca returns True only when drop exceeds the threshold for the current level
+- **Criteria:** Panel shows portfolio insights derived from overview data
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Portfolio Insights column shows equity, return %, and position count from `overview.portfolio`
 
-- **Criteria:** should_dca returns False when all DCA levels are exhausted
+- **Criteria:** Panel shows at least 2 contextual strategy tips based on dashboard state
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `aiTips` computed checks 5 conditions (drawdown, no positions, anomalies, buy signals, position limit) + 1 default
 
-- **Criteria:** compute_dca_order returns correct tranche USD amount
+- **Criteria:** Panel includes Market Summary AI generation button that calls existing genSummary()
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Quick Actions section contains button with `@click="genSummary"` and `generatingSummary` state
 
-- **Criteria:** compute_dca_order raises ValueError when levels exhausted
+- **Criteria:** vue-tsc --noEmit passes with no errors
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `cd frontend && npx vue-tsc --noEmit` â€” passed with 0 errors
 
-- **Criteria:** compute_new_avg_price returns correct weighted average
+- **Criteria:** Dark theme styling consistent with existing dashboard sections
 - **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** All tests pass, mypy passes with no errors
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Uses `bg-gray-900`, `text-gray-300`, `text-gray-500`, consistent with existing cards
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/dca.py`
-- `backend/tests/test_dca.py`
-- `rationale.md`
+
+- `frontend/src/views/DashboardView.vue` â€” Added `computed` import, `aiPanelOpen` ref, `aiTips` computed property, and collapsible AI Assistant panel template. ~50 LOC added.
+- `rationale.md` â€” Updated for this task.
 
 ---
 
 ## 4) Tests run & results
+
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_dca.py -q` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/dca.py --ignore-missing-imports` — passed
+  - `cd frontend && npx vue-tsc --noEmit`
+- **Results summary:**
+  - typecheck: passed (0 errors)
 
 ---
 
 ## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
+All data is derived from the existing `overview` ref already loaded by `loadDashboard()`. No new API calls or data sources.
 
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code — **Severity:** medium — **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+- **Risk:** Template-only change could break layout â€” **Severity:** low â€” **Mitigation:** Panel uses v-if="overview" guard and is self-contained
+- **Risk:** Type errors â€” **Severity:** low â€” **Mitigation:** vue-tsc passes clean
 
 ---
 
 ## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
+- No API changes, no DB changes. Pure frontend addition.
 
 ---
 
 ## 8) Performance considerations
-- No performance impact expected.
+- `aiTips` computed is trivial (5 boolean checks). No performance impact.
 
 ---
 
@@ -87,17 +84,17 @@ Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_wor
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
-- API key logged: `no` (only presence check)
 
 ---
 
 ## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
+1. Should the AI panel remember its open/closed state via localStorage?
+2. Should tips be localized to Polish to match other UI labels?
 
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0007): implementation
+- `feat(marketpulse-task-2026-04-02-0049): add AI Assistant collapsible panel to DashboardView`
 
 ---
 
