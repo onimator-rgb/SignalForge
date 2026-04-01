@@ -1,6 +1,13 @@
 """MFI (Money Flow Index) calculator."""
 
+from dataclasses import dataclass
+
 import pandas as pd
+
+
+@dataclass(frozen=True)
+class MFIResult:
+    mfi: float
 
 
 def calc_mfi(
@@ -9,7 +16,7 @@ def calc_mfi(
     closes: pd.Series,
     volumes: pd.Series,
     period: int = 14,
-) -> float | None:
+) -> MFIResult | None:
     """Calculate Money Flow Index from price and volume data.
 
     Args:
@@ -20,7 +27,7 @@ def calc_mfi(
         period: MFI lookback period.
 
     Returns:
-        MFI value (0-100), or None if insufficient data.
+        MFIResult with mfi value (0-100), or None if insufficient data.
     """
     if len(closes) < period + 1:
         return None
@@ -41,8 +48,8 @@ def calc_mfi(
     neg_sum = negative_flow.iloc[-period:].sum()
 
     if neg_sum == 0:
-        return 100.0
+        return MFIResult(mfi=100.0)
 
     ratio = pos_sum / neg_sum
     mfi = 100.0 - (100.0 / (1.0 + ratio))
-    return round(mfi, 2)
+    return MFIResult(mfi=round(mfi, 2))

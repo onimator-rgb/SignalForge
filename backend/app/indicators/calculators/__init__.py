@@ -3,7 +3,7 @@
 from app.indicators.calculators.adx import ADXResult, calc_adx
 from app.indicators.calculators.bollinger import BollingerResult, calc_bollinger
 from app.indicators.calculators.macd import MACDResult, calc_macd
-from app.indicators.calculators.mfi import calc_mfi
+from app.indicators.calculators.mfi import MFIResult, calc_mfi
 from app.indicators.calculators.obv import calc_obv
 from app.indicators.calculators.rsi import calc_rsi
 from app.indicators.calculators.squeeze import (
@@ -20,6 +20,7 @@ __all__ = [
     "BollingerResult",
     "KeltnerResult",
     "MACDResult",
+    "MFIResult",
     "SqueezeState",
     "StochRSIResult",
     "VWAPResult",

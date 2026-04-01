@@ -76,7 +76,7 @@ async def get_indicators(
         has_macd=macd_res is not None,
         has_bb=bb_res is not None,
         has_adx=adx_res is not None,
-        mfi=mfi_val,
+        mfi=mfi_val.mfi if mfi_val else None,
         has_stochrsi=stochrsi_res is not None,
         has_vwap=vwap_res is not None,
     )
@@ -93,7 +93,7 @@ async def get_indicators(
         adx_14=adx_res.adx if adx_res else None,
         plus_di=adx_res.plus_di if adx_res else None,
         minus_di=adx_res.minus_di if adx_res else None,
-        mfi_14=mfi_val,
+        mfi=mfi_val.mfi if mfi_val else None,
         stoch_rsi_k=stochrsi_res.k if stochrsi_res else None,
         stoch_rsi_d=stochrsi_res.d if stochrsi_res else None,
         vwap=vwap_res.vwap if vwap_res else None,
