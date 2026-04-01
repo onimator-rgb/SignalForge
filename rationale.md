@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0003`
+# Rationale for `marketpulse-task-2026-04-01-0005`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0003-implementation
+**branch:** task/marketpulse-task-2026-04-01-0005-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,52 +9,53 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0003 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0005 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** All 4 detectors have at least 4 test cases each
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** start_scheduler() creates 6 asyncio tasks (2 existing 1h + 2 new 4h + 2 new 1d)
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Edge cases covered: empty/short data, at-threshold, zero-std, None RSI
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** 4h jobs use interval_seconds=14400 (4*3600)
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** PriceSpikeDetector: both spike and crash directions tested
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** 1d jobs use interval_seconds=86400 (24*3600)
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** RSIExtremeDetector: both overbought and oversold tested
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** get_scheduler_status() reports all 6 jobs
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** SqueezeDetector: uses mocks for detect_squeeze dependency
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** stop_scheduler() cancels all 6 tasks
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** All tests pass with pytest
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** mypy passes with no errors
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/tests/test_anomaly_detectors_full.py`
+- `backend/app/scheduler.py`
+- `backend/tests/test_scheduler_intervals.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_anomaly_detectors_full.py -q` — passed
-  - `cd backend && uv run python -m mypy tests/test_anomaly_detectors_full.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_scheduler_intervals.py -q` — passed
+  - `cd backend && uv run python -m mypy app/scheduler.py --ignore-missing-imports` — FAILED
 
 ---
 
@@ -92,7 +93,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0003 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0003): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0005): implementation
 
 ---
 
