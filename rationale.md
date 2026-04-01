@@ -1,85 +1,83 @@
-# Rationale for `marketpulse-task-2026-04-01-0007`
+# Rationale for `marketpulse-task-2026-04-01-0013`
 
-**author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0007-implementation
-**commit_sha:** 
+**author:** coder-agent (MarketPulse Coder)
+**branch:** task/marketpulse-task-2026-04-01-0013-implementation
 **date:** 2026-04-01
-**model_calls:** 1
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_worker.py with model integration.
+Webhook signal receiver with POST /api/v1/signals/webhook and GET /api/v1/signals/ endpoints, backed by an in-memory deque buffer (max 1000).
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** DCAConfig dataclass is frozen with sensible defaults
+- **Criteria:** POST /api/v1/signals/webhook with valid payload returns 201 with id and status='accepted'
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_post_valid_signal_returns_201 passes
 
-- **Criteria:** DCAConfig post-init validates lengths match max_levels and tranche_pcts sum to ~1.0
+- **Criteria:** POST with missing required field returns 422
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_post_signal_missing_field_returns_422 passes
 
-- **Criteria:** should_dca returns True only when drop exceeds the threshold for the current level
+- **Criteria:** POST with invalid action (not buy/sell) returns 422
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_post_signal_invalid_action_returns_422 passes
 
-- **Criteria:** should_dca returns False when all DCA levels are exhausted
+- **Criteria:** POST with confidence outside 0.0-1.0 returns 422
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_post_signal_confidence_out_of_range_returns_422 passes
 
-- **Criteria:** compute_dca_order returns correct tranche USD amount
+- **Criteria:** GET /api/v1/signals/ returns list of stored signals newest-first
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_get_signals_returns_posted_signals_newest_first passes
 
-- **Criteria:** compute_dca_order raises ValueError when levels exhausted
+- **Criteria:** GET supports limit query parameter defaulting to 50
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_get_signals_limit_param passes
 
-- **Criteria:** compute_new_avg_price returns correct weighted average
+- **Criteria:** Buffer is capped at 1000 entries, oldest evicted first
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_buffer_capacity_evicts_oldest passes
 
-- **Criteria:** All tests pass, mypy passes with no errors
+- **Criteria:** mypy passes with no errors
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** mypy app/signals/webhook.py --ignore-missing-imports → Success: no issues found
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/dca.py`
-- `backend/tests/test_dca.py`
-- `rationale.md`
+- `backend/app/signals/__init__.py` — Module init, exports router
+- `backend/app/signals/webhook.py` — Pydantic schemas + FastAPI router with POST /webhook and GET / endpoints, in-memory deque buffer
+- `backend/tests/test_webhook.py` — 8 tests covering all acceptance criteria
+- `backend/app/main.py` — One-line addition to register the signals router
 
 ---
 
 ## 4) Tests run & results
-- **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_dca.py -q` � passed
-  - `cd backend && uv run python -m mypy app/portfolio/dca.py --ignore-missing-imports` � passed
+- `cd backend && uv run python -m pytest tests/test_webhook.py -q` → 8 passed in 0.55s
+- `cd backend && uv run python -m mypy app/signals/webhook.py --ignore-missing-imports` → Success: no issues found
 
 ---
 
 ## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
+- No external data; all tests use synthetic payloads via httpx AsyncClient + ASGITransport
 
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code � **Severity:** medium � **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+- **Risk:** In-memory buffer lost on restart — **Severity:** low — **Mitigation:** Acceptable for this phase; DB persistence is out of scope per task spec
 
 ---
 
 ## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
+- New files only, fully backward compatible. No database migrations needed.
 
 ---
 
 ## 8) Performance considerations
-- No performance impact expected.
+- deque(maxlen=1000) provides O(1) append and automatic eviction. GET endpoint reversal is O(n) where n ≤ 1000, negligible.
 
 ---
 
@@ -87,21 +85,22 @@ Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_wor
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
-- API key logged: `no` (only presence check)
+- API key logged: `no`
 
 ---
 
 ## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
+1. Future: Add DB persistence for signal durability across restarts.
+2. Future: Add authentication/API key validation for webhook endpoint.
 
 ---
 
 ## 11) Short changelog
-- `N/A` � feat(marketpulse-task-2026-04-01-0007): implementation
+- `feat(marketpulse-task-2026-04-01-0013)`: Webhook signal receiver with in-memory buffer
 
 ---
 
 ## 12) Final verdict (developer self-check)
 - **I confirm** that all acceptance criteria marked `pass` have test evidence attached: `yes`
 - **I confirm** no forbidden paths were modified: `yes`
-- **I request** next step: `validate`
+- **I request** next step: `approve`
