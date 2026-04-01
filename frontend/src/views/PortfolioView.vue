@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
-import { fetchPortfolio, triggerEvaluation } from '../api/portfolio'
+import { fetchPortfolio, triggerEvaluation, fetchProtectionHistory } from '../api/portfolio'
 import { fetchWatchlists, addAssetToWatchlist } from '../api/watchlists'
-import type { Watchlist, RiskMetrics, EntryDecision } from '../types/api'
+import type { Watchlist, RiskMetrics, EntryDecision, ProtectionEvent } from '../types/api'
 import { fmtPrice, fmtTime, timeAgo } from '../utils/format'
 import FreshnessBadge from '../components/FreshnessBadge.vue'
 import LastRefreshHint from '../components/LastRefreshHint.vue'
@@ -28,6 +28,8 @@ const riskMetrics = ref<RiskMetrics | null>(null)
 const riskLoading = ref(false)
 const decisionsExpanded = ref(false)
 const showProtections = ref(false)
+const protectionHistory = ref<ProtectionEvent[]>([])
+const showProtectionHistory = ref(false)
 
 function protectionColor(type: string): string {
   switch (type) {
@@ -62,6 +64,10 @@ async function load() {
       const dRes = await api.get('/portfolio/entry-decisions?limit=10')
       entryDecisions.value = Array.isArray(dRes.data) ? dRes.data : []
     } catch { entryDecisions.value = [] }
+    // Fetch protection history
+    try {
+      protectionHistory.value = await fetchProtectionHistory()
+    } catch { protectionHistory.value = [] }
     // Fetch risk metrics
     riskLoading.value = true
     try {
@@ -467,6 +473,44 @@ const reasonLabels: Record<string, string> = {
             <div class="text-[10px] text-gray-500 whitespace-nowrap text-right shrink-0">
               <div>{{ p.triggered_at?.split('T')[1]?.slice(0,5) || '' }}</div>
               <div v-if="p.expires_at">expires {{ p.expires_at.split('T')[1]?.slice(0,5) || '' }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Protection History Timeline -->
+      <div class="mb-5">
+        <div
+          class="flex items-center gap-2 cursor-pointer select-none"
+          @click="showProtectionHistory = !showProtectionHistory"
+        >
+          <svg
+            class="w-4 h-4 text-gray-400 transition-transform duration-200"
+            :class="{ 'rotate-90': showProtectionHistory }"
+            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+          ><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+          <h2 class="font-semibold text-sm text-gray-300">Protection History</h2>
+          <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-700 text-gray-300">{{ protectionHistory.length }}</span>
+        </div>
+        <div v-if="showProtectionHistory" class="mt-2 space-y-1.5 pl-2 border-l-2 border-gray-800">
+          <div v-if="protectionHistory.length === 0" class="text-xs text-gray-500 py-2 pl-3">
+            No protection history
+          </div>
+          <div
+            v-for="ev in protectionHistory" :key="ev.id"
+            class="flex items-start gap-2 pl-3 py-1.5 rounded-r-lg border-l-4"
+            :class="protectionColor(ev.protection_type)"
+          >
+            <div class="flex-1 min-w-0">
+              <span class="text-xs font-medium capitalize">{{ ev.protection_type.replace(/_/g, ' ') }}</span>
+              <span class="ml-1.5 text-[10px] px-1 py-0.5 rounded border" :class="ev.status === 'active' ? 'text-green-400 border-green-500/30' : 'text-gray-500 border-gray-600'">{{ ev.status }}</span>
+              <span v-if="ev.asset_class" class="ml-1.5 text-[10px] text-gray-500">{{ ev.asset_class }}</span>
+              <p class="text-[11px] text-gray-400 truncate">{{ ev.reason }}</p>
+            </div>
+            <div class="text-[10px] text-gray-500 whitespace-nowrap text-right shrink-0">
+              <div>{{ ev.triggered_at?.split('T')[1]?.slice(0,5) || ev.created_at?.split('T')[1]?.slice(0,5) || '' }}</div>
+              <div class="text-gray-600">{{ ev.created_at?.split('T')[0] || '' }}</div>
+              <div v-if="ev.expires_at">expires {{ ev.expires_at.split('T')[1]?.slice(0,5) || '' }}</div>
             </div>
           </div>
         </div>

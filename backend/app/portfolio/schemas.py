@@ -76,6 +76,18 @@ class RiskMetricsOut(BaseModel):
     breakdown_by_reason: dict[str, int]
 
 
+class ProtectionEventOut(BaseModel):
+    id: str
+    protection_type: str
+    status: str
+    asset_id: str | None = None
+    asset_class: str | None = None
+    reason: str | None = None
+    triggered_at: str | None = None
+    expires_at: str | None = None
+    created_at: str
+
+
 class PortfolioSummaryOut(BaseModel):
     stats: PortfolioStatsOut
     open_positions: list[PositionOut]

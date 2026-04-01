@@ -101,6 +101,38 @@ async def risk_metrics(db: AsyncSession = Depends(get_db)):
     )
 
 
+@router.get("/protection-history")
+async def protection_history(
+    limit: int = 20,
+    db: AsyncSession = Depends(get_db),
+) -> list[dict[str, object]]:
+    """Return the last N protection events (all statuses), newest first."""
+    from sqlalchemy import select
+    from app.portfolio.models import ProtectionEvent
+
+    q = (
+        select(ProtectionEvent)
+        .order_by(ProtectionEvent.created_at.desc())
+        .limit(limit)
+    )
+    result = await db.execute(q)
+    rows = list(result.scalars().all())
+    return [
+        {
+            "id": str(r.id),
+            "protection_type": r.protection_type,
+            "status": r.status,
+            "asset_id": str(r.asset_id) if r.asset_id else None,
+            "asset_class": r.asset_class,
+            "reason": r.reason,
+            "triggered_at": r.triggered_at.isoformat() if r.triggered_at else None,
+            "expires_at": r.expires_at.isoformat() if r.expires_at else None,
+            "created_at": r.created_at.isoformat(),
+        }
+        for r in rows
+    ]
+
+
 @router.post("/positions/{position_id}/close")
 async def close_position(position_id: UUID, db: AsyncSession = Depends(get_db)):
     """Manually close a demo position at current market price."""

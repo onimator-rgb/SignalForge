@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0005`
+# Rationale for `marketpulse-task-2026-04-01-0007`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0005-implementation
+**branch:** task/marketpulse-task-2026-04-01-0007-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,55 +9,61 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0005 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** PerformanceView.vue imports and calls fetchRiskMetrics()
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** GET /api/v1/portfolio/protection-history returns 200 with a JSON list
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Risk metrics section displays Sharpe, MDD, Profit Factor, Win Rate cards
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Each item in the list has fields: id, protection_type, status, reason, created_at
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Sortino, avg hold hours, avg win/loss %, best/worst trade shown
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** The limit query parameter caps the number of results (default 20)
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Close reason breakdown displayed as colored pills
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Results are ordered by created_at descending (newest first)
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Null/empty state handled gracefully with placeholder text
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** PortfolioView.vue has a collapsible 'Protection History' section
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** All values use tabular-nums and appropriate color coding (green=good, red=bad, yellow=caution)
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Protection events are color-coded by type using protectionColor()
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** vue-tsc --noEmit passes with no type errors
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Each event card shows protection_type, reason, timestamp, and expires_at if present
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Risk metrics fetch failure does not break the rest of the page
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** All backend tests pass, mypy passes, vue-tsc passes
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `frontend/src/api/portfolio.ts`
-- `frontend/src/views/PerformanceView.vue`
+- `backend/app/portfolio/router.py`
+- `backend/app/portfolio/schemas.py`
+- `backend/tests/test_protection_history.py`
+- `frontend/src/types/api.ts`
+- `frontend/src/views/PortfolioView.vue`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
+  - `cd backend && uv run python -m pytest tests/test_protection_history.py -q` — passed
+  - `cd backend && uv run python -m mypy app/portfolio/router.py --ignore-missing-imports` — FAILED
+  - `cd backend && uv run python -m mypy app/portfolio/schemas.py --ignore-missing-imports` — passed
   - `cd frontend && npx vue-tsc --noEmit` — passed
 
 ---
@@ -96,7 +102,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0005 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0005): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0007): implementation
 
 ---
 
