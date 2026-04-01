@@ -1,0 +1,262 @@
+{
+  "source": "Advanced Platform Features — Strategy Builder, Bots, Marketplace, AI Assistant",
+  "created_at": "2026-04-02",
+  "tiers": {
+    "40": {
+      "label": "Strategy Builder Core",
+      "features": [
+        {
+          "id": "v5_strategy_rule_model",
+          "name": "Strategy rule data model — condition + action JSON schema",
+          "description": "Create backend/app/strategies/models.py with Strategy model: id, name, description, rules (JSONB), profile_name, is_preset, created_at. Rules schema: list of {condition: {indicator, operator, value}, action: 'buy'|'sell'|'hold', weight}. Use existing JSONB pattern from exit_context. No migration — store in existing metadata or create model for future migration.",
+          "scope": "backend/app/strategies/",
+          "files_hint": ["backend/app/strategies/__init__.py", "backend/app/strategies/models.py", "backend/tests/test_strategy_rules.py"],
+          "complexity": "small",
+          "depends_on": []
+        },
+        {
+          "id": "v5_strategy_evaluator",
+          "name": "Strategy rule evaluator — evaluate conditions against indicator snapshot",
+          "description": "Create backend/app/strategies/evaluator.py: evaluate_rules(rules: list[dict], indicators: dict) -> dict with {signal: 'buy'|'sell'|'hold', score: float, triggered_rules: list}. Pure function. Supports operators: gt, lt, gte, lte, eq, cross_above, cross_below. Indicators from existing IndicatorSnapshot fields.",
+          "scope": "backend/app/strategies/evaluator.py",
+          "files_hint": ["backend/app/strategies/evaluator.py", "backend/tests/test_strategy_evaluator.py"],
+          "complexity": "small",
+          "depends_on": []
+        },
+        {
+          "id": "v5_strategy_crud_api",
+          "name": "Strategy CRUD API — create, list, get, delete custom strategies",
+          "description": "Add /api/v1/strategies endpoints: POST (create), GET (list), GET /{id}, DELETE /{id}. Validate rules JSON schema. Store in-memory dict for now (no DB migration). Add router to main.py.",
+          "scope": "backend/app/strategies/router.py",
+          "files_hint": ["backend/app/strategies/router.py", "backend/app/strategies/schemas.py", "backend/tests/test_strategy_crud.py"],
+          "complexity": "medium",
+          "depends_on": ["v5_strategy_rule_model"]
+        },
+        {
+          "id": "v5_strategy_backtest_integration",
+          "name": "Run custom strategy through backtest engine",
+          "description": "Add POST /api/v1/strategies/{id}/backtest that loads strategy rules, runs them through existing backtest engine with evaluate_rules() replacing the default scoring. Returns BacktestResult.",
+          "scope": "backend/app/strategies/router.py",
+          "files_hint": ["backend/app/strategies/router.py", "backend/tests/test_strategy_backtest.py"],
+          "complexity": "medium",
+          "depends_on": ["v5_strategy_evaluator", "v5_strategy_crud_api"]
+        }
+      ]
+    },
+    "41": {
+      "label": "Preset Bots",
+      "features": [
+        {
+          "id": "v5_bot_grid",
+          "name": "Grid Bot preset — buy/sell at fixed price intervals",
+          "description": "Create backend/app/strategies/presets/grid.py: generate_grid_rules(lower_price, upper_price, num_grids, amount_per_grid) -> list[dict] of strategy rules. Each grid level = buy below, sell above. Pure function returning rules JSON compatible with strategy evaluator.",
+          "scope": "backend/app/strategies/presets/grid.py",
+          "files_hint": ["backend/app/strategies/presets/__init__.py", "backend/app/strategies/presets/grid.py", "backend/tests/test_bot_grid.py"],
+          "complexity": "small",
+          "depends_on": []
+        },
+        {
+          "id": "v5_bot_dca",
+          "name": "DCA Bot preset — periodic buys with configurable schedule",
+          "description": "Create backend/app/strategies/presets/dca_bot.py: generate_dca_rules(interval_hours, amount_per_buy, max_buys, price_drop_bonus_pct) -> list[dict]. DCA buys at fixed intervals, bonus buy on dip. Returns rules JSON.",
+          "scope": "backend/app/strategies/presets/dca_bot.py",
+          "files_hint": ["backend/app/strategies/presets/dca_bot.py", "backend/tests/test_bot_dca.py"],
+          "complexity": "small",
+          "depends_on": []
+        },
+        {
+          "id": "v5_bot_btd",
+          "name": "BTD (Buy The Dip) / QFL Bot preset",
+          "description": "Create backend/app/strategies/presets/btd.py: generate_btd_rules(dip_pct, recovery_pct, take_profit_pct) -> list[dict]. Buys when price drops X% from recent high, sells on Y% recovery or take profit. Returns rules JSON.",
+          "scope": "backend/app/strategies/presets/btd.py",
+          "files_hint": ["backend/app/strategies/presets/btd.py", "backend/tests/test_bot_btd.py"],
+          "complexity": "small",
+          "depends_on": []
+        },
+        {
+          "id": "v5_presets_api",
+          "name": "Preset bots API — list and instantiate presets",
+          "description": "Add GET /api/v1/strategies/presets listing available bot types (grid, dca, btd) with param schemas. POST /api/v1/strategies/from-preset to create strategy from preset with user params.",
+          "scope": "backend/app/strategies/router.py",
+          "files_hint": ["backend/app/strategies/router.py", "backend/tests/test_presets_api.py"],
+          "complexity": "small",
+          "depends_on": ["v5_bot_grid", "v5_bot_dca", "v5_bot_btd"]
+        }
+      ]
+    },
+    "42": {
+      "label": "Strategy Marketplace",
+      "features": [
+        {
+          "id": "v5_marketplace_share",
+          "name": "Strategy sharing — publish/unpublish strategies",
+          "description": "Add is_public field to Strategy model. POST /api/v1/strategies/{id}/publish and /unpublish. GET /api/v1/marketplace lists all public strategies with backtest metrics (if run).",
+          "scope": "backend/app/strategies/marketplace.py",
+          "files_hint": ["backend/app/strategies/marketplace.py", "backend/tests/test_marketplace.py"],
+          "complexity": "small",
+          "depends_on": ["v5_strategy_crud_api"]
+        },
+        {
+          "id": "v5_marketplace_copy",
+          "name": "Copy-trading — clone a public strategy",
+          "description": "POST /api/v1/marketplace/{strategy_id}/copy creates a private copy of a public strategy for the user. Tracks copy_count on original. Returns new strategy.",
+          "scope": "backend/app/strategies/marketplace.py",
+          "files_hint": ["backend/app/strategies/marketplace.py", "backend/tests/test_marketplace_copy.py"],
+          "complexity": "small",
+          "depends_on": ["v5_marketplace_share"]
+        },
+        {
+          "id": "v5_marketplace_ranking",
+          "name": "Strategy ranking by backtest performance",
+          "description": "GET /api/v1/marketplace/ranking returns public strategies sorted by backtest Sharpe ratio. Include: name, return, MDD, Sharpe, win_rate, copy_count. Filterable by style tag (grid, dca, btd, custom).",
+          "scope": "backend/app/strategies/marketplace.py",
+          "files_hint": ["backend/app/strategies/marketplace.py", "backend/tests/test_marketplace_ranking.py"],
+          "complexity": "small",
+          "depends_on": ["v5_marketplace_share"]
+        }
+      ]
+    },
+    "43": {
+      "label": "AI Backtest Optimizer",
+      "features": [
+        {
+          "id": "v5_param_optimizer",
+          "name": "Strategy parameter optimizer — grid search best params",
+          "description": "Create backend/app/strategies/optimizer.py: optimize_params(strategy_rules, price_data, param_ranges) -> list[dict] sorted by Sharpe. Tests param combinations by running backtest engine on each. Returns top 5 configs with metrics. Pure Python, no LLM.",
+          "scope": "backend/app/strategies/optimizer.py",
+          "files_hint": ["backend/app/strategies/optimizer.py", "backend/tests/test_optimizer.py"],
+          "complexity": "medium",
+          "depends_on": []
+        },
+        {
+          "id": "v5_optimizer_api",
+          "name": "Optimizer API endpoint",
+          "description": "POST /api/v1/strategies/{id}/optimize accepts param_ranges dict, runs optimizer, returns top 5 configurations with backtest results. Rate-limit to 1 concurrent optimization.",
+          "scope": "backend/app/strategies/router.py",
+          "files_hint": ["backend/app/strategies/router.py", "backend/tests/test_optimizer_api.py"],
+          "complexity": "small",
+          "depends_on": ["v5_param_optimizer"]
+        }
+      ]
+    },
+    "44": {
+      "label": "External Signals",
+      "features": [
+        {
+          "id": "v5_webhook_receiver",
+          "name": "Webhook signal receiver — accept external buy/sell signals",
+          "description": "Add POST /api/v1/signals/webhook accepting JSON: {symbol, action: buy|sell, source, confidence, metadata}. Validate, store in-memory signal buffer, expose via GET /api/v1/signals/recent. Supports TradingView alert format.",
+          "scope": "backend/app/signals/webhook.py",
+          "files_hint": ["backend/app/signals/__init__.py", "backend/app/signals/webhook.py", "backend/tests/test_webhook.py"],
+          "complexity": "small",
+          "depends_on": []
+        },
+        {
+          "id": "v5_signal_to_strategy",
+          "name": "Map external signals to strategy actions",
+          "description": "Create backend/app/signals/mapper.py: map_signal_to_action(signal, strategy_rules) -> dict with action recommendation. Allow strategy rules to reference 'external_signal' as a condition source alongside indicators.",
+          "scope": "backend/app/signals/mapper.py",
+          "files_hint": ["backend/app/signals/mapper.py", "backend/tests/test_signal_mapper.py"],
+          "complexity": "small",
+          "depends_on": ["v5_webhook_receiver"]
+        }
+      ]
+    },
+    "45": {
+      "label": "AI Assistant",
+      "features": [
+        {
+          "id": "v5_ai_portfolio_report",
+          "name": "AI portfolio analysis report generator",
+          "description": "Create backend/app/ai_assistant/portfolio_report.py: generate_portfolio_report(positions, risk_metrics, recent_trades, regime) -> str. Uses local templates (like existing report provider) to create readable analysis: what's working, what's not, regime context, suggestions. No external API.",
+          "scope": "backend/app/ai_assistant/portfolio_report.py",
+          "files_hint": ["backend/app/ai_assistant/__init__.py", "backend/app/ai_assistant/portfolio_report.py", "backend/tests/test_ai_report.py"],
+          "complexity": "medium",
+          "depends_on": []
+        },
+        {
+          "id": "v5_ai_strategy_suggestions",
+          "name": "AI strategy improvement suggestions",
+          "description": "Create backend/app/ai_assistant/strategy_advisor.py: suggest_improvements(strategy_rules, backtest_result) -> list[str]. Analyzes backtest metrics and suggests parameter tweaks: 'RSI threshold too tight', 'Add trailing stop', 'Reduce position size'. Template-based, no LLM.",
+          "scope": "backend/app/ai_assistant/strategy_advisor.py",
+          "files_hint": ["backend/app/ai_assistant/strategy_advisor.py", "backend/tests/test_strategy_advisor.py"],
+          "complexity": "small",
+          "depends_on": []
+        },
+        {
+          "id": "v5_ai_assistant_api",
+          "name": "AI Assistant API endpoints",
+          "description": "Add GET /api/v1/ai/portfolio-report and GET /api/v1/ai/strategy-suggestions/{strategy_id}. Wire to assistant modules. Add router to main.py.",
+          "scope": "backend/app/ai_assistant/router.py",
+          "files_hint": ["backend/app/ai_assistant/router.py", "backend/tests/test_ai_api.py"],
+          "complexity": "small",
+          "depends_on": ["v5_ai_portfolio_report", "v5_ai_strategy_suggestions"]
+        }
+      ]
+    },
+    "46": {
+      "label": "Strategy Builder Frontend",
+      "features": [
+        {
+          "id": "v5_fe_strategy_builder",
+          "name": "Strategy Builder View — rule list with add/remove",
+          "description": "New StrategyBuilderView.vue: form to add rules (select indicator, operator, value, action). Show rules as cards. Save button calls POST /api/v1/strategies. No drag-and-drop yet — simple form-based builder. Add to router + nav.",
+          "scope": "frontend/src/views/StrategyBuilderView.vue",
+          "files_hint": ["frontend/src/views/StrategyBuilderView.vue", "frontend/src/router/index.ts", "frontend/src/components/AppLayout.vue"],
+          "complexity": "medium",
+          "depends_on": ["v5_strategy_crud_api"]
+        },
+        {
+          "id": "v5_fe_preset_bots",
+          "name": "Preset Bots selector in Strategy Builder",
+          "description": "Add preset bot section to StrategyBuilderView: cards for Grid, DCA, BTD bots. Click opens param form (grid: price range + levels, DCA: interval + amount, BTD: dip%). Submit creates strategy from preset.",
+          "scope": "frontend/src/views/StrategyBuilderView.vue",
+          "files_hint": ["frontend/src/views/StrategyBuilderView.vue"],
+          "complexity": "medium",
+          "depends_on": ["v5_presets_api"]
+        },
+        {
+          "id": "v5_fe_marketplace",
+          "name": "Marketplace View — browse and copy public strategies",
+          "description": "New MarketplaceView.vue: list of public strategies with metrics (Sharpe, return, MDD), style tags, copy button. Sort by ranking. Filter by style. Add to router + nav.",
+          "scope": "frontend/src/views/MarketplaceView.vue",
+          "files_hint": ["frontend/src/views/MarketplaceView.vue", "frontend/src/router/index.ts", "frontend/src/components/AppLayout.vue"],
+          "complexity": "medium",
+          "depends_on": ["v5_marketplace_ranking"]
+        },
+        {
+          "id": "v5_fe_ai_assistant",
+          "name": "AI Assistant panel in Dashboard",
+          "description": "Add collapsible AI Assistant panel to DashboardView: shows portfolio analysis report, strategy suggestions, and improvement tips. Pull from /ai/portfolio-report. Refresh button.",
+          "scope": "frontend/src/views/DashboardView.vue",
+          "files_hint": ["frontend/src/views/DashboardView.vue"],
+          "complexity": "medium",
+          "depends_on": ["v5_ai_assistant_api"]
+        }
+      ]
+    },
+    "47": {
+      "label": "Academy & Education",
+      "features": [
+        {
+          "id": "v5_academy_content",
+          "name": "Academy content API — articles and guides",
+          "description": "Create backend/app/academy/content.py with static articles: 'What is RSI', 'How trailing stops work', 'DCA strategy explained', 'Grid bot basics', 'Risk management 101'. Store as list of dicts. GET /api/v1/academy/articles returns list, GET /api/v1/academy/articles/{slug} returns content.",
+          "scope": "backend/app/academy/",
+          "files_hint": ["backend/app/academy/__init__.py", "backend/app/academy/content.py", "backend/app/academy/router.py"],
+          "complexity": "small",
+          "depends_on": []
+        },
+        {
+          "id": "v5_fe_academy",
+          "name": "Academy View — educational content browser",
+          "description": "New AcademyView.vue: grid of article cards with titles and short descriptions. Click opens article in markdown. Category filter (indicators, strategies, risk). Add to router + nav.",
+          "scope": "frontend/src/views/AcademyView.vue",
+          "files_hint": ["frontend/src/views/AcademyView.vue", "frontend/src/router/index.ts", "frontend/src/components/AppLayout.vue"],
+          "complexity": "medium",
+          "depends_on": ["v5_academy_content"]
+        }
+      ]
+    }
+  }
+}
