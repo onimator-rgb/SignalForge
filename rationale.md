@@ -1,85 +1,86 @@
-# Rationale for `marketpulse-task-2026-04-01-0007`
+# Rationale for `marketpulse-task-2026-04-02-0033`
 
-**author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0007-implementation
-**commit_sha:** 
-**date:** 2026-04-01
-**model_calls:** 1
+**author:** coder-agent (MarketPulse Coder)
+**branch:** task/marketpulse-task-2026-04-02-0033-implementation
+**date:** 2026-04-02
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_worker.py with model integration.
+Added PresetBotsView.vue â€” a dedicated frontend view for browsing, configuring, and generating rules from Grid/DCA/BTD preset bots.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** DCAConfig dataclass is frozen with sensible defaults
+- **Criteria:** PresetBotsView.vue exists and uses `<script setup lang="ts">` with Composition API
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** File created at frontend/src/views/PresetBotsView.vue with `<script setup lang="ts">`
 
-- **Criteria:** DCAConfig post-init validates lengths match max_levels and tranche_pcts sum to ~1.0
+- **Criteria:** On mount, fetches presets from GET /api/v1/strategies/presets and displays as cards
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `onMounted(loadPresets)` calls `api.get('/strategies/presets')`, renders cards via `v-for`
 
-- **Criteria:** should_dca returns True only when drop exceeds the threshold for the current level
+- **Criteria:** Clicking a preset card shows a parameter form with number inputs and default values
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `selectPreset()` populates `paramValues` from defaults, form renders inputs with `v-model.number`
 
-- **Criteria:** should_dca returns False when all DCA levels are exhausted
+- **Criteria:** Submitting the form calls POST /api/v1/strategies/from-preset and displays generated rules
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `generateRules()` calls `api.post('/strategies/from-preset', ...)`, results shown in cards
 
-- **Criteria:** compute_dca_order returns correct tranche USD amount
+- **Criteria:** Route /preset-bots is registered in router/index.ts
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Added `{ path: '/preset-bots', name: 'preset-bots', component: ... }` to routes array
 
-- **Criteria:** compute_dca_order raises ValueError when levels exhausted
+- **Criteria:** Nav item 'Boty' with robot icon appears in AppLayout sidebar
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Added `{ to: '/preset-bots', label: 'Boty', icon: 'ðŸ¤–', badge: false }` after Backtest entry
 
-- **Criteria:** compute_new_avg_price returns correct weighted average
+- **Criteria:** vue-tsc --noEmit passes with no type errors
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `npx vue-tsc --noEmit` completed with zero errors
 
-- **Criteria:** All tests pass, mypy passes with no errors
+- **Criteria:** Dark theme consistent with existing views (bg-gray-900, bg-gray-800, text-gray-300)
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Uses bg-gray-800/900, border-gray-700/800, text-gray-300/400/white throughout
+
+- **Criteria:** Loading and error states handled with LoadingSpinner and ErrorBox components
+- **Status:** `pass`
+- **Evidence:** `<LoadingSpinner v-if="loading" />` and `<ErrorBox v-else-if="error" :message="error" />`
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/dca.py`
-- `backend/tests/test_dca.py`
-- `rationale.md`
+- `frontend/src/views/PresetBotsView.vue` â€” new view: preset cards, param form, rule output display
+- `frontend/src/router/index.ts` â€” added /preset-bots route
+- `frontend/src/components/AppLayout.vue` â€” added 'Boty' nav item with robot icon
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_dca.py -q` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/dca.py --ignore-missing-imports` — passed
+  - `cd frontend && npx vue-tsc --noEmit` â†’ passed (0 errors)
 
 ---
 
 ## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
+- No backend data needed; frontend calls GET /api/v1/strategies/presets and POST /api/v1/strategies/from-preset
 
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code — **Severity:** medium — **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+- **Risk:** Backend preset endpoints may not exist yet â†’ **Severity:** low â†’ **Mitigation:** Frontend handles errors gracefully with ErrorBox; API contract matches task spec
 
 ---
 
 ## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
+- New files and additive changes only, fully backward compatible.
 
 ---
 
 ## 8) Performance considerations
-- No performance impact expected.
+- No performance impact. Lazy-loaded route via dynamic import.
 
 ---
 
@@ -87,21 +88,23 @@ Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_wor
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
-- API key logged: `no` (only presence check)
+- API key logged: `no`
 
 ---
 
 ## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
+1. Backend preset API endpoints (GET /api/v1/strategies/presets, POST /api/v1/strategies/from-preset) need to be implemented.
 
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0007): implementation
+- feat(marketpulse-task-2026-04-02-0033): PresetBotsView with card selector, param form, rule generator
+- route: /preset-bots added
+- nav: 'Boty' sidebar item added
 
 ---
 
 ## 12) Final verdict (developer self-check)
-- **I confirm** that all acceptance criteria marked `pass` have test evidence attached: `yes`
+- **I confirm** that all acceptance criteria marked `pass` have evidence attached: `yes`
 - **I confirm** no forbidden paths were modified: `yes`
-- **I request** next step: `validate`
+- **I request** next step: `approve`
