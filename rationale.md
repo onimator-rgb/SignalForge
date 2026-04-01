@@ -1,114 +1,45 @@
-# Rationale for `marketpulse-task-2026-04-01-0035`
+# Rationale â€” marketpulse-task-2026-04-01-0001
 
-**author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0035-implementation
-**commit_sha:** 
-**date:** 2026-04-01
-**model_calls:** 1
+## 1. Task Summary
+Add sentiment score signal to the recommendation scoring engine as an 11th signal with weight 0.08, integrating the existing sentiment classifier output.
 
----
+## 2. Goal
+Recommendations incorporate sentiment data from news headlines, improving signal coverage from 10 to 11 factors.
 
-## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0035 via coder_worker.py with model integration.
+## 3. Approach
+- Added `score_sentiment()` function that maps classifier output [-1, 1] directly as signal score
+- Redistributed existing weights by reducing each by 0.008 to free 0.08 for sentiment
+- Added optional `sentiment_score` parameter to `compute_recommendation()` for backward compatibility
 
----
+## 4. Files Changed
+| File | Change |
+|------|--------|
+| `backend/app/recommendations/scoring.py` | Added sentiment signal, updated weights, bumped to v4 |
+| `backend/tests/test_sentiment_scoring.py` | 9 new tests for sentiment signal |
+| `backend/tests/test_mtf_scoring.py` | Updated assertions for 11 signals and new weights |
+| `backend/tests/test_stochrsi.py` | Updated weight count assertion from 10 to 11 |
 
-## 2) Mapping to acceptance criteria
+## 5. Weight Redistribution
+Each existing signal reduced by 0.008. New total: 0.920 (existing) + 0.08 (sentiment) = 1.00.
 
-- **Criteria:** RiskMetricsResult has avg_win_pct, avg_loss_pct, best_trade_pct, worst_trade_pct fields
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+## 6. Backward Compatibility
+`sentiment_score` defaults to `None`, which yields a neutral 0.0 score. Existing callers are unaffected.
 
-- **Criteria:** compute_risk_metrics returns correct values for all edge cases
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+## 7. Tests
+- 9 new tests covering: None input, positive/negative/neutral scores, clamping, weight sum, composite comparison, backward compatibility
+- All 42 affected tests pass
 
-- **Criteria:** All existing tests still pass (no regression)
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+## 8. Static Analysis
+mypy passes with no errors on `scoring.py`.
 
-- **Criteria:** mypy passes with no errors
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+## 9. Risks
+Weight redistribution changes existing signal weights by ~0.008 each â€” marginal impact on borderline recommendations.
 
-- **Criteria:** RiskMetrics TypeScript interface includes all four new fields
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+## 10. Security
+No secrets, no external API calls, no broker SDK usage. Paper-trading only.
 
-- **Criteria:** PortfolioView displays avg win, avg loss, best trade, worst trade in the metrics grid
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+## 11. Limitations
+Sentiment signal depends on upstream headline fetcher and classifier. When no headlines are available, signal defaults to neutral (0.0).
 
-- **Criteria:** Values are color-coded: green for positive, red for negative
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** Null values show '--' gracefully
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** vue-tsc passes with no type errors
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
----
-
-## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/risk_metrics.py`
-- `backend/tests/test_risk_dashboard_metrics.py`
-- `frontend/src/types/api.ts`
-- `frontend/src/views/PortfolioView.vue`
-- `rationale.md`
-
----
-
-## 4) Tests run & results
-- **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_risk_dashboard_metrics.py -q` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/risk_metrics.py --ignore-missing-imports` — passed
-  - `cd frontend && npx vue-tsc --noEmit` — passed
-
----
-
-## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
-
----
-
-## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code — **Severity:** medium — **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
-
----
-
-## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
-
----
-
-## 8) Performance considerations
-- No performance impact expected.
-
----
-
-## 9) Security & safety checks
-- forbidden paths touched: `no`
-- external/broker sdk usage: `no`
-- secrets touched: `no`
-- API key logged: `no` (only presence check)
-
----
-
-## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
-
----
-
-## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0035): implementation
-
----
-
-## 12) Final verdict (developer self-check)
-- **I confirm** that all acceptance criteria marked `pass` have test evidence attached: `yes`
-- **I confirm** no forbidden paths were modified: `yes`
-- **I request** next step: `validate`
+## 12. Next Steps
+Service layer (`service.py`) can be updated to pass `sentiment_score` from the classifier when computing recommendations.

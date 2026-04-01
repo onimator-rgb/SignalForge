@@ -106,8 +106,8 @@ def test_score_stochrsi_neutral() -> None:
 
 
 def test_weights_sum() -> None:
-    """WEIGHTS must sum to 1.0 and have 10 entries."""
-    assert len(WEIGHTS) == 10, f"Expected 10 weights, got {len(WEIGHTS)}"
+    """WEIGHTS must sum to 1.0 and have 11 entries."""
+    assert len(WEIGHTS) == 11, f"Expected 11 weights, got {len(WEIGHTS)}"
     total = sum(WEIGHTS.values())
     assert abs(total - 1.0) < 0.001, f"WEIGHTS sum to {total}, expected 1.0"
 

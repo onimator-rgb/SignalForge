@@ -155,10 +155,10 @@ class TestWeights:
         assert abs(total - 1.00) < 1e-9, f"Weights sum to {total}, expected 1.00"
 
     def test_mtf_confluence_weight(self) -> None:
-        assert WEIGHTS["mtf_confluence"] == 0.08
+        assert WEIGHTS["mtf_confluence"] == 0.072
 
-    def test_ten_signals(self) -> None:
-        assert len(WEIGHTS) == 10
+    def test_eleven_signals(self) -> None:
+        assert len(WEIGHTS) == 11
 
 
 # ── compute_recommendation integration tests ────────
@@ -226,10 +226,10 @@ class TestComputeRecommendationMtf:
 
         assert result_with_mtf.composite_score < result_no_mtf.composite_score
 
-    def test_ten_signals_in_result(self) -> None:
-        """compute_recommendation should produce exactly 10 signals."""
+    def test_eleven_signals_in_result(self) -> None:
+        """compute_recommendation should produce exactly 11 signals."""
         result = compute_recommendation(**self._base_kwargs())
-        assert len(result.signals) == 10
+        assert len(result.signals) == 11
 
     def test_confluence_in_breakdown(self) -> None:
         """mtf_confluence must appear in signal_breakdown dict."""

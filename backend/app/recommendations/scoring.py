@@ -10,9 +10,12 @@ Scoring version history:
       - volatility 0.05→0.10, price_trend 0.15→0.20 (underweighted)
   v3: Added MTF confluence as 10th signal (weight 0.08)
       - Redistributed weights to sum to 1.00
+  v4: Added sentiment as 11th signal (weight 0.08)
+      - Redistributed weights: each existing signal reduced by 0.008
+      - sentiment score maps classifier [-1, 1] output directly
 """
 
-SCORING_VERSION = "v3"
+SCORING_VERSION = "v4"
 
 from dataclasses import dataclass
 
@@ -43,16 +46,17 @@ class ScoringResult:
 # ── Signal weights ──────────────────────────────
 
 WEIGHTS = {
-    "rsi": 0.14,
-    "macd": 0.14,
-    "bollinger": 0.14,
-    "price_trend": 0.14,
-    "volume": 0.05,
-    "anomaly": 0.09,
-    "volatility": 0.09,
-    "adx": 0.09,
-    "stoch_rsi": 0.04,
-    "mtf_confluence": 0.08,
+    "rsi": 0.132,
+    "macd": 0.132,
+    "bollinger": 0.132,
+    "price_trend": 0.132,
+    "volume": 0.042,
+    "anomaly": 0.082,
+    "volatility": 0.082,
+    "adx": 0.082,
+    "stoch_rsi": 0.032,
+    "mtf_confluence": 0.072,
+    "sentiment": 0.08,
 }
 
 # Timeframe weights for multi-timeframe confluence scoring
@@ -253,6 +257,29 @@ def score_stochrsi(k: float | None, d: float | None) -> SignalScore:
     return SignalScore("stoch_rsi", s, WEIGHTS["stoch_rsi"], detail)
 
 
+# ── Sentiment signal ──────────────────────────────
+
+def score_sentiment(sentiment_score: float | None) -> SignalScore:
+    """Score based on news headline sentiment from classifier.
+
+    The classifier returns a value in [-1, 1]. We pass it through directly
+    as the signal score, clamped for safety.
+    """
+    if sentiment_score is None:
+        return SignalScore("sentiment", 0.0, WEIGHTS["sentiment"], "no data")
+
+    clamped = max(-1.0, min(1.0, sentiment_score))
+
+    if clamped > 0.3:
+        detail = "positive sentiment"
+    elif clamped < -0.3:
+        detail = "negative sentiment"
+    else:
+        detail = "neutral sentiment"
+
+    return SignalScore("sentiment", clamped, WEIGHTS["sentiment"], detail)
+
+
 # ── Multi-timeframe confluence ──────────────────
 
 def _rsi_direction(rsi: float | None) -> float:
@@ -365,6 +392,7 @@ def compute_recommendation(
     plus_di: float | None = None,
     minus_di: float | None = None,
     mtf_indicators: dict[str, IndicatorSnapshot | None] | None = None,
+    sentiment_score: float | None = None,
 ) -> ScoringResult:
     """Compute composite recommendation from all signals."""
 
@@ -396,6 +424,7 @@ def compute_recommendation(
         score_adx(adx_14, plus_di, minus_di),
         score_stochrsi(stoch_rsi_k, stoch_rsi_d),
         score_mtf_confluence(mtf_indicators),
+        score_sentiment(sentiment_score),
     ]
 
     # Weighted sum: range [-1.0, +1.0]
