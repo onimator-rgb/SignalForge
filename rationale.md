@@ -1,85 +1,88 @@
-# Rationale for `marketpulse-task-2026-04-01-0007`
+# Rationale for `marketpulse-task-2026-04-02-0031`
 
-**author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0007-implementation
-**commit_sha:** 
-**date:** 2026-04-01
-**model_calls:** 1
+**author:** coder-agent (MarketPulse Coder)
+**branch:** task/marketpulse-task-2026-04-02-0031-implementation
+**commit_sha:** (pending)
+**date:** 2026-04-02
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_worker.py with model integration.
+Create AcademyView.vue — an educational content browser with article grid, category filtering, and article detail rendering — plus route and sidebar navigation.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** DCAConfig dataclass is frozen with sensible defaults
+- **Criteria:** AcademyView.vue renders a grid of article cards fetched from /api/v1/academy/articles
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Component fetches from `/academy/articles` on mount via api client, renders responsive grid (grid-cols-1 sm:grid-cols-2 lg:grid-cols-3)
 
-- **Criteria:** DCAConfig post-init validates lengths match max_levels and tranche_pcts sum to ~1.0
+- **Criteria:** Category filter buttons (all, indicators, strategies, risk) filter displayed articles
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Four category buttons rendered with `setCategory()` handler that re-fetches with `?category=X` query param
 
-- **Criteria:** should_dca returns True only when drop exceeds the threshold for the current level
+- **Criteria:** Clicking an article card shows the full article body with formatted headings
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `selectArticle()` fetches `/academy/articles/{slug}`, `renderBody()` splits on `## ` to create styled heading/paragraph sections
 
-- **Criteria:** should_dca returns False when all DCA levels are exhausted
+- **Criteria:** A back button returns from article detail to the grid view
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Back button calls `goBack()` which sets `selectedArticle` to null, returning to grid view
 
-- **Criteria:** compute_dca_order returns correct tranche USD amount
+- **Criteria:** Route /academy is registered in the router
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `diff: frontend/src/router/index.ts` — added `{ path: '/academy', name: 'academy', ... }`
 
-- **Criteria:** compute_dca_order raises ValueError when levels exhausted
+- **Criteria:** Sidebar navigation includes Akademia link with 📚 icon
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `diff: frontend/src/components/AppLayout.vue` — added nav item after Data Sync
 
-- **Criteria:** compute_new_avg_price returns correct weighted average
+- **Criteria:** vue-tsc --noEmit passes with no type errors
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `cd frontend && npx vue-tsc --noEmit` — passed with zero errors
 
-- **Criteria:** All tests pass, mypy passes with no errors
+- **Criteria:** Dark theme styling matches existing views (bg-gray-900, border-gray-800, etc.)
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Cards use `bg-gray-900 border border-gray-800 rounded-lg`, hover effects, text-white/text-gray-400 consistent with existing views
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/dca.py`
-- `backend/tests/test_dca.py`
-- `rationale.md`
+- `frontend/src/views/AcademyView.vue` — new view, ~140 LOC, article grid + category filter + detail panel
+- `frontend/src/router/index.ts` — added /academy route (+1 line)
+- `frontend/src/components/AppLayout.vue` — added Akademia nav item (+1 line)
+- `rationale.md` — task rationale document
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_dca.py -q` � passed
-  - `cd backend && uv run python -m mypy app/portfolio/dca.py --ignore-missing-imports` � passed
+  - `cd frontend && npx vue-tsc --noEmit` — passed
+- **Results summary:**
+  - typecheck: passed with zero errors
 
 ---
 
 ## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
+- No fixture data needed — view fetches from Academy API at runtime
+- API endpoints: `GET /api/v1/academy/articles`, `GET /api/v1/academy/articles/{slug}`
 
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code � **Severity:** medium � **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+- **Risk:** Academy API not yet merged to main — **Severity:** low — **Mitigation:** Frontend view works once backend is available; no breaking changes
 
 ---
 
 ## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
+- New files/routes only, fully backward compatible
+- No API changes, no DB migrations
 
 ---
 
 ## 8) Performance considerations
-- No performance impact expected.
+- No performance impact — standard Vue view with API fetch on mount
 
 ---
 
@@ -87,17 +90,17 @@ Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_wor
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
-- API key logged: `no` (only presence check)
 
 ---
 
 ## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
+1. Should markdown rendering be enhanced with a library (e.g., marked) in a future task?
+2. Should article search/full-text search be added?
 
 ---
 
 ## 11) Short changelog
-- `N/A` � feat(marketpulse-task-2026-04-01-0007): implementation
+- `pending` — feat(marketpulse-task-2026-04-02-0031): Academy View with article grid, category filter, and detail
 
 ---
 

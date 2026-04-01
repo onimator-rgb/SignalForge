@@ -17,6 +17,7 @@ const router = createRouter({
     { path: '/reports', name: 'reports', component: () => import('../views/ReportsView.vue') },
     { path: '/reports/:id', name: 'report-detail', component: () => import('../views/ReportDetailView.vue') },
     { path: '/ingestion', name: 'ingestion', component: () => import('../views/IngestionView.vue') },
+    { path: '/academy', name: 'academy', component: () => import('../views/AcademyView.vue') },
   ],
 })
 
