@@ -8,8 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.assets.models import Asset
 from app.database import get_db
-from app.indicators.schemas import IndicatorSnapshot
-from app.indicators.service import get_indicators
+from app.indicators.schemas import IndicatorHistory, IndicatorSnapshot
+from app.indicators.service import get_indicator_history, get_indicators
 
 router = APIRouter(prefix="/api/v1", tags=["indicators"])
 
@@ -44,3 +44,30 @@ async def asset_indicators(
         )
 
     return snapshot
+
+
+@router.get("/assets/{asset_id}/indicators/history", response_model=IndicatorHistory)
+async def asset_indicator_history(
+    asset_id: UUID,
+    interval: str = Query("1h", description="Bar interval: 5m, 1h, 1d"),
+    db: AsyncSession = Depends(get_db),
+) -> IndicatorHistory:
+    """Get rolling indicator history (RSI, MACD histogram, ADX) for sparkline display."""
+    result = await db.execute(select(Asset).where(Asset.id == asset_id))
+    asset = result.scalar_one_or_none()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+
+    history = await get_indicator_history(
+        db=db,
+        asset_id=asset_id,
+        asset_symbol=asset.symbol,
+        interval=interval,
+    )
+    if history is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No price bars available for {asset.symbol} interval={interval}",
+        )
+
+    return history

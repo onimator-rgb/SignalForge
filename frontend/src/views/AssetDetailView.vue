@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
+import api from '../api/client'
 import { fetchAssetDetail, fetchOHLCV } from '../api/assets'
 import { fetchAnomalies } from '../api/anomalies'
 import { generateReport } from '../api/reports'
 import { fetchWatchlists, addAssetToWatchlist } from '../api/watchlists'
 import { fetchAssetRecommendation } from '../api/recommendations'
-import type { AssetDetail, PriceBar, AnomalyEvent, Watchlist, Recommendation } from '../types/api'
+import type { AssetDetail, PriceBar, AnomalyEvent, Watchlist, Recommendation, IndicatorHistory } from '../types/api'
 import { fmtPrice, fmtPriceDetail, fmtVol, fmtTime } from '../utils/format'
 import PriceChange from '../components/PriceChange.vue'
 import SeverityBadge from '../components/SeverityBadge.vue'
@@ -32,6 +33,7 @@ const watchlists = ref<Watchlist[]>([])
 const showWatchlistMenu = ref(false)
 const watchlistAdding = ref(false)
 const recommendation = ref<Recommendation | null>(null)
+const indicatorHistory = ref<IndicatorHistory | null>(null)
 
 onMounted(() => {
   loadAll()
@@ -51,6 +53,10 @@ async function loadAll() {
     asset.value = detail
     bars.value = ohlcv.reverse()
     anomalies.value = anomRes.items
+    // Fetch indicator history (non-blocking — sparklines are secondary)
+    api.get<IndicatorHistory>(`/assets/${assetId.value}/indicators/history`, {
+      params: { interval: interval.value },
+    }).then(r => indicatorHistory.value = r.data).catch(() => { indicatorHistory.value = null })
   } catch (e: any) {
     error.value = e.response?.data?.detail || e.message
   } finally {
@@ -96,6 +102,18 @@ const sparkData = computed(() => {
   const range = max - min || 1
   return closes.map(c => ((c - min) / range) * 100)
 })
+
+function normalizeSparkline(values: (number | null)[]): { height: number; value: number | null }[] {
+  const nums = values.filter((v): v is number => v !== null)
+  if (nums.length === 0) return []
+  const min = Math.min(...nums)
+  const max = Math.max(...nums)
+  const range = max - min || 1
+  return values.map(v => ({
+    height: v !== null ? Math.max(((v - min) / range) * 100, 2) : 0,
+    value: v,
+  }))
+}
 </script>
 
 <template>
@@ -266,6 +284,17 @@ const sparkData = computed(() => {
                       :style="{ width: asset.indicators.rsi_14 + '%' }"
                     />
                   </div>
+                  <div v-if="indicatorHistory && normalizeSparkline(indicatorHistory.rsi_14).length > 0" class="mt-2">
+                    <div class="text-[10px] text-gray-600 mb-0.5">Ostatnie 24h</div>
+                    <div class="flex items-end gap-px h-8">
+                      <div
+                        v-for="(bar, i) in normalizeSparkline(indicatorHistory.rsi_14)"
+                        :key="i"
+                        class="flex-1 rounded-t bg-blue-400/70"
+                        :style="{ height: bar.height + '%' }"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div v-if="asset.indicators.macd">
@@ -284,6 +313,18 @@ const sparkData = computed(() => {
                       <div class="font-medium tabular-nums" :class="asset.indicators.macd.histogram >= 0 ? 'text-green-400' : 'text-red-400'">
                         {{ asset.indicators.macd.histogram.toFixed(2) }}
                       </div>
+                    </div>
+                  </div>
+                  <div v-if="indicatorHistory && normalizeSparkline(indicatorHistory.macd_histogram).length > 0" class="mt-2">
+                    <div class="text-[10px] text-gray-600 mb-0.5">Ostatnie 24h</div>
+                    <div class="flex items-end gap-px h-8">
+                      <div
+                        v-for="(bar, i) in normalizeSparkline(indicatorHistory.macd_histogram)"
+                        :key="i"
+                        class="flex-1 rounded-t"
+                        :class="bar.value !== null && bar.value >= 0 ? 'bg-green-400/70' : 'bg-red-400/70'"
+                        :style="{ height: bar.height + '%' }"
+                      />
                     </div>
                   </div>
                 </div>
@@ -328,6 +369,17 @@ const sparkData = computed(() => {
                   <div class="mt-1 text-xs text-gray-500">
                     {{ asset.indicators.adx_14 < 20 ? 'Brak trendu' : asset.indicators.adx_14 < 25 ? 'Slaby trend' : asset.indicators.adx_14 < 50 ? 'Silny trend' : 'Bardzo silny trend' }}
                     · {{ (asset.indicators.plus_di ?? 0) > (asset.indicators.minus_di ?? 0) ? 'Byczy' : 'Niedzwiedzi' }}
+                  </div>
+                  <div v-if="indicatorHistory && normalizeSparkline(indicatorHistory.adx_14).length > 0" class="mt-2">
+                    <div class="text-[10px] text-gray-600 mb-0.5">Ostatnie 24h</div>
+                    <div class="flex items-end gap-px h-8">
+                      <div
+                        v-for="(bar, i) in normalizeSparkline(indicatorHistory.adx_14)"
+                        :key="i"
+                        class="flex-1 rounded-t bg-purple-400/70"
+                        :style="{ height: bar.height + '%' }"
+                      />
+                    </div>
                   </div>
                 </div>
 

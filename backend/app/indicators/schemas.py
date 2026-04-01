@@ -19,17 +19,14 @@ class BollingerOut(BaseModel):
     width: float
 
 
-class FibonacciOut(BaseModel):
-    swing_high: float
-    swing_low: float
-    level_0: float
-    level_236: float
-    level_382: float
-    level_500: float
-    level_618: float
-    level_786: float
-    level_100: float
-    trend: str
+class IndicatorHistory(BaseModel):
+    asset_id: UUID
+    interval: str
+    bars_used: int
+    rsi_14: list[float | None]
+    macd_histogram: list[float | None]
+    adx_14: list[float | None]
+    bar_times: list[datetime]
 
 
 class IndicatorSnapshot(BaseModel):
@@ -44,9 +41,8 @@ class IndicatorSnapshot(BaseModel):
     adx_14: float | None = None
     plus_di: float | None = None
     minus_di: float | None = None
+    mfi_14: float | None = None
     stoch_rsi_k: float | None = None
     stoch_rsi_d: float | None = None
-    mfi_14: float | None = None
     vwap: float | None = None
-    fibonacci: FibonacciOut | None = None
     bars_available: int  # how many bars were used

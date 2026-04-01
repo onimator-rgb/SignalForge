@@ -8,13 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.indicators.calculators.adx import calc_adx
 from app.indicators.calculators.bollinger import BollingerResult, calc_bollinger
-from app.indicators.calculators.fibonacci import FibonacciResult, calc_fibonacci
 from app.indicators.calculators.macd import MACDResult, calc_macd
 from app.indicators.calculators.mfi import calc_mfi
 from app.indicators.calculators.rsi import calc_rsi
 from app.indicators.calculators.stochrsi import calc_stochrsi
 from app.indicators.calculators.vwap import calc_vwap
-from app.indicators.schemas import BollingerOut, FibonacciOut, IndicatorSnapshot, MACDOut
+from app.indicators.schemas import BollingerOut, IndicatorHistory, IndicatorSnapshot, MACDOut
 from app.logging_config import get_logger
 from app.market_data.models import PriceBar
 
@@ -68,7 +67,6 @@ async def get_indicators(
     mfi_val = calc_mfi(highs, lows, closes, volumes, period=14)
     stochrsi_res = calc_stochrsi(closes)
     vwap_res = calc_vwap(highs, lows, closes, volumes)
-    fib_res = calc_fibonacci(highs, lows, closes, lookback=20)
 
     log.debug(
         "indicators_calc_done",
@@ -81,7 +79,6 @@ async def get_indicators(
         mfi=mfi_val,
         has_stochrsi=stochrsi_res is not None,
         has_vwap=vwap_res is not None,
-        has_fibonacci=fib_res is not None,
     )
 
     return IndicatorSnapshot(
@@ -100,8 +97,85 @@ async def get_indicators(
         stoch_rsi_k=stochrsi_res.k if stochrsi_res else None,
         stoch_rsi_d=stochrsi_res.d if stochrsi_res else None,
         vwap=vwap_res.vwap if vwap_res else None,
-        fibonacci=_fib_to_out(fib_res),
         bars_available=len(bars),
+    )
+
+
+async def get_indicator_history(
+    db: AsyncSession,
+    asset_id: uuid.UUID,
+    asset_symbol: str,
+    interval: str = "1h",
+    lookback: int = 48,
+) -> IndicatorHistory | None:
+    """Compute rolling indicator history (RSI, MACD histogram, ADX) for display sparklines.
+
+    Returns the last 24 data points of each indicator, or None if no bars available.
+    """
+    log.debug("indicator_history_start", asset=asset_symbol, interval=interval)
+
+    result = await db.execute(
+        select(PriceBar)
+        .where(PriceBar.asset_id == asset_id, PriceBar.interval == interval)
+        .order_by(PriceBar.time.desc())
+        .limit(lookback)
+    )
+    bars = list(result.scalars().all())
+
+    if not bars:
+        return None
+
+    bars.reverse()
+
+    closes = pd.Series([float(b.close) for b in bars])
+    highs = pd.Series([float(b.high) for b in bars])
+    lows = pd.Series([float(b.low) for b in bars])
+    bar_times = [b.time for b in bars]
+
+    # Rolling RSI: needs 14 bars minimum
+    rsi_values: list[float | None] = []
+    for i in range(14, len(closes)):
+        val = calc_rsi(closes[: i + 1], period=14)
+        rsi_values.append(val)
+
+    # Rolling MACD histogram: needs 35 bars minimum (26 slow + 9 signal)
+    macd_values: list[float | None] = []
+    for i in range(35, len(closes)):
+        macd_res = calc_macd(closes[: i + 1], fast=12, slow=26, signal_period=9)
+        macd_values.append(macd_res.histogram if macd_res else None)
+
+    # Rolling ADX: needs 28 bars minimum (2*14)
+    adx_values: list[float | None] = []
+    for i in range(28, len(closes)):
+        adx_res = calc_adx(highs[: i + 1], lows[: i + 1], closes[: i + 1], period=14)
+        adx_values.append(adx_res.adx if adx_res else None)
+
+    # Align all arrays to same length by front-padding with None
+    max_len = max(len(rsi_values), len(macd_values), len(adx_values)) if rsi_values or macd_values or adx_values else 0
+
+    def pad_front(arr: list[float | None], target: int) -> list[float | None]:
+        pad = target - len(arr)
+        return [None] * pad + arr
+
+    rsi_values = pad_front(rsi_values, max_len)
+    macd_values = pad_front(macd_values, max_len)
+    adx_values = pad_front(adx_values, max_len)
+
+    # Take last 24 entries
+    display_count = min(24, max_len)
+    rsi_out = rsi_values[-display_count:] if display_count > 0 else []
+    macd_out = macd_values[-display_count:] if display_count > 0 else []
+    adx_out = adx_values[-display_count:] if display_count > 0 else []
+    times_out = bar_times[-display_count:] if display_count > 0 else []
+
+    return IndicatorHistory(
+        asset_id=asset_id,
+        interval=interval,
+        bars_used=len(bars),
+        rsi_14=rsi_out,
+        macd_histogram=macd_out,
+        adx_14=adx_out,
+        bar_times=times_out,
     )
 
 
@@ -138,20 +212,3 @@ def _bb_to_out(res: BollingerResult | None) -> BollingerOut | None:
     if res is None:
         return None
     return BollingerOut(upper=res.upper, middle=res.middle, lower=res.lower, width=res.width)
-
-
-def _fib_to_out(res: FibonacciResult | None) -> FibonacciOut | None:
-    if res is None:
-        return None
-    return FibonacciOut(
-        swing_high=res.swing_high,
-        swing_low=res.swing_low,
-        level_0=res.level_0,
-        level_236=res.level_236,
-        level_382=res.level_382,
-        level_500=res.level_500,
-        level_618=res.level_618,
-        level_786=res.level_786,
-        level_100=res.level_100,
-        trend=res.trend,
-    )
