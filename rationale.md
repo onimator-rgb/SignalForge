@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0011`
+# Rationale for `marketpulse-task-2026-04-01-0013`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0011-implementation
+**branch:** task/marketpulse-task-2026-04-01-0013-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,94 +9,93 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0011 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0013 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** calculate_regime() returns avg_adx in inputs dict
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** get_multi_timeframe_indicators() exists and accepts db, asset_id, asset_symbol, optional intervals list, optional lookback
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** calculate_regime() returns price_trend_score in inputs dict
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Default intervals are ['5m', '1h', '4h', '1d'] when None passed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** ADX contributes Â±2 to regime score when avg_adx > 30
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Uses asyncio.gather() to call get_indicators() concurrently for each interval
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** Price trend contributes Â±1 to regime score based on median 24h change
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Returns dict[str, IndicatorSnapshot | None] keyed by interval
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** If ADX data unavailable, function still works (graceful degradation)
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** MultiTimeframeIndicators schema has timeframes dict, asset_id, and computed_at fields
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** All tests pass including new ADX and price trend test cases
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** mypy passes with no errors
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** detect_regime_transition() correctly identifies regime changes
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** GET /{asset_id}/indicators/mtf endpoint exists on the indicators router
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** detect_regime_transition() returns (False, None) when regime unchanged
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Accepts comma-separated intervals query param with default '5m,1h,4h,1d'
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** apply_profile_to_open_positions() updates exit_context JSONB for all open positions
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Validates intervals against allowed set, returns 400 for invalid intervals
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** auto_select_profile() returns transition info in result dict
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Returns MultiTimeframeIndicators response model
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** Regime transition is logged via structlog
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** mypy passes with no errors
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** All tests pass
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** All 5 test functions pass
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** At least 10 test cases covering ADX scoring, price trend, transitions, and position updates
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Tests cover: default intervals, custom intervals, None handling, concurrency, schema serialization
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** All tests pass
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** No database required â€” all tests use mocks
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** Tests use mocks (no real DB required)
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Edge cases covered: no data, no positions, repeated same regime
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** mypy passes with no errors
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/strategy/regime.py`
-- `backend/app/strategy/service.py`
-- `backend/tests/test_regime_switch.py`
+- `backend/app/indicators/router.py`
+- `backend/app/indicators/schemas.py`
+- `backend/app/indicators/service.py`
+- `backend/tests/test_mtf_indicators.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_regime_switch.py -q -x` — passed
-  - `cd backend && uv run python -m mypy app/strategy/regime.py --ignore-missing-imports` — FAILED
-  - `cd backend && uv run python -m pytest tests/test_regime_switch.py -q -x` — passed
-  - `cd backend && uv run python -m mypy app/strategy/service.py --ignore-missing-imports` — FAILED
-  - `cd backend && uv run python -m pytest tests/test_regime_switch.py -q -x -v` — passed
-  - `cd backend && uv run python -m mypy app/strategy/regime.py app/strategy/service.py --ignore-missing-imports` — FAILED
+  - `cd backend && uv run python -c "from app.indicators.service import get_multi_timeframe_indicators; print('import ok')"` — passed
+  - `cd backend && uv run python -c "from app.indicators.schemas import MultiTimeframeIndicators; print('schema ok')"` — passed
+  - `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m mypy app/indicators/schemas.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m mypy app/indicators/router.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -c "from app.indicators.router import router; print('router ok')"` — passed
+  - `cd backend && uv run python -m pytest tests/test_mtf_indicators.py -q` — passed
+  - `cd backend && uv run python -m mypy tests/test_mtf_indicators.py --ignore-missing-imports` — passed
 
 ---
 
@@ -134,7 +133,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0011 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0011): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0013): implementation
 
 ---
 
