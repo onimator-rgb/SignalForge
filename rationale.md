@@ -1,114 +1,134 @@
-# Rationale for `marketpulse-task-2026-04-01-0035`
+# Rationale for `marketpulse-task-2026-04-01-0005`
 
-**author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0035-implementation
-**commit_sha:** 
+**author:** coder-agent
+**branch:** task/marketpulse-task-2026-04-01-0005-implementation
+**commit_sha:** 40dc318aad32b26991ee5a951534ef9abfcfbd59
 **date:** 2026-04-01
-**model_calls:** 1
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0035 via coder_worker.py with model integration.
+Pure-function backtest engine that simulates paper trades over a historical price series using StrategyProfile entry/exit rules.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** RiskMetricsResult has avg_win_pct, avg_loss_pct, best_trade_pct, worst_trade_pct fields
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Trade dataclass is frozen with all specified fields
+  **Status:** pass
+  **Evidence:** `@dataclass(frozen=True) class Trade` with all 9 fields; `test_trade_is_frozen` confirms immutability.
 
-- **Criteria:** compute_risk_metrics returns correct values for all edge cases
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** simulate_trades returns empty list for empty/single price input
+  **Status:** pass
+  **Evidence:** `test_no_trades_on_empty_prices`, `test_no_trades_on_single_price` — both pass.
 
-- **Criteria:** All existing tests still pass (no regression)
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Stop loss triggers when price drops by stop_loss_pct from entry
+  **Status:** pass
+  **Evidence:** `test_stop_loss_triggered` — 10% drop exceeds balanced -8% SL → exit_reason='stop_loss'.
 
-- **Criteria:** mypy passes with no errors
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Take profit triggers when price rises by take_profit_pct from entry
+  **Status:** pass
+  **Evidence:** `test_take_profit_triggered` — 20% rise exceeds balanced 15% TP → exit_reason='take_profit'.
 
-- **Criteria:** RiskMetrics TypeScript interface includes all four new fields
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Max hold exit triggers after max_hold_hours bars
+  **Status:** pass
+  **Evidence:** `test_max_hold_exit` — flat prices for 80 bars, exit at bar 72 (max_hold_hours).
 
-- **Criteria:** PortfolioView displays avg win, avg loss, best trade, worst trade in the metrics grid
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** End of data closes any open position
+  **Status:** pass
+  **Evidence:** `test_end_of_data_closes_position` — 5-bar flat series → exit_reason='end_of_data'.
 
-- **Criteria:** Values are color-coded: green for positive, red for negative
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Slippage is applied to both entry and exit prices
+  **Status:** pass
+  **Evidence:** `test_slippage_applied` — entry_price ≈ 100*1.001, exit_price ≈ 120*0.999.
 
-- **Criteria:** Null values show '--' gracefully
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** PnL and PnL% are calculated correctly including slippage
+  **Status:** pass
+  **Evidence:** `test_pnl_calculation` — exact match with manual calculation.
 
-- **Criteria:** vue-tsc passes with no type errors
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** 1-bar cooldown between consecutive trades
+  **Status:** pass
+  **Evidence:** `test_cooldown_between_trades` — entry_index[1] - exit_index[0] == 2.
+
+- **Criteria:** All tests pass, mypy clean
+  **Status:** pass
+  **Evidence:** `12 passed in 0.07s`, `mypy: Success: no issues found in 1 source file`.
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/risk_metrics.py`
-- `backend/tests/test_risk_dashboard_metrics.py`
-- `frontend/src/types/api.ts`
-- `frontend/src/views/PortfolioView.vue`
-- `rationale.md`
+
+- `backend/app/backtest/__init__.py` — empty init to create the backtest package (+0 LOC)
+- `backend/app/backtest/engine.py` — Trade dataclass + simulate_trades() pure function (+87 LOC)
+- `backend/tests/test_backtest_engine.py` — 12 comprehensive tests (+119 LOC)
+
+Total: ~206 LOC across 3 files (within limits).
 
 ---
 
 ## 4) Tests run & results
+
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_risk_dashboard_metrics.py -q` � passed
-  - `cd backend && uv run python -m mypy app/portfolio/risk_metrics.py --ignore-missing-imports` � passed
-  - `cd frontend && npx vue-tsc --noEmit` � passed
+  - `cd backend && uv run python -m pytest tests/test_backtest_engine.py -q`
+  - `cd backend && uv run python -m mypy app/backtest/engine.py --ignore-missing-imports`
+- **Results summary:**
+  - tests: 12 passed, 0 failed (0.07s)
+  - mypy: Success, no issues found
 
 ---
 
 ## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
+
+All test data is synthetic — hand-crafted price lists:
+- Stop loss: `[100.0, 90.0]` — 10% drop
+- Take profit: `[100.0, 120.0]` — 20% rise
+- Max hold: `[100.0] * 80` — flat for 80 bars
+- Multiple trades: `[100.0, 120.0, 100.0, 100.0, 100.0]` — TP then end-of-data
 
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code � **Severity:** medium � **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+
+- **Risk:** Integration with StrategyProfile — **Severity:** low — **Mitigation:** StrategyProfile is a stable frozen dataclass; only reads fields, no mutations.
+- **Risk:** Float precision — **Severity:** low — **Mitigation:** pytest.approx used in all numeric assertions.
 
 ---
 
 ## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
+
+- No API changes, no DB changes. New module only — fully backward compatible.
 
 ---
 
 ## 8) Performance considerations
-- No performance impact expected.
+
+- Pure function, O(n) over price list. No concern for typical backtest sizes (<100k bars).
 
 ---
 
 ## 9) Security & safety checks
+
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
-- API key logged: `no` (only presence check)
 
 ---
 
 ## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
+
+1. Should the engine support short positions in the future?
+2. Backtest metrics (Sharpe, max drawdown, etc.) are out of scope — separate task.
 
 ---
 
 ## 11) Short changelog
-- `N/A` � feat(marketpulse-task-2026-04-01-0035): implementation
+
+- `40dc318` — feat(backtest): add pure trade simulation engine — files: 3 — tests: 12 passed
 
 ---
 
 ## 12) Final verdict (developer self-check)
+
 - **I confirm** that all acceptance criteria marked `pass` have test evidence attached: `yes`
 - **I confirm** no forbidden paths were modified: `yes`
 - **I request** next step: `validate`
