@@ -382,19 +382,49 @@ const reasonLabels: Record<string, string> = {
                 <div class="font-medium tabular-nums text-green-400">${{ fmtPrice(p.take_profit_price) }}</div>
               </div>
             </div>
-            <div class="flex gap-3 text-xs mb-3">
-              <span v-if="p.trailing_stop_price" class="px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/30">
-                Trail SL: ${{ fmtPrice(p.trailing_stop_price) }}
-              </span>
-              <span v-if="p.exit_context?.trailing_tp_armed" class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                Trail TP armed (peak: ${{ fmtPrice(p.exit_context.trailing_tp_peak) }})
-              </span>
-              <span v-if="p.break_even_armed" class="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/30">
-                BE armed
-              </span>
-              <span v-if="p.exit_context?.trailing_buy_phase" class="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
-                Trailing Buy
-              </span>
+            <!-- Position Mechanics -->
+            <div class="grid grid-cols-4 gap-2 text-xs mb-3">
+              <!-- Trailing Stop -->
+              <div class="bg-gray-900/50 border border-gray-800 rounded-lg p-2">
+                <div class="text-gray-500 mb-1">Trailing Stop</div>
+                <template v-if="p.trailing_stop_price">
+                  <div class="text-yellow-400 font-medium tabular-nums">${{ fmtPrice(p.trailing_stop_price) }}</div>
+                  <div class="text-gray-500 tabular-nums">{{ ((Math.abs(liveCurrentPrice(p) - p.trailing_stop_price) / liveCurrentPrice(p)) * 100).toFixed(2) }}% from current</div>
+                </template>
+                <div v-else class="text-gray-600">Not armed</div>
+              </div>
+              <!-- Trailing TP -->
+              <div class="bg-gray-900/50 border border-gray-800 rounded-lg p-2">
+                <div class="text-gray-500 mb-1">Trailing TP</div>
+                <template v-if="p.exit_context?.trailing_tp_armed">
+                  <div class="text-emerald-400 font-medium">Armed</div>
+                  <div class="text-gray-400 tabular-nums">Peak: ${{ fmtPrice(p.exit_context.trailing_tp_peak) }}</div>
+                  <div v-if="p.exit_context.trailing_tp_peak" class="text-gray-500 tabular-nums">
+                    -{{ ((1 - liveCurrentPrice(p) / p.exit_context.trailing_tp_peak) * 100).toFixed(2) }}% retrace
+                  </div>
+                </template>
+                <div v-else class="text-gray-600">Waiting</div>
+              </div>
+              <!-- Break-Even -->
+              <div class="bg-gray-900/50 border border-gray-800 rounded-lg p-2">
+                <div class="text-gray-500 mb-1">Break-Even</div>
+                <template v-if="p.break_even_armed">
+                  <div class="text-blue-400 font-medium">Armed</div>
+                  <div class="text-gray-500 tabular-nums">+{{ ((liveCurrentPrice(p) / p.entry_price - 1) * 100).toFixed(2) }}% cushion</div>
+                </template>
+                <div v-else class="text-gray-600">Not active</div>
+              </div>
+              <!-- Entry Slippage -->
+              <div class="bg-gray-900/50 border border-gray-800 rounded-lg p-2">
+                <div class="text-gray-500 mb-1">Entry Slippage</div>
+                <template v-if="p.exit_context?.entry_slippage">
+                  <div class="tabular-nums text-gray-300">${{ fmtPrice(p.exit_context.entry_slippage.market_price) }} &rarr; ${{ fmtPrice(p.exit_context.entry_slippage.adjusted_price) }}</div>
+                  <div class="tabular-nums" :class="p.exit_context.entry_slippage.slippage_pct > 0 ? 'text-red-400' : 'text-green-400'">
+                    {{ (p.exit_context.entry_slippage.slippage_pct * 100).toFixed(1) }} bps
+                  </div>
+                </template>
+                <div v-else class="text-gray-600">N/A</div>
+              </div>
             </div>
             <div class="grid grid-cols-4 gap-4 text-xs mb-3">
               <div>

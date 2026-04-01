@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0027`
+# Rationale for `marketpulse-task-2026-04-01-0029`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0027-implementation
+**branch:** task/marketpulse-task-2026-04-01-0029-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,78 +9,68 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0027 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0029 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** calc_adx returns None when fewer than 2*period bars provided
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Open position dict in get_portfolio_summary includes 'exit_context' key with value from pos.exit_context (dict or None)
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** calc_adx returns ADXResult with adx, plus_di, minus_di all in 0-100 range
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Test verifies exit_context is present in open position output
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Strong uptrend data produces ADX > 25 (strong trend detected)
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** mypy passes with no errors
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Flat/sideways data produces ADX < 25 (weak/no trend)
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** PortfolioPosition type includes exit_context, peak_price, trailing_stop_price, break_even_armed, badges, hours_open, hours_remaining fields
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** ADXResult and calc_adx are exported from calculators __init__
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Position detail panel shows 4-column Position Mechanics grid with trailing stop, trailing TP, break-even, and slippage cards
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** IndicatorSnapshot includes adx field of type ADXOut | None
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Trailing stop card shows price and distance % from current price when armed
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** ADXOut has adx, plus_di, minus_di float fields
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Trailing TP card shows armed/waiting status with peak and retracement when armed
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** get_indicators service function calls calc_adx and includes result in snapshot
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Entry slippage card shows market vs fill price with cost in basis points
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** mypy passes on both files
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** vue-tsc passes with no type errors
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** All tests pass
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** Tests cover: insufficient data, valid range, uptrend detection, downtrend detection, sideways detection, export verification
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** No test uses external data or network calls
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Dark theme styling consistent with existing panels (bg-gray-900, border-gray-800, text-gray-500 labels)
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/indicators/schemas.py`
-- `backend/app/indicators/service.py`
-- `backend/tests/test_adx.py`
+- `backend/app/portfolio/service.py`
+- `backend/tests/test_portfolio_exit_context.py`
+- `frontend/src/types/api.ts`
+- `frontend/src/views/PortfolioView.vue`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -c "from app.indicators.calculators import ADXResult, calc_adx; print('import ok')"` — passed
-  - `cd backend && uv run python -m mypy app/indicators/calculators/adx.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/indicators/schemas.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m pytest tests/test_adx.py -q` — passed
-  - `cd backend && uv run python -m mypy app/indicators/calculators/adx.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_portfolio_exit_context.py -q` — passed
+  - `cd backend && uv run python -m mypy app/portfolio/service.py --ignore-missing-imports` — FAILED
+  - `cd frontend && npx vue-tsc --noEmit` — passed
 
 ---
 
@@ -118,7 +108,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0027 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0027): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0029): implementation
 
 ---
 
