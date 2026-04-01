@@ -1,106 +1,133 @@
-# Rationale for `marketpulse-task-2026-04-01-0035`
+# Rationale for `marketpulse-task-2026-04-01-0031`
 
-**author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0035-implementation
-**commit_sha:** 
+**author:** coder-agent (MarketPulse Coder)
+**branch:** task/marketpulse-task-2026-04-01-0031-implementation
+**commit_sha:** 1c9d232
 **date:** 2026-04-01
 **model_calls:** 1
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0035 via coder_worker.py with model integration.
+Add Safety & Protections panel to DashboardView showing active trading protections, circuit breaker status, and protection badges.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** KeltnerOut model has upper, middle, lower float fields
+- **Criteria:** ProtectionEventItem interface exists with all 7 fields correctly typed
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Added to frontend/src/types/api.ts with id, type, status, asset_class, reason, triggered_at, expires_at
 
-- **Criteria:** IndicatorSnapshot has keltner: KeltnerOut | None = None field
+- **Criteria:** ProtectionsResponse interface exists with active and count fields
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Added to frontend/src/types/api.ts
 
-- **Criteria:** get_indicators() computes Keltner and includes it in the returned snapshot
+- **Criteria:** vue-tsc --noEmit passes with no errors (s1)
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Ran npx vue-tsc --noEmit, exited with 0
 
-- **Criteria:** mypy passes on both files
+- **Criteria:** Safety panel renders in DashboardView with correct dark theme styling
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Panel uses bg-gray-900 border-gray-800 rounded-lg matching existing panels
 
-- **Criteria:** All 6 tests pass
+- **Criteria:** Protections are fetched from /portfolio/protections in loadDashboard()
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Added to Promise.all with .catch() fallback
 
-- **Criteria:** Tests cover insufficient data, valid output structure, channel width properties, and module exports
+- **Criteria:** Active protections show colored badges with type, reason, and expiry
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Color-coded badges per type, reason in text-xs, expiry countdown in minutes
 
-- **Criteria:** mypy passes on the test file
+- **Criteria:** Empty state shows green checkmark with 'no active protections' message
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Unicode checkmark + "No active protections â€“ trading unrestricted"
+
+- **Criteria:** Overall status indicator shows green/yellow/red based on active count
+- **Status:** `pass`
+- **Evidence:** Colored dot + text: 0=green/All Clear, 1-2=yellow/N Active, 3+=red/Trading Restricted
+
+- **Criteria:** RouterLink to /portfolio exists in panel header
+- **Status:** `pass`
+- **Evidence:** RouterLink with "Details" text pointing to /portfolio
+
+- **Criteria:** vue-tsc --noEmit passes with no errors (s2)
+- **Status:** `pass`
+- **Evidence:** Ran npx vue-tsc --noEmit, exited with 0
 
 ---
 
-## 3) Files changed (and rationale per file)
-- `backend/app/indicators/schemas.py`
-- `backend/app/indicators/service.py`
-- `backend/tests/test_keltner.py`
-- `rationale.md`
+## 3) Design decisions
+
+- Changed Row 4 grid from 2 to 3 columns to accommodate the new panel alongside existing Watchlists and Signal Distribution panels.
+- Protection type color mapping follows the spec exactly with fallback to gray for unknown types.
+- Expiry countdown computed client-side from expires_at timestamp using Math.round for minute granularity.
 
 ---
 
-## 4) Tests run & results
-- **Commands run:**
-  - `cd backend && uv run python -m mypy app/indicators/schemas.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m pytest tests/test_keltner.py -q` — passed
-  - `cd backend && uv run python -m mypy tests/test_keltner.py --ignore-missing-imports` — passed
+## 4) Risk assessment
+
+- **Layout risk (low):** Changed grid-cols-2 to grid-cols-3 in Row 4. All panels remain functional.
+- **Integration risk (low):** Endpoint call has .catch() fallback returning empty state, so dashboard loads even if endpoint fails.
 
 ---
 
-## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
+## 5) Files changed
+
+| File | Change type | LOC |
+|------|------------|-----|
+| frontend/src/types/api.ts | added interfaces | +15 |
+| frontend/src/views/DashboardView.vue | added panel + data fetching | +71 |
 
 ---
 
-## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code — **Severity:** medium — **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+## 6) Testing
+
+- Type checking: `npx vue-tsc --noEmit` passed with 0 errors.
 
 ---
 
-## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
+## 7) Security
+
+- No secrets accessed or committed.
+- No broker API calls.
+- No forbidden paths modified.
+- Demo/paper-trading only.
 
 ---
 
-## 8) Performance considerations
-- No performance impact expected.
+## 8) Performance
+
+- Single additional API call in existing Promise.all â€” no sequential overhead.
+- Lightweight DOM additions (badges, text).
 
 ---
 
-## 9) Security & safety checks
-- forbidden paths touched: `no`
-- external/broker sdk usage: `no`
-- secrets touched: `no`
-- API key logged: `no` (only presence check)
+## 9) Rollback
+
+- Revert commit 1c9d232 to remove all changes.
 
 ---
 
-## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
+## 10) Open questions
+
+None.
 
 ---
 
-## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0035): implementation
+## 11) Checklist
+
+- [x] forbidden_paths respected
+- [x] max_files_changed respected (2 <= 2)
+- [x] max_change_loc respected (s1: 15 <= 20, s2: 71 <= 120)
+- [x] task_id in commit message
+- [x] branch format correct
+- [x] rationale.md present
+- [x] no deploys
+- [x] no secrets
 
 ---
 
-## 12) Final verdict (developer self-check)
-- **I confirm** that all acceptance criteria marked `pass` have test evidence attached: `yes`
-- **I confirm** no forbidden paths were modified: `yes`
-- **I request** next step: `validate`
+## 12) Recommendation
+
+`next_recommended_step: "approve"`
