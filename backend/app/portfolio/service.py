@@ -619,6 +619,7 @@ async def get_portfolio_summary(db: AsyncSession) -> dict:
             "peak_pnl_pct": float(pos.peak_pnl_pct) if pos.peak_pnl_pct else None,
             "trailing_stop_price": float(pos.trailing_stop_price) if pos.trailing_stop_price else None,
             "break_even_armed": pos.break_even_armed,
+            "exit_context": pos.exit_context,
             "badges": badges, "status": pos.status,
             "recommendation": {
                 "id": str(pos.recommendation_id) if pos.recommendation_id else None,

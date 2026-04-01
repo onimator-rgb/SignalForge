@@ -234,6 +234,35 @@ export interface PortfolioPosition {
   current_value_usd: number | null
   unrealized_pnl_usd: number | null
   unrealized_pnl_pct: number | null
+  stop_loss_price: number | null
+  take_profit_price: number | null
+  peak_price: number | null
+  peak_pnl_pct: number | null
+  trailing_stop_price: number | null
+  break_even_armed: boolean
+  dist_stop_pct: number
+  dist_target_pct: number
+  hours_open: number
+  hours_remaining: number
+  max_hold_until: string | null
+  badges: string[]
+  exit_context: {
+    trailing_tp_armed?: boolean
+    trailing_tp_peak?: number
+    trailing_buy_phase?: boolean
+    entry_slippage?: {
+      market_price: number
+      slippage_pct: number
+      adjusted_price: number
+    }
+  } | null
+  recommendation?: {
+    id: string | null
+    score: number | null
+    type: string | null
+    rationale: string | null
+    scoring_version: string | null
+  } | null
 }
 
 export interface PortfolioStats {
