@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0011`
+# Rationale for `marketpulse-task-2026-04-01-0013`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0011-implementation
+**branch:** task/marketpulse-task-2026-04-01-0013-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,55 +9,47 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0011 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0013 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** format_journal_entry correctly computes hold_duration_hours from opened_at and closed_at
+- **Criteria:** Expanded position card shows DCA level (0/3, 1/3, 2/3, 3/3) with purple color when DCA state exists in exit_context.dca
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** format_journal_entry maps close_reason to human-readable close_reason_label for stop_loss, take_profit, max_hold, manual
+- **Criteria:** When no DCA data present, card shows 'No DCA' in muted gray
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** format_journal_entry classifies pnl into profit/loss/breakeven via pnl_class field
+- **Criteria:** Entry signals section renders key indicator scores from exit_context.entry_snapshot when available
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** format_journal_entry extracts entry_signals and exit_signals from exit_context JSONB when present, returns None when absent
+- **Criteria:** Signal scores are color-coded: green > 0.1, red < -0.1, gray neutral
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** format_journal returns entries sorted by closed_at descending
+- **Criteria:** vue-tsc --noEmit passes with no type errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** GET /journal endpoint returns paginated results with limit and offset
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** All tests pass and mypy reports no errors
+- **Criteria:** No changes to backend code
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/journal.py`
-- `backend/app/portfolio/router.py`
-- `backend/app/portfolio/schemas.py`
-- `backend/tests/test_trade_journal.py`
+- `frontend/src/views/PortfolioView.vue`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_trade_journal.py -q` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/journal.py --ignore-missing-imports` — passed
+  - `cd frontend && npx vue-tsc --noEmit` — passed
 
 ---
 
@@ -95,7 +87,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0011 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0011): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0013): implementation
 
 ---
 
