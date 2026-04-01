@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0017`
+# Rationale for `marketpulse-task-2026-04-01-0019`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0017-implementation
+**branch:** task/marketpulse-task-2026-04-01-0019-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,33 +9,37 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0017 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0019 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** daily_drawdown_guard() returns None when drawdown is within limit
+- **Criteria:** market_circuit_breaker_guard pure function exists and returns dict when >60% assets drop >3%
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** daily_drawdown_guard() returns blocking dict when drawdown exceeds 5%
+- **Criteria:** market_circuit_breaker_guard returns None when fewer assets are dropping or total is 0
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** daily_drawdown_guard() handles edge case of zero opening equity
+- **Criteria:** check_market_circuit_breaker async function queries price_bars and creates ProtectionEvent
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** check_daily_drawdown() creates ProtectionEvent when triggered
+- **Criteria:** check_market_circuit_breaker returns True if market_circuit_breaker event already active
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** check_daily_drawdown() returns True if already blocked today without creating duplicate event
+- **Criteria:** check_protections calls check_market_circuit_breaker and blocks entries when active
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Existing protections.py functions remain unchanged
+- **Criteria:** mypy passes with no errors
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** At least 8 test cases covering pure function edge cases
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
@@ -43,15 +47,11 @@ Automated implementation for task marketpulse-task-2026-04-01-0017 via coder_wor
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** At least 7 test cases covering normal, edge, and async paths
+- **Criteria:** Tests verify blocking dict structure (blocked, rule, dropping_count, total_count, worst_drops)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Tests use MagicMock/AsyncMock, no real database required
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** Tests verify both return values and side effects (ProtectionEvent creation)
+- **Criteria:** Tests verify None return for non-triggering scenarios
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
@@ -59,16 +59,15 @@ Automated implementation for task marketpulse-task-2026-04-01-0017 via coder_wor
 
 ## 3) Files changed (and rationale per file)
 - `backend/app/portfolio/protections.py`
-- `backend/tests/test_daily_drawdown.py`
+- `backend/tests/test_circuit_breaker.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_daily_drawdown.py -q` — passed
   - `cd backend && uv run python -m mypy app/portfolio/protections.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m pytest tests/test_daily_drawdown.py -v` — passed
+  - `cd backend && uv run python -m pytest tests/test_circuit_breaker.py -q` — passed
   - `cd backend && uv run python -m mypy app/portfolio/protections.py --ignore-missing-imports` — passed
 
 ---
@@ -107,7 +106,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0017 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0017): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0019): implementation
 
 ---
 
