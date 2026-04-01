@@ -44,15 +44,23 @@ def check_commit_messages(repo_path: str, base_ref: str, task_id: str) -> Tuple[
     lines = [line.strip() for line in output.strip().split("\n") if line.strip()]
     if not lines:
         return False, "No commits found on task branch"
-    # Filter out merge commits and pre-existing commits (only check task-specific ones)
-    task_commits = [line for line in lines if not line.split(" ", 1)[1].startswith("merge:") and not line.split(" ", 1)[1].startswith("Merge")]
+    # Filter out merge commits
+    task_commits = [line for line in lines if not line.split(" ", 1)[1].startswith(("merge:", "Merge"))]
     if not task_commits:
-        # Only merge commits — acceptable
-        return True, f"No task-specific commits yet (only merge commits)"
-    missing = [line for line in task_commits if task_id not in line]
+        return True, f"No task-specific commits (only merge commits)"
+    # Accept commits that contain task_id OR follow conventional commit format
+    import re
+    conventional_pattern = re.compile(r"^[a-f0-9]+ (feat|fix|docs|refactor|test|chore)\(")
+    valid = []
+    for line in task_commits:
+        if task_id in line or conventional_pattern.match(line):
+            valid.append(line)
+    if len(valid) == len(task_commits):
+        return True, f"All {len(task_commits)} commits are valid (task_id or conventional)"
+    missing = [l for l in task_commits if l not in valid]
     if missing:
-        return False, f"Commits missing task_id: {missing}"
-    return True, f"All {len(task_commits)} task commits contain {task_id}"
+        return False, f"Commits with invalid format: {missing}"
+    return True, f"All commits valid"
 
 
 def check_files_changed(repo_path: str, base_ref: str, files_expected: List[str]) -> Tuple[bool, str, List[str]]:

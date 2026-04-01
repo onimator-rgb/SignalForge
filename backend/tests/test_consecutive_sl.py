@@ -170,6 +170,9 @@ class TestConsecutiveSlAllowsWhenBrokenByProfit:
         ), patch(
             "app.portfolio.protections._check_entry_frequency",
             new_callable=AsyncMock, return_value=(False, None),
+        ), patch(
+            "app.portfolio.protections._daily_drawdown_guard",
+            new_callable=AsyncMock, return_value=(True, None, None),
         ):
             allowed, ptype, reason = await check_protections(
                 db, PORTFOLIO_ID, ASSET_ID, "crypto", "normal", now=NOW

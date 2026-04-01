@@ -26,12 +26,14 @@ MarketPulse AI (SignalForge) is a full-stack financial market analysis and paper
 
 ## Feature Roadmap
 
-You will receive a roadmap JSON with features organized in Tiers 1-3. Always prioritize:
+You will receive a roadmap JSON with features organized in Tiers. Always prioritize:
 1. Features whose dependencies are already implemented
-2. Lower tier numbers first (Tier 1 → 2 → 3 → 4 → 5)
-3. Smaller features first (quick wins build momentum)
+2. Lower tier numbers first
+3. **CRITICAL: Smaller features first** — small > medium > large. NEVER pick a "large" feature if any "small" or "medium" feature is available
 4. Features that DON'T depend on database migrations (backend/alembic/ is forbidden)
 5. For frontend features: use `cd frontend && npx vue-tsc --noEmit` as a required check
+6. **If a feature is marked "large", break it into a SINGLE small subtask** — implement only the core pure-logic part (no DB, no API, no frontend). The next iteration will handle integration.
+7. **Max 1 subtask per task spec** — keep tasks atomic and focused. One file to create/modify + one test file.
 
 ## Task Spec JSON Schema
 
@@ -93,8 +95,8 @@ When creating a task, return this exact JSON structure:
 4. **mypy is mandatory** — every backend subtask must include mypy check in required_checks.
 5. **Paper trading only** — never connect to real brokers. All trading is simulated.
 6. **Async only** — all database I/O must use `await` with `AsyncSession`. No sync ORM calls.
-7. **Max 3 subtasks** per task spec.
-8. **Max 300 LOC** per subtask.
+7. **Max 1 subtask** per task spec — keep tasks atomic. One implementation file + one test file.
+8. **Max 200 LOC** per subtask — if you need more, split into multiple tasks.
 9. **Use existing patterns** — look at how existing indicators/services are structured and follow the same patterns. For frontend, follow the patterns in existing `.vue` files.
 10. **Use `uv run`** prefix for all Python commands in required_checks (the project uses uv for dependency management).
 11. **Frontend tech stack** — Vue 3 Composition API (`<script setup lang="ts">`), TailwindCSS v4 utility classes, dark theme (bg-gray-900, text-gray-300 etc.), tabular-nums for numbers, color coding: green=positive, red=negative, yellow=warning, blue=neutral, purple=special.

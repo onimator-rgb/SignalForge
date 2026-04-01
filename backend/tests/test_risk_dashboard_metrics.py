@@ -102,15 +102,15 @@ class TestBestWorstExtremes:
         assert result.best_trade_pct == 25.0
         assert result.worst_trade_pct == -15.0
 
-    def test_zero_pnl_counted_as_loss(self) -> None:
-        """A trade with exactly 0% PnL is counted in the loss bucket."""
+    def test_zero_pnl_excluded_from_win_and_loss(self) -> None:
+        """A trade with exactly 0% PnL is excluded from both win and loss buckets."""
         positions = [
             _pos(pnl_pct=0.0, pnl_usd=0.0),
             _pos(pnl_pct=5.0, pnl_usd=50.0),
         ]
         result = compute_risk_metrics(positions)
         assert result.avg_win_pct == 5.0
-        assert result.avg_loss_pct == 0.0
+        assert result.avg_loss_pct is None
 
 
 class TestExistingFieldsUnchanged:

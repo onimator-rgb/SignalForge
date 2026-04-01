@@ -527,7 +527,7 @@ RESPOND WITH ONLY A JSON OBJECT matching the schema from your system instruction
         logger.info(f"Dispatching to Coder Worker (--use-max)...")
         try:
             result = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=900,
+                cmd, capture_output=True, text=True, timeout=1200,
                 encoding="utf-8", errors="replace",
             )
             stdout = result.stdout

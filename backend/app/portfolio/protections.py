@@ -34,6 +34,11 @@ MAX_PER_CLASS = 3  # max open positions per asset_class
 MAX_NEW_POSITIONS_PER_6H = 2
 CONSECUTIVE_SL_THRESHOLD = 3
 CONSECUTIVE_SL_LOCK_MINUTES = 120
+MARKET_CB_DROP_PCT = -0.03
+MARKET_CB_ASSET_PCT = 0.60
+MARKET_CB_LOOKBACK_MINUTES = 60
+MARKET_CB_LOCK_HOURS = 2
+MARKET_CB_RULE = "market_circuit_breaker"
 
 
 async def check_protections(
@@ -354,6 +359,81 @@ async def _daily_drawdown_guard(
         return False, "daily_drawdown", reason
 
     return True, None, None
+
+
+# ── Market Circuit Breaker ────────────────────────
+
+
+def market_circuit_breaker_guard(
+    asset_drops: list[dict[str, object]],
+    threshold_drop_pct: float = MARKET_CB_DROP_PCT,
+    threshold_asset_pct: float = MARKET_CB_ASSET_PCT,
+) -> dict[str, object] | None:
+    """Pure guard: returns blocking dict when broad market selloff detected."""
+    total = len(asset_drops)
+    if total == 0:
+        return None
+    dropping = [d for d in asset_drops if float(d["drop_pct"]) <= threshold_drop_pct]  # type: ignore[arg-type]
+    if len(dropping) / total >= threshold_asset_pct:
+        worst = sorted(dropping, key=lambda d: float(d["drop_pct"]))[:3]  # type: ignore[arg-type]
+        return {
+            "blocked": True,
+            "rule": MARKET_CB_RULE,
+            "dropping_count": len(dropping),
+            "total_count": total,
+            "drop_pct_threshold": threshold_drop_pct,
+            "worst_drops": worst,
+        }
+    return None
+
+
+async def check_market_circuit_breaker(
+    session: AsyncSession, now: datetime | None = None,
+) -> bool:
+    """Check / activate market-wide circuit breaker. Returns True when entries blocked."""
+    from sqlalchemy import text as sa_text
+    now = now or datetime.now(timezone.utc)
+
+    active = await session.execute(
+        select(func.count()).where(
+            ProtectionEvent.protection_type == MARKET_CB_RULE,
+            ProtectionEvent.status == "active",
+        )
+    )
+    if active.scalar_one() > 0:
+        return True
+
+    cutoff = now - timedelta(minutes=MARKET_CB_LOOKBACK_MINUTES)
+    query = sa_text("""
+        SELECT a.id AS asset_id, a.symbol,
+               curr.close AS current_close, prev.close AS prev_close,
+               (curr.close - prev.close) / prev.close AS drop_pct
+        FROM assets a
+        JOIN LATERAL (SELECT close FROM price_bars WHERE asset_id = a.id AND interval = '1h' ORDER BY time DESC LIMIT 1) curr ON true
+        JOIN LATERAL (SELECT close FROM price_bars WHERE asset_id = a.id AND interval = '1h' AND time <= :cutoff ORDER BY time DESC LIMIT 1) prev ON true
+        WHERE a.is_active = true AND prev.close > 0
+    """)
+    result = await session.execute(query, {"cutoff": cutoff})
+    rows = result.mappings().all()
+
+    asset_drops: list[dict[str, object]] = [
+        {"asset_id": str(r["asset_id"]), "symbol": r["symbol"], "drop_pct": float(r["drop_pct"])}
+        for r in rows
+    ]
+    guard = market_circuit_breaker_guard(asset_drops)
+    if guard is not None:
+        expires = now + timedelta(hours=MARKET_CB_LOCK_HOURS)
+        event = ProtectionEvent(
+            protection_type=MARKET_CB_RULE,
+            status="active",
+            reason=f"Market CB: {guard['dropping_count']}/{guard['total_count']} assets dropped >{abs(MARKET_CB_DROP_PCT)*100:.0f}%",
+            triggered_at=now,
+            expires_at=expires,
+        )
+        session.add(event)
+        log.info("portfolio.market_circuit_breaker", dropping=guard["dropping_count"], total=guard["total_count"])
+        return True
+    return False
 
 
 # ── Helpers ───────────────────────────────────────

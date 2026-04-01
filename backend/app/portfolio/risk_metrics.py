@@ -150,7 +150,7 @@ def compute_risk_metrics(
         if getattr(p, "realized_pnl_pct", None) is not None
     ]
     win_pcts = [v for v in all_pnl_pcts if v > 0]
-    loss_pcts = [v for v in all_pnl_pcts if v <= 0]
+    loss_pcts = [v for v in all_pnl_pcts if v < 0]
 
     avg_win_pct = round(sum(win_pcts) / len(win_pcts), 4) if win_pcts else None
     avg_loss_pct = round(sum(loss_pcts) / len(loss_pcts), 4) if loss_pcts else None

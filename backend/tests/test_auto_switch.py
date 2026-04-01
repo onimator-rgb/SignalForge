@@ -40,6 +40,10 @@ async def test_auto_select_profile_risk_off() -> None:
         "app.strategy.service.calculate_regime",
         new_callable=AsyncMock,
         return_value=regime_info,
+    ), patch(
+        "app.strategy.service.apply_profile_to_open_positions",
+        new_callable=AsyncMock,
+        return_value=0,
     ):
         db = AsyncMock()
         profile, info = await auto_select_profile(db)
@@ -55,6 +59,10 @@ async def test_auto_select_profile_neutral() -> None:
         "app.strategy.service.calculate_regime",
         new_callable=AsyncMock,
         return_value=regime_info,
+    ), patch(
+        "app.strategy.service.apply_profile_to_open_positions",
+        new_callable=AsyncMock,
+        return_value=0,
     ):
         db = AsyncMock()
         profile, info = await auto_select_profile(db)
