@@ -286,10 +286,16 @@ const reasonLabels: Record<string, string> = {
             </div>
             <div class="flex gap-3 text-xs mb-3">
               <span v-if="p.trailing_stop_price" class="px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/30">
-                Trail: ${{ fmtPrice(p.trailing_stop_price) }}
+                Trail SL: ${{ fmtPrice(p.trailing_stop_price) }}
+              </span>
+              <span v-if="p.exit_context?.trailing_tp_armed" class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                Trail TP armed (peak: ${{ fmtPrice(p.exit_context.trailing_tp_peak) }})
               </span>
               <span v-if="p.break_even_armed" class="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/30">
                 BE armed
+              </span>
+              <span v-if="p.exit_context?.trailing_buy_phase" class="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+                Trailing Buy
               </span>
             </div>
             <div class="grid grid-cols-4 gap-4 text-xs mb-3">

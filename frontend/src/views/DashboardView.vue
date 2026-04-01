@@ -108,6 +108,12 @@ const recLabels: Record<string, string> = {
               'text-red-400 bg-red-500/10 border-red-500/30': strategy.regime.regime === 'risk_off',
             }"
           >{{ strategy.regime.regime }}</span>
+          <span v-if="strategy.auto_switch?.enabled" class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium border text-purple-400 bg-purple-500/10 border-purple-500/30">
+            Auto: {{ strategy.auto_switch.recommended_profile }}
+          </span>
+          <span v-if="strategy.effective" class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium border text-gray-500 bg-gray-800 border-gray-700" :title="strategy.effective.note">
+            Threshold: {{ strategy.effective.candidate_buy_threshold }} | Pos: {{ (strategy.effective.max_position_pct * 100).toFixed(0) }}%
+          </span>
         </template>
         <FreshnessBadge :status="liveStatus" />
         <LastRefreshHint />
@@ -147,6 +153,21 @@ const recLabels: Record<string, string> = {
           <div class="text-lg font-bold mt-1" :class="overview.alerts.unread > 0 ? 'text-orange-400' : 'text-gray-400'">
             {{ overview.alerts.unread }}
           </div>
+        </div>
+      </div>
+
+      <!-- Strategy Profile details -->
+      <div v-if="strategy?.profile" class="bg-gray-900 border border-gray-800 rounded-lg p-3 mb-5">
+        <div class="flex items-center gap-4 text-xs">
+          <span class="text-gray-500 uppercase font-semibold">Strategy</span>
+          <span class="tabular-nums">SL: {{ (strategy.profile.stop_loss_pct * 100).toFixed(0) }}%</span>
+          <span class="tabular-nums">TP: {{ (strategy.profile.take_profit_pct * 100).toFixed(0) }}%</span>
+          <span class="tabular-nums">Trail: {{ (strategy.profile.trailing_pct * 100).toFixed(1) }}%</span>
+          <span class="tabular-nums">Trail Arm: {{ (strategy.profile.trailing_arm_pct * 100).toFixed(1) }}%</span>
+          <span class="tabular-nums">Trail Buy: {{ (strategy.profile.trailing_buy_bounce_pct * 100).toFixed(1) }}%</span>
+          <span v-if="strategy.profile.slippage_buy_pct" class="tabular-nums text-gray-500">Slip: {{ (strategy.profile.slippage_buy_pct * 100).toFixed(2) }}%</span>
+          <span class="tabular-nums">Max Hold: {{ strategy.profile.max_hold_hours }}h</span>
+          <span class="tabular-nums">Max Pos: {{ (strategy.profile.max_position_pct * 100).toFixed(0) }}%</span>
         </div>
       </div>
 

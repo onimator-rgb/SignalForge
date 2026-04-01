@@ -305,6 +305,62 @@ const sparkData = computed(() => {
                     </div>
                   </div>
                 </div>
+
+                <div v-if="asset.indicators.adx_14 != null">
+                  <div class="text-gray-400 mb-1">ADX (14) — Sila trendu</div>
+                  <div class="grid grid-cols-3 gap-2 text-xs">
+                    <div>
+                      <div class="text-gray-500">ADX</div>
+                      <div class="font-medium tabular-nums" :class="{
+                        'text-green-400': asset.indicators.adx_14 >= 25,
+                        'text-gray-400': asset.indicators.adx_14 < 25,
+                      }">{{ asset.indicators.adx_14.toFixed(1) }}</div>
+                    </div>
+                    <div>
+                      <div class="text-gray-500">+DI</div>
+                      <div class="font-medium tabular-nums text-green-400">{{ asset.indicators.plus_di?.toFixed(1) ?? '—' }}</div>
+                    </div>
+                    <div>
+                      <div class="text-gray-500">-DI</div>
+                      <div class="font-medium tabular-nums text-red-400">{{ asset.indicators.minus_di?.toFixed(1) ?? '—' }}</div>
+                    </div>
+                  </div>
+                  <div class="mt-1 text-xs text-gray-500">
+                    {{ asset.indicators.adx_14 < 20 ? 'Brak trendu' : asset.indicators.adx_14 < 25 ? 'Slaby trend' : asset.indicators.adx_14 < 50 ? 'Silny trend' : 'Bardzo silny trend' }}
+                    · {{ (asset.indicators.plus_di ?? 0) > (asset.indicators.minus_di ?? 0) ? 'Byczy' : 'Niedzwiedzi' }}
+                  </div>
+                </div>
+
+                <div v-if="asset.indicators.stoch_rsi_k != null">
+                  <div class="flex justify-between">
+                    <span class="text-gray-400">StochRSI</span>
+                    <span class="text-xs">
+                      <span class="font-medium tabular-nums" :class="{
+                        'text-red-400': asset.indicators.stoch_rsi_k > 80,
+                        'text-green-400': asset.indicators.stoch_rsi_k < 20,
+                        'text-gray-200': asset.indicators.stoch_rsi_k >= 20 && asset.indicators.stoch_rsi_k <= 80,
+                      }">K: {{ asset.indicators.stoch_rsi_k.toFixed(1) }}</span>
+                      <span class="text-gray-500 mx-1">/</span>
+                      <span class="font-medium tabular-nums text-gray-300">D: {{ asset.indicators.stoch_rsi_d?.toFixed(1) ?? '—' }}</span>
+                    </span>
+                  </div>
+                  <div class="mt-1 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                    <div
+                      class="h-full rounded-full"
+                      :class="{
+                        'bg-red-400': asset.indicators.stoch_rsi_k > 80,
+                        'bg-green-400': asset.indicators.stoch_rsi_k < 20,
+                        'bg-purple-400': asset.indicators.stoch_rsi_k >= 20 && asset.indicators.stoch_rsi_k <= 80,
+                      }"
+                      :style="{ width: asset.indicators.stoch_rsi_k + '%' }"
+                    />
+                  </div>
+                </div>
+
+                <div v-if="asset.indicators.vwap != null" class="flex justify-between">
+                  <span class="text-gray-400">VWAP</span>
+                  <span class="font-medium tabular-nums">{{ fmtPrice(asset.indicators.vwap) }}</span>
+                </div>
               </div>
             </template>
             <div v-else class="text-sm text-gray-500">

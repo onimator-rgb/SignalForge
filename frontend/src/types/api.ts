@@ -44,6 +44,13 @@ export interface AssetIndicatorsSummary {
   rsi_14: number | null
   macd: MACDOut | null
   bollinger: BollingerOut | null
+  adx_14: number | null
+  plus_di: number | null
+  minus_di: number | null
+  stoch_rsi_k: number | null
+  stoch_rsi_d: number | null
+  vwap: number | null
+  bars_available: number | null
 }
 
 export interface AssetDetail {
