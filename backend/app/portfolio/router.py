@@ -71,6 +71,37 @@ async def portfolio_protections(db: AsyncSession = Depends(get_db)):
     return {"active": protections, "count": len(protections)}
 
 
+@router.get("/protection-history")
+async def protection_history(
+    limit: int = 20,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get recent protection events (active + expired) for history display."""
+    from sqlalchemy import select
+    from app.portfolio.models import ProtectionEvent
+    from app.assets.models import Asset
+
+    result = await db.execute(
+        select(ProtectionEvent, Asset.symbol)
+        .outerjoin(Asset, ProtectionEvent.asset_id == Asset.id)
+        .order_by(ProtectionEvent.triggered_at.desc())
+        .limit(limit)
+    )
+    return [
+        {
+            "id": str(row.ProtectionEvent.id),
+            "protection_type": row.ProtectionEvent.protection_type,
+            "status": row.ProtectionEvent.status,
+            "asset_symbol": row.symbol,
+            "asset_class": row.ProtectionEvent.asset_class,
+            "reason": row.ProtectionEvent.reason,
+            "triggered_at": row.ProtectionEvent.triggered_at.isoformat(),
+            "expires_at": row.ProtectionEvent.expires_at.isoformat() if row.ProtectionEvent.expires_at else None,
+        }
+        for row in result.all()
+    ]
+
+
 @router.post("/positions/{position_id}/close")
 async def close_position(position_id: UUID, db: AsyncSession = Depends(get_db)):
     """Manually close a demo position at current market price."""
