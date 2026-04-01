@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0029`
+# Rationale for `marketpulse-task-2026-04-01-0031`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0029-implementation
+**branch:** task/marketpulse-task-2026-04-01-0031-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,68 +9,65 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0029 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0031 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** DAILY_DRAWDOWN_LIMIT_PCT = 5.0 is importable from rules.py
+- **Criteria:** ProtectionEventItem interface exists with all 7 fields correctly typed
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** _daily_drawdown_guard function exists and is async
+- **Criteria:** ProtectionsResponse interface exists with active and count fields
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** check_protections calls _daily_drawdown_guard
+- **Criteria:** vue-tsc --noEmit passes with no errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Uses ProtectionEvent model for both snapshot and block events
+- **Criteria:** Safety panel renders in DashboardView with correct dark theme styling
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Expires at end of UTC day
+- **Criteria:** Protections are fetched from /portfolio/protections in loadDashboard()
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** No DB migration required â€” uses existing ProtectionEvent table
+- **Criteria:** Active protections show colored badges with type, reason, and expiry
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** All 6 tests pass
+- **Criteria:** Empty state shows green checkmark with 'no active protections' message
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Tests cover: below threshold, above threshold, exact threshold, snapshot creation, snapshot reuse, already-blocked early return
+- **Criteria:** Overall status indicator shows green/yellow/red based on active count
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** No database required â€” all DB calls mocked
+- **Criteria:** RouterLink to /portfolio exists in panel header
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** mypy passes with no errors
+- **Criteria:** vue-tsc --noEmit passes with no errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/protections.py`
-- `backend/app/portfolio/rules.py`
-- `backend/tests/test_daily_drawdown.py`
+- `frontend/src/types/api.ts`
+- `frontend/src/views/DashboardView.vue`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -c "from app.portfolio.rules import DAILY_DRAWDOWN_LIMIT_PCT; print(DAILY_DRAWDOWN_LIMIT_PCT)"` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/protections.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m pytest tests/test_daily_drawdown.py -q` — passed
-  - `cd backend && uv run python -m mypy tests/test_daily_drawdown.py --ignore-missing-imports` — passed
+  - `cd frontend && npx vue-tsc --noEmit` — passed
+  - `cd frontend && npx vue-tsc --noEmit` — passed
 
 ---
 
@@ -108,7 +105,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0029 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0029): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0031): implementation
 
 ---
 

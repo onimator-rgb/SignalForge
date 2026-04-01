@@ -4,7 +4,7 @@ import { RouterLink, useRouter } from 'vue-router'
 import { fetchAssets } from '../api/assets'
 import { fetchAnomalies } from '../api/anomalies'
 import { generateReport } from '../api/reports'
-import type { AssetListItem, AnomalyEvent } from '../types/api'
+import type { AssetListItem, AnomalyEvent, ProtectionsResponse } from '../types/api'
 import { fmtPrice, timeAgo } from '../utils/format'
 import PriceChange from '../components/PriceChange.vue'
 import SeverityBadge from '../components/SeverityBadge.vue'
@@ -25,21 +25,24 @@ const strategy = ref<any>(null)
 const topMovers = ref<AssetListItem[]>([])
 const recentAnomalies = ref<AnomalyEvent[]>([])
 const overview = ref<any>(null)
+const protections = ref<ProtectionsResponse>({ active: [], count: 0 })
 const lastRefresh = ref<Date | null>(null)
 let refreshTimer: ReturnType<typeof setInterval>
 
 async function loadDashboard() {
   try {
-    const [assetsRes, anomaliesRes, overviewRes, strategyRes] = await Promise.all([
+    const [assetsRes, anomaliesRes, overviewRes, strategyRes, protectionsRes] = await Promise.all([
       fetchAssets({ sort_by: 'change_24h', sort_dir: 'desc', limit: 10 }),
       fetchAnomalies({ is_resolved: false, limit: 8 }),
       api.get('/dashboard/overview').then(r => r.data),
       api.get('/strategy/summary').then(r => r.data).catch(() => null),
+      api.get('/portfolio/protections').then(r => r.data).catch(() => ({ active: [], count: 0 })),
     ])
     topMovers.value = assetsRes.items
     recentAnomalies.value = anomaliesRes.items
     overview.value = overviewRes
     strategy.value = strategyRes
+    protections.value = protectionsRes
     lastRefresh.value = new Date()
     error.value = ''
   } catch (e: any) {
@@ -83,6 +86,23 @@ const recTypeColors: Record<string, string> = {
 }
 const recLabels: Record<string, string> = {
   candidate_buy: 'BUY', watch_only: 'WATCH', neutral: 'NEUT', avoid: 'AVOID',
+}
+
+const protectionTypeColors: Record<string, string> = {
+  daily_drawdown: 'text-red-400 bg-red-500/10 border-red-500/30',
+  consecutive_sl_guard: 'text-orange-400 bg-orange-500/10 border-orange-500/30',
+  stoploss_guard: 'text-orange-400 bg-orange-500/10 border-orange-500/30',
+  asset_cooldown: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30',
+  class_exposure_cap: 'text-blue-400 bg-blue-500/10 border-blue-500/30',
+  entry_frequency_cap: 'text-gray-400 bg-gray-500/10 border-gray-500/30',
+}
+
+function formatProtectionType(type: string): string {
+  return type.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase())
+}
+
+function expiryMinutes(expiresAt: string): number {
+  return Math.max(0, Math.round((new Date(expiresAt).getTime() - Date.now()) / 60000))
 }
 </script>
 
@@ -277,8 +297,8 @@ const recLabels: Record<string, string> = {
         </div>
       </div>
 
-      <!-- Row 4: Watchlists + Signal distribution -->
-      <div class="grid grid-cols-2 gap-5" v-if="overview">
+      <!-- Row 4: Watchlists + Signal distribution + Safety -->
+      <div class="grid grid-cols-3 gap-5" v-if="overview">
         <!-- Watchlists -->
         <div class="bg-gray-900 border border-gray-800 rounded-lg">
           <div class="px-4 py-3 border-b border-gray-800 flex items-center justify-between">
@@ -310,6 +330,53 @@ const recLabels: Record<string, string> = {
                 'text-red-400': type === 'avoid',
               }">{{ overview.signals.counts[type] || 0 }}</div>
               <div class="text-[10px] text-gray-500 mt-1">{{ label }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Safety & Protections -->
+        <div class="bg-gray-900 border border-gray-800 rounded-lg">
+          <div class="px-4 py-3 border-b border-gray-800 flex items-center justify-between">
+            <h2 class="font-semibold text-sm">Safety &amp; Protections</h2>
+            <RouterLink to="/portfolio" class="text-xs text-blue-400 hover:underline">Details</RouterLink>
+          </div>
+          <div class="p-4">
+            <!-- Status indicator -->
+            <div class="flex items-center gap-2 mb-3">
+              <span
+                class="inline-block w-2.5 h-2.5 rounded-full"
+                :class="{
+                  'bg-green-400': protections.count === 0,
+                  'bg-yellow-400': protections.count >= 1 && protections.count <= 2,
+                  'bg-red-400': protections.count >= 3,
+                }"
+              ></span>
+              <span class="text-sm" :class="{
+                'text-green-400': protections.count === 0,
+                'text-yellow-400': protections.count >= 1 && protections.count <= 2,
+                'text-red-400': protections.count >= 3,
+              }">
+                <template v-if="protections.count === 0">All Clear</template>
+                <template v-else-if="protections.count <= 2">{{ protections.count }} Active</template>
+                <template v-else>{{ protections.count }} Active – Trading Restricted</template>
+              </span>
+            </div>
+
+            <!-- Empty state -->
+            <div v-if="protections.active.length === 0" class="text-sm text-gray-500">
+              ✓ No active protections – trading unrestricted
+            </div>
+
+            <!-- Active protections list -->
+            <div v-else class="space-y-2">
+              <div v-for="p in protections.active" :key="p.id">
+                <span
+                  class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium border"
+                  :class="protectionTypeColors[p.type] || 'text-gray-400 bg-gray-500/10 border-gray-500/30'"
+                >{{ formatProtectionType(p.type) }}</span>
+                <div class="text-xs text-gray-500 mt-0.5">{{ p.reason }}</div>
+                <div v-if="p.expires_at" class="text-xs text-gray-600">Expires: {{ expiryMinutes(p.expires_at) }} min</div>
+              </div>
             </div>
           </div>
         </div>
