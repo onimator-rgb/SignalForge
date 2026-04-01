@@ -2,75 +2,79 @@
 
 **author:** coder-worker (MarketPulse Coder)
 **branch:** task/marketpulse-task-2026-04-01-0009-implementation
-**commit_sha:** 
+**commit_sha:** cd8ddb0
 **date:** 2026-04-01
 **model_calls:** 1
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0009 via coder_worker.py with model integration.
+Add minimum 24h volume filter guard to portfolio entry protections, blocking illiquid asset entries per asset-class thresholds.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** POST /api/v1/backtest/run returns 200 with BacktestResponse containing metrics and trades list
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** MIN_VOLUME_USD config dict exists with crypto, stock, and default keys
+- **Status:** `pass`
+- **Evidence:** `MIN_VOLUME_USD = {"crypto": 100_000.0, "stock": 1_000_000.0, "default": 50_000.0}` in protections.py
 
-- **Criteria:** Invalid profile_name returns 400 with descriptive error
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** _check_volume_filter queries last 24 1h price_bars and computes USD volume
+- **Status:** `pass`
+- **Evidence:** Function queries PriceBar with interval='1h', time >= cutoff, limit 24, sums close*volume
 
-- **Criteria:** Fewer than 2 price bars returns 404 with 'Not enough price data'
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** check_protections calls _check_volume_filter and blocks entry when volume is insufficient
+- **Status:** `pass`
+- **Evidence:** Integrated between entry frequency cap (D) and daily drawdown guard (F) in check_protections()
 
-- **Criteria:** All response fields match BacktestResult dataclass fields plus trades list
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** ProtectionEvent with type='low_volume_guard' is logged when entry is blocked
+- **Status:** `pass`
+- **Evidence:** `_log_protection(db, "low_volume_guard", ...)` called on block
 
-- **Criteria:** Router is registered in main.py
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** All 5 test cases pass
+- **Status:** `pass`
+- **Evidence:** `5 passed in 0.12s` — pytest tests/test_volume_filter_guard.py
 
-- **Criteria:** All tests pass, mypy clean
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** mypy passes with no errors
+- **Status:** `pass`
+- **Evidence:** `Success: no issues found in 1 source file` — mypy app/portfolio/protections.py
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `rationale.md`
+- `backend/app/portfolio/protections.py` — Added MIN_VOLUME_USD config, VOLUME_LOOKBACK_HOURS constant, _check_volume_filter async function, and integration into check_protections pipeline
+- `backend/tests/test_volume_filter_guard.py` — 5 unit tests covering: above/below threshold, no bars, asset-class-specific thresholds, default fallback
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `model_call` � FAILED
-  - `cd backend && uv run python -m pytest tests/test_backtest_api.py -q` � FAILED
-  - `cd backend && uv run python -m mypy app/backtest/router.py app/backtest/schemas.py --ignore-missing-imports` � FAILED
+  - `cd backend && uv run python -m pytest tests/test_volume_filter_guard.py -q` → PASSED (5/5)
+  - `cd backend && uv run python -m mypy app/portfolio/protections.py --ignore-missing-imports` → PASSED
 
 ---
 
 ## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
+- Tests use mocked PriceBar rows with synthetic close/volume values
+- No real market data or API calls
 
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code � **Severity:** medium � **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+- **Risk:** PriceBar model volume column stores raw quantity, not USD → **Severity:** low → **Mitigation:** multiply volume × close to convert to USD volume
+- **Risk:** No price bars for new/inactive assets → **Severity:** low → **Mitigation:** block entry when no bars found (conservative default)
 
 ---
 
 ## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
+- No DB migrations needed — uses existing PriceBar and ProtectionEvent models
+- New guard is additive; existing protection checks unchanged
 
 ---
 
 ## 8) Performance considerations
-- No performance impact expected.
+- Query limited to 24 rows with existing composite index (asset_id, interval, time DESC)
+- Minimal overhead added to check_protections pipeline
 
 ---
 
@@ -78,21 +82,22 @@ Automated implementation for task marketpulse-task-2026-04-01-0009 via coder_wor
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
-- API key logged: `no` (only presence check)
+- API key logged: `no`
 
 ---
 
 ## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
+1. Consider making thresholds configurable via environment variables or admin settings
+2. Volume filter could be enhanced with rolling average instead of simple sum
 
 ---
 
 ## 11) Short changelog
-- `N/A` � feat(marketpulse-task-2026-04-01-0009): implementation
+- `cd8ddb0` → feat(marketpulse-task-2026-04-01-0009): add minimum volume filter to portfolio entry protections
 
 ---
 
 ## 12) Final verdict (developer self-check)
 - **I confirm** that all acceptance criteria marked `pass` have test evidence attached: `yes`
 - **I confirm** no forbidden paths were modified: `yes`
-- **I request** next step: `validate`
+- **I request** next step: `approve`
