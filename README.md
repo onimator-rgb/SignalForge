@@ -2,7 +2,7 @@
   <h1 align="center">SignalForge</h1>
   <p align="center">
     <strong>Multi-asset market intelligence &amp; paper trading platform</strong><br>
-    Crypto &amp; Stocks &bull; Anomaly detection &bull; AI reports &bull; Recommendations &bull; Demo portfolio
+    Crypto &amp; Stocks &bull; 15+ Indicators &bull; Anomaly Detection &bull; AI Reports &bull; Autonomous Agent System
   </p>
 </p>
 
@@ -12,6 +12,7 @@
   <img src="https://img.shields.io/badge/Vue-3.5-4FC08D?logo=vuedotjs&logoColor=white" alt="Vue 3">
   <img src="https://img.shields.io/badge/PostgreSQL-16+-336791?logo=postgresql&logoColor=white" alt="PostgreSQL">
   <img src="https://img.shields.io/badge/TailwindCSS-4-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind">
+  <img src="https://img.shields.io/badge/tests-213_passing-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
 </p>
 
@@ -19,30 +20,43 @@
 
 ## Overview
 
-SignalForge is a full-stack market intelligence platform that monitors **cryptocurrencies and US stocks**, detects anomalies, generates AI-powered reports, produces scored recommendations, and runs a demo paper trading portfolio — all through a modern dashboard.
+SignalForge is a full-stack market intelligence platform that monitors **cryptocurrencies and US stocks**, detects anomalies, generates AI-powered reports, produces scored recommendations, and runs a demo paper trading portfolio with advanced trailing mechanisms — all through a modern dashboard.
 
-It combines quantitative technical analysis (RSI, MACD, Bollinger Bands, Z-score anomaly detection) with AI-generated insights (via Claude) to help analysts understand market behavior. The demo portfolio executes paper trades based on recommendation signals, with full performance tracking.
+It combines 15+ quantitative technical indicators with Z-score anomaly detection and AI-generated insights to help analysts understand market behavior. The autonomous agent system (Orchestrator + Coder + Validator) continuously extends the platform using Claude MAX subscription at zero API cost.
 
-> **Paper trading only** — this is an educational/demo tool. Not investment advice. Past performance does not guarantee future results.
+> **Paper trading only** — this is an educational/demo tool. Not investment advice.
 
 ---
 
 ## Features
 
+### Core Platform
+
 | Module | Description |
 |--------|-------------|
 | **Multi-asset ingestion** | Automated OHLCV data from Binance (crypto) and Yahoo Finance (stocks) |
-| **Technical indicators** | RSI-14, MACD(12,26,9), Bollinger Bands(20,2) computed on-the-fly |
-| **Anomaly detection** | Z-score detectors for price spikes, volume surges, RSI extremes |
+| **15+ Technical indicators** | RSI, MACD, Bollinger, ADX, StochRSI, VWAP, OBV, MFI, CCI, Parabolic SAR, Keltner, Squeeze Momentum, Fibonacci, Pivot Points |
+| **Anomaly detection** | Z-score detectors: price spikes, volume surges, RSI extremes, squeeze momentum breakouts |
 | **Alert system** | Configurable rules with cooldown, event tracking, mark-as-read |
-| **AI reports** | Market summaries, asset briefs, anomaly explanations, watchlist summaries (Claude) |
-| **Recommendation engine** | 7-signal composite scoring (v2), candidate_buy / watch_only / neutral / avoid |
-| **Demo portfolio** | Paper trading with $1000 capital, rule-based entry/exit, PnL tracking |
-| **Performance evaluation** | Forward-return measurement at 24h/72h, accuracy by type/class/score bucket |
+| **AI reports** | Market summaries, asset briefs, anomaly explanations, watchlist summaries (local templates or Claude) |
+| **Recommendation engine** | 9-signal composite scoring (v2) with ADX and StochRSI integration |
+| **Demo portfolio** | Paper trading with trailing stop loss, trailing take profit, trailing buy, slippage simulation |
+| **Risk management** | Consecutive SL protection, loss-aware buy cooldown, asset class exposure cap |
+| **Strategy profiles** | Balanced / Aggressive / Conservative with auto-switch based on market regime |
+| **Performance evaluation** | Forward-return measurement at 24h/72h, accuracy by type/class/score |
 | **Watchlists** | User-defined asset groups with intelligence overlays and AI summaries |
-| **Live prices** | Binance polling (10s) for crypto, Yahoo polling (60s) for stocks, in-memory cache |
-| **Dashboard** | Command center: portfolio, signals, anomalies, watchlists, live prices |
-| **Diagnostics** | Sync freshness, market-hours awareness, error monitoring, config view |
+| **Live prices** | Binance WebSocket (crypto), Yahoo polling (stocks), SSE broadcast |
+| **Dashboard** | Command center with strategy params, regime indicator, live positions |
+
+### Autonomous Agent System
+
+| Agent | Role |
+|-------|------|
+| **Orchestrator** | Tech lead brain — researches project, selects features from roadmap, generates task specs, manages Coder/Validator loop |
+| **Coder Worker** | Implements features via Claude CLI (MAX subscription), runs tests, commits |
+| **Validator** | Validates code against task specs, checks tests/mypy/commit format |
+
+The agents use **Claude MAX subscription** via CLI — **$0 API cost**. They've autonomously implemented 25+ features including indicators, trailing mechanisms, frontend views, and risk management.
 
 ---
 
@@ -51,18 +65,24 @@ It combines quantitative technical analysis (RSI, MACD, Bollinger Bands, Z-score
 ```
 ┌─────────────────────┐     ┌──────────────────────────────────────┐     ┌──────────────┐
 │   Vue 3 Frontend    │────>│           FastAPI Backend            │────>│  PostgreSQL   │
-│   TailwindCSS v4    │     │                                    │     │              │
-│   :5173             │     │  Assets | Indicators | Anomalies   │     │  :5432       │
-└─────────────────────┘     │  Alerts | Reports | Recommendations│     └──────────────┘
-                            │  Portfolio | Watchlists | Live      │
-                            │  Scheduler | Diagnostics | Dashboard│
-                            └─────────┬──────────┬───────┬───────┘
+│   TailwindCSS v4    │     │                                      │     │              │
+│   :5173             │     │  Assets | Indicators | Anomalies     │     │  :5432       │
+└─────────────────────┘     │  Alerts | Reports | Recommendations  │     └──────────────┘
+                            │  Portfolio | Watchlists | Live        │
+                            │  Strategy | Diagnostics | Dashboard   │
+                            └─────────┬──────────┬───────┬─────────┘
                                       │          │       │
                            ┌──────────▼──┐  ┌────▼────┐  ┌▼──────────┐
-                           │ Binance API │  │ Yahoo   │  │ Claude    │
-                           │ (crypto)    │  │ Finance │  │ API       │
-                           └─────────────┘  │ (stocks)│  │ (reports) │
-                                            └─────────┘  └───────────┘
+                           │ Binance API │  │ Yahoo   │  │ Local LLM │
+                           │ (crypto)    │  │ Finance │  │ Templates │
+                           └─────────────┘  │ (stocks)│  └───────────┘
+                                            └─────────┘
+
+┌──────────────────────────────────────────────────────────────┐
+│              Autonomous Agent System                          │
+│  Orchestrator → Coder Worker → Validator → Orchestrator ...  │
+│  (Claude MAX CLI, $0 cost, auto-discovers new features)      │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -71,13 +91,51 @@ It combines quantitative technical analysis (RSI, MACD, Bollinger Bands, Z-score
 
 | Layer | Technology |
 |-------|-----------|
-| **Backend** | Python 3.12, FastAPI, SQLAlchemy 2.0 (async), Alembic, APScheduler |
+| **Backend** | Python 3.12, FastAPI, SQLAlchemy 2.0 (async), Alembic, asyncio scheduler |
 | **Frontend** | Vue 3, TypeScript, TailwindCSS v4, Vite, Vue Router, Axios |
-| **Database** | PostgreSQL 16 (10 tables, 10 migrations) |
-| **Crypto data** | Binance public API (OHLCV + 24hr ticker for live prices) |
+| **Database** | PostgreSQL 16 |
+| **Crypto data** | Binance public API (OHLCV + WebSocket live stream) |
 | **Stock data** | Yahoo Finance via `yfinance` (delayed ~15min) |
-| **AI/LLM** | Anthropic Claude API (4 report types) |
-| **Analysis** | pandas, Z-score anomaly detection, 7-signal recommendation scoring |
+| **AI/LLM** | Local template engine (default) or Anthropic Claude API (optional) |
+| **Analysis** | pandas, 15+ indicators, Z-score anomaly detection, 9-signal scoring |
+| **Agents** | Custom Orchestrator/Coder/Validator using Claude CLI (MAX subscription) |
+| **Testing** | pytest + pytest-asyncio (213 tests) |
+
+---
+
+## Technical Indicators
+
+| Indicator | Type | Used In |
+|-----------|------|---------|
+| RSI (14) | Momentum | Scoring, Anomaly Detection |
+| MACD (12,26,9) | Trend | Scoring |
+| Bollinger Bands (20,2) | Volatility | Scoring, Anomaly Detection |
+| ADX (14) | Trend Strength | Scoring, Regime Detection |
+| Stochastic RSI | Momentum | Scoring |
+| VWAP | Price Level | Analysis |
+| OBV | Volume Flow | Analysis |
+| MFI (14) | Volume-Weighted Momentum | Analysis |
+| CCI | Mean Deviation | Analysis |
+| Parabolic SAR | Trend Direction | Stop Loss |
+| Keltner Channels | Volatility | Squeeze Detection |
+| Squeeze Momentum | Breakout Prediction | Anomaly Detection |
+| Fibonacci Retracement | Support/Resistance | Analysis |
+| Pivot Points | Support/Resistance | Analysis |
+
+---
+
+## Trading Features (Paper)
+
+| Feature | Description |
+|---------|-------------|
+| **Trailing Stop Loss** | Dynamic stop that moves up with price, triggers on % drop from peak |
+| **Trailing Take Profit** | Arms above threshold, trails peak, closes on retracement |
+| **Trailing Buy** | Waits for local bottom after buy signal before entering |
+| **Slippage Simulation** | Configurable buy/sell slippage for realistic P&L |
+| **Consecutive SL Protection** | Pauses buying after N consecutive stop losses |
+| **Loss-Aware Cooldown** | Longer cooldown (48h) after losing trades, shorter (12h) after wins |
+| **Auto Strategy Switch** | Recommends profile based on market regime (bullish/bearish/neutral) |
+| **Portfolio Risk Metrics** | Equity, exposure, concentration analysis |
 
 ---
 
@@ -93,7 +151,7 @@ It combines quantitative technical analysis (RSI, MACD, Bollinger Bands, Z-score
 git clone https://github.com/onimator-rgb/SignalForge.git
 cd SignalForge
 cp .env.example .env
-# Edit .env — set ANTHROPIC_API_KEY for AI reports
+# Edit .env if needed (defaults work for local development)
 ```
 
 ### 2. Database
@@ -122,105 +180,38 @@ npm install
 npm run dev
 ```
 
-### 5. Load data & verify
-
-```bash
-# Crypto ingestion
-curl -X POST http://localhost:8000/api/v1/ingestion/trigger \
-  -H "Content-Type: application/json" -d '{"asset_class":"crypto","interval":"1h"}'
-
-# Stock ingestion
-curl -X POST http://localhost:8000/api/v1/ingestion/trigger \
-  -H "Content-Type: application/json" -d '{"asset_class":"stock","interval":"1h"}'
-
-# Smoke test
-python scripts/smoke_test.py
-
-# Sanity check (DB-direct)
-cd backend && uv run python -m scripts.sanity_check
-```
-
-### 6. Open
+### 5. Open
 
 | URL | Description |
 |-----|-------------|
 | http://localhost:5173 | Dashboard |
 | http://localhost:8000/docs | API docs (Swagger) |
 
-### 7. Enable scheduler (optional)
+### 6. Enable scheduler (optional)
 
-Set `SCHEDULER_ENABLED=true` in `.env` and restart backend. Crypto ingests every 5 min, stocks every 15 min. Recommendations, anomalies, alerts, and portfolio evaluate automatically after each cycle.
-
----
-
-## API Reference
-
-### Assets & Market Data
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/v1/assets` | List assets (filter: `asset_class`) |
-| `GET` | `/api/v1/assets/{id}` | Asset detail with indicators |
-| `GET` | `/api/v1/assets/{id}/ohlcv` | OHLCV candlestick data |
-| `GET` | `/api/v1/assets/{id}/indicators` | Technical indicators |
-| `GET` | `/api/v1/assets/{id}/recommendation` | Active recommendation |
-| `GET` | `/api/v1/assets/search?q=` | Search assets |
-| `GET` | `/api/v1/live/prices` | Live/cached prices for all assets |
-
-### Signals & Intelligence
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/v1/anomalies` | Anomaly events |
-| `GET` | `/api/v1/anomalies/stats` | Anomaly statistics |
-| `GET` | `/api/v1/recommendations/active` | Active recommendations |
-| `GET` | `/api/v1/recommendations/performance` | Engine accuracy metrics |
-| `GET` | `/api/v1/alerts/rules` | Alert rules |
-| `GET` | `/api/v1/alerts/events` | Alert events |
-
-### Portfolio & Reports
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/v1/portfolio` | Demo portfolio summary |
-| `POST` | `/api/v1/portfolio/evaluate` | Trigger portfolio evaluation |
-| `POST` | `/api/v1/portfolio/positions/{id}/close` | Manual close (paper) |
-| `POST` | `/api/v1/reports/generate` | Generate AI report |
-| `GET` | `/api/v1/reports` | Report list |
-
-### Watchlists
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/v1/watchlists` | List watchlists |
-| `POST` | `/api/v1/watchlists` | Create watchlist |
-| `GET` | `/api/v1/watchlists/{id}/assets` | Watchlist assets (enriched) |
-| `GET` | `/api/v1/watchlists/{id}/intelligence` | Watchlist intelligence |
-| `GET` | `/api/v1/watchlists/{id}/recommendations` | Watchlist recommendations |
-
-### System
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/v1/health` | Health check |
-| `GET` | `/api/v1/dashboard/overview` | Aggregate dashboard data |
-| `POST` | `/api/v1/ingestion/trigger` | Manual ingestion |
-| `GET` | `/api/v1/diagnostics/sync` | Data freshness |
-| `GET` | `/api/v1/diagnostics/errors` | Error buffer |
+Set `SCHEDULER_ENABLED=true` in `.env` and restart backend. Crypto ingests every 5 min, stocks every 15 min. All pipelines (anomalies, recommendations, portfolio) evaluate automatically.
 
 ---
 
-## Product Modules
+## Agent System
 
-### Recommendation Engine (v2)
-7-signal composite scoring: RSI, MACD, Bollinger position, price trend, volume, anomaly context, volatility. Produces `candidate_buy` / `watch_only` / `neutral` / `avoid` with confidence and risk levels. Auto-generates after each ingestion cycle.
+The autonomous agent system implements features without manual coding:
 
-### Demo Portfolio
-Paper trading with $1000 initial capital. Max 5 positions, 20% per position, -8% stop loss, +15% take profit, 72h max hold. Evaluates automatically. Manual close available.
+```bash
+# Run agents for 2 hours (all tiers)
+python scripts/run_agents_session.py --max-minutes 120
 
-### Performance Evaluation
-Measures forward returns at 24h and 72h for every recommendation. Accuracy breakdown by type, asset class, score bucket, and scoring version (v1 vs v2).
+# Only backend features
+python scripts/run_agents_session.py --tier 5 --max-minutes 60
 
-### Watchlist Intelligence
-User-defined asset groups with enriched data: live prices, recommendation signals, portfolio overlap, anomaly counts. AI-generated watchlist summaries via Claude.
+# Only frontend features
+python scripts/run_agents_session.py --tier 4 --max-minutes 60
 
-### Live Prices
-Binance 24hr ticker polling every 10s (crypto), Yahoo Finance polling every 60s (stocks, market-hours-aware). In-memory cache with DB fallback. Freshness indicators: live / recent / delayed / stale.
+# 24h production audit (requires backend running)
+python scripts/run_24h_audit.py
+```
+
+The Orchestrator picks features from a ProfitTrailer-inspired roadmap, generates task specs, and dispatches to Coder + Validator. When the roadmap runs out, it auto-discovers new features.
 
 ---
 
@@ -229,12 +220,12 @@ Binance 24hr ticker polling every 10s (crypto), Yahoo Finance polling every 60s 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `DATABASE_URL` | `postgresql+asyncpg://...` | PostgreSQL connection |
-| `SCHEDULER_ENABLED` | `false` | Auto-ingestion + recommendations |
+| `SCHEDULER_ENABLED` | `false` | Auto-ingestion + pipelines |
 | `INGESTION_INTERVAL_MINUTES` | `5` | Crypto ingestion frequency |
 | `ANOMALY_PRICE_ZSCORE_THRESHOLD` | `2.5` | Price spike sensitivity |
 | `ANOMALY_VOLUME_ZSCORE_THRESHOLD` | `3.0` | Volume spike sensitivity |
-| `ANTHROPIC_API_KEY` | — | Required for AI reports |
-| `LLM_MODEL` | `claude-sonnet-4-20250514` | Claude model |
+| `LLM_PROVIDER` | `local` | `local` (free templates) or `claude` (API) |
+| `STRATEGY_PROFILE` | `balanced` | `balanced` / `aggressive` / `conservative` |
 | `LOG_LEVEL` | `INFO` | Logging verbosity |
 
 ---
@@ -244,10 +235,7 @@ Binance 24hr ticker polling every 10s (crypto), Yahoo Finance polling every 60s 
 - **No real trading** — paper/demo only
 - **No authentication** — single-user, local instance
 - **Stocks delayed ~15min** — Yahoo Finance unofficial API
-- **Crypto live-ish** — REST polling (10s), not WebSocket
 - **No holiday calendar** — simplified US market hours (Mon-Fri)
-- **Shared anomaly thresholds** — same Z-score for crypto and stocks
-- **No WebSocket to frontend** — REST polling every 15s
 - **yfinance unofficial** — may change without notice
 
 ---
@@ -256,6 +244,7 @@ Binance 24hr ticker polling every 10s (crypto), Yahoo Finance polling every 60s 
 
 - [Stabilization Run Guide](docs/STABILIZATION_RUN.md) — operational runbook
 - [Debug Checklist](docs/DEBUG_CHECKLIST.md) — troubleshooting
+- [Orchestrator README](marketpulse-orchestrator/README.md) — agent system docs
 
 ---
 
