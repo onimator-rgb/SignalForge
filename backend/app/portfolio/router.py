@@ -44,8 +44,10 @@ async def entry_decisions(
     q = q.order_by(EntryDecision.created_at.desc()).limit(limit)
 
     result = await db.execute(q)
-    return [
-        {
+    rows = []
+    for d in result.all():
+        ctx = d.EntryDecision.context_data or {}
+        rows.append({
             "id": str(d.EntryDecision.id),
             "symbol": d.symbol,
             "asset_class": d.asset_class,
@@ -56,9 +58,11 @@ async def entry_decisions(
             "regime": d.EntryDecision.regime,
             "profile": d.EntryDecision.profile,
             "created_at": d.EntryDecision.created_at.isoformat(),
-        }
-        for d in result.all()
-    ]
+            "context_data": ctx,
+            "ranking_score": ctx.get("ranking_score"),
+            "allocation_multiplier": ctx.get("allocation_multiplier"),
+        })
+    return rows
 
 
 @router.get("/protections")
