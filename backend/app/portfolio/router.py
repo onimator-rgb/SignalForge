@@ -101,6 +101,56 @@ async def risk_metrics(db: AsyncSession = Depends(get_db)):
     )
 
 
+@router.get("/equity-curve")
+async def equity_curve(db: AsyncSession = Depends(get_db)):
+    """Get equity curve computed from portfolio transactions."""
+    from sqlalchemy import select
+    from app.portfolio.models import PortfolioTransaction
+    from app.portfolio.service import get_or_create_portfolio
+    from app.portfolio.equity_curve import build_equity_curve, EquityCurveOut
+
+    portfolio = await get_or_create_portfolio(db)
+    q = (
+        select(PortfolioTransaction)
+        .where(PortfolioTransaction.portfolio_id == portfolio.id)
+        .order_by(PortfolioTransaction.executed_at.asc())
+    )
+    result = await db.execute(q)
+    rows = result.scalars().all()
+
+    transactions = [
+        {
+            "tx_type": r.tx_type,
+            "value_usd": float(r.value_usd),
+            "executed_at": r.executed_at,
+        }
+        for r in rows
+    ]
+
+    points = build_equity_curve(transactions, float(portfolio.initial_capital))
+    last = points[-1]
+    max_dd = min(p.drawdown_pct for p in points)
+
+    serialized = [
+        {
+            "timestamp": p.timestamp.isoformat(),
+            "equity": p.equity,
+            "cash": p.cash,
+            "positions_value": p.positions_value,
+            "drawdown_pct": p.drawdown_pct,
+            "trade_number": p.trade_number,
+        }
+        for p in points
+    ]
+
+    return EquityCurveOut(
+        points=serialized,
+        total_points=len(serialized),
+        current_equity=last.equity,
+        max_drawdown_pct=round(max_dd, 6),
+    )
+
+
 @router.post("/positions/{position_id}/close")
 async def close_position(position_id: UUID, db: AsyncSession = Depends(get_db)):
     """Manually close a demo position at current market price."""
