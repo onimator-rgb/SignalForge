@@ -19,6 +19,19 @@ class BollingerOut(BaseModel):
     width: float
 
 
+class FibonacciOut(BaseModel):
+    swing_high: float
+    swing_low: float
+    level_0: float
+    level_236: float
+    level_382: float
+    level_500: float
+    level_618: float
+    level_786: float
+    level_100: float
+    trend: str
+
+
 class IndicatorSnapshot(BaseModel):
     asset_id: UUID
     asset_symbol: str
@@ -34,4 +47,5 @@ class IndicatorSnapshot(BaseModel):
     stoch_rsi_k: float | None = None
     stoch_rsi_d: float | None = None
     vwap: float | None = None
+    fibonacci: FibonacciOut | None = None
     bars_available: int  # how many bars were used

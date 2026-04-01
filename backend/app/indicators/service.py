@@ -8,12 +8,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.indicators.calculators.adx import calc_adx
 from app.indicators.calculators.bollinger import BollingerResult, calc_bollinger
+from app.indicators.calculators.fibonacci import FibonacciResult, calc_fibonacci
 from app.indicators.calculators.macd import MACDResult, calc_macd
 from app.indicators.calculators.mfi import calc_mfi
 from app.indicators.calculators.rsi import calc_rsi
 from app.indicators.calculators.stochrsi import calc_stochrsi
 from app.indicators.calculators.vwap import calc_vwap
-from app.indicators.schemas import BollingerOut, IndicatorSnapshot, MACDOut
+from app.indicators.schemas import BollingerOut, FibonacciOut, IndicatorSnapshot, MACDOut
 from app.logging_config import get_logger
 from app.market_data.models import PriceBar
 
@@ -67,6 +68,7 @@ async def get_indicators(
     mfi_val = calc_mfi(highs, lows, closes, volumes, period=14)
     stochrsi_res = calc_stochrsi(closes)
     vwap_res = calc_vwap(highs, lows, closes, volumes)
+    fib_res = calc_fibonacci(highs, lows, closes, lookback=20)
 
     log.debug(
         "indicators_calc_done",
@@ -79,6 +81,7 @@ async def get_indicators(
         mfi=mfi_val,
         has_stochrsi=stochrsi_res is not None,
         has_vwap=vwap_res is not None,
+        has_fibonacci=fib_res is not None,
     )
 
     return IndicatorSnapshot(
@@ -97,6 +100,7 @@ async def get_indicators(
         stoch_rsi_k=stochrsi_res.k if stochrsi_res else None,
         stoch_rsi_d=stochrsi_res.d if stochrsi_res else None,
         vwap=vwap_res.vwap if vwap_res else None,
+        fibonacci=_fib_to_out(fib_res),
         bars_available=len(bars),
     )
 
@@ -134,3 +138,20 @@ def _bb_to_out(res: BollingerResult | None) -> BollingerOut | None:
     if res is None:
         return None
     return BollingerOut(upper=res.upper, middle=res.middle, lower=res.lower, width=res.width)
+
+
+def _fib_to_out(res: FibonacciResult | None) -> FibonacciOut | None:
+    if res is None:
+        return None
+    return FibonacciOut(
+        swing_high=res.swing_high,
+        swing_low=res.swing_low,
+        level_0=res.level_0,
+        level_236=res.level_236,
+        level_382=res.level_382,
+        level_500=res.level_500,
+        level_618=res.level_618,
+        level_786=res.level_786,
+        level_100=res.level_100,
+        trend=res.trend,
+    )
