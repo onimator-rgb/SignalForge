@@ -15,6 +15,7 @@ from app.portfolio.rules import (
     MIN_CASH_RESERVE_PCT, MIN_POSITION_USD,
 )
 from app.recommendations.models import Recommendation
+from app.portfolio.decision_context import build_entry_snapshot, build_exit_snapshot
 from app.strategy.profiles import get_active_profile
 from app.strategy.regime import calculate_regime, get_regime_position_multiplier, get_regime_score_adjustment
 
@@ -130,7 +131,26 @@ async def _check_exits(db: AsyncSession, portfolio: Portfolio, now: datetime) ->
         )
 
         if reason:
-            pos.exit_context = exit_ctx
+            # Build exit snapshot with current indicator state
+            from app.indicators.service import get_indicators
+            asset_res_exit = await db.execute(
+                select(Asset.symbol).where(Asset.id == pos.asset_id)
+            )
+            sym_exit = asset_res_exit.scalar_one_or_none() or "?"
+            exit_ind = await get_indicators(db, pos.asset_id, sym_exit, interval="1h")
+            pnl_pct_val = round(
+                (current_price - float(pos.entry_price)) / float(pos.entry_price) * 100, 4
+            ) if float(pos.entry_price) > 0 else None
+            exit_snap = build_exit_snapshot(
+                indicators=exit_ind,
+                rec_score=rec_score,
+                rec_type=rec_type,
+                close_reason=reason,
+                pnl_pct=pnl_pct_val,
+                regime=regime,
+            )
+            merged_exit_ctx = {**(exit_ctx or {}), "exit_snapshot": exit_snap}
+            pos.exit_context = merged_exit_ctx
             await _close_position(db, portfolio, pos, current_price, reason, now)
             closed += 1
 
@@ -420,8 +440,17 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
             db, portfolio.id, rec.asset_id, ac, regime, now
         )
         if not allowed:
+            prot_snap = build_entry_snapshot(
+                indicators=None, signals=None,
+                composite_score=float(rec.score), recommendation_type=rec.recommendation_type,
+                confidence=rec.confidence, risk_level=rec.risk_level,
+                regime=regime, profile_name=profile.name,
+                change_24h_pct=None, avg_volume=None, latest_volume=None,
+            )
             await _record_decision(db, rec, ac, "blocked", "protections",
-                                   [prot_type], prot_reason, {}, regime, profile.name, now)
+                                   [prot_type], prot_reason,
+                                   {"signal_snapshot": prot_snap},
+                                   regime, profile.name, now)
             continue
 
         # Confirmations
@@ -437,9 +466,17 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
             regime=regime, now=now,
         )
         if not conf["allowed"]:
+            conf_snap = build_entry_snapshot(
+                indicators=ind, signals=None,
+                composite_score=float(rec.score), recommendation_type=rec.recommendation_type,
+                confidence=rec.confidence, risk_level=rec.risk_level,
+                regime=regime, profile_name=profile.name,
+                change_24h_pct=change_24h, avg_volume=avg_vol, latest_volume=latest_vol,
+            )
             await _record_decision(db, rec, ac, "blocked", "confirmations",
                                    conf["reason_codes"], conf["reason_text"],
-                                   conf["context"], regime, profile.name, now)
+                                   {**conf["context"], "signal_snapshot": conf_snap},
+                                   regime, profile.name, now)
             continue
 
         # Compute ranking
@@ -457,9 +494,17 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
         )
 
         if ranking["allocation_multiplier"] <= 0:
+            rank_snap = build_entry_snapshot(
+                indicators=ind, signals=None,
+                composite_score=float(rec.score), recommendation_type=rec.recommendation_type,
+                confidence=rec.confidence, risk_level=rec.risk_level,
+                regime=regime, profile_name=profile.name,
+                change_24h_pct=change_24h, avg_volume=avg_vol, latest_volume=latest_vol,
+            )
             await _record_decision(db, rec, ac, "blocked", "ranking",
                                    ["rank_too_low"], f"Ranking {ranking['ranking_score']:.0f} below entry tier",
-                                   ranking, regime, profile.name, now)
+                                   {**ranking, "signal_snapshot": rank_snap},
+                                   regime, profile.name, now)
             continue
 
         viable.append((rec, ac, sym, price_data, ranking))
@@ -540,6 +585,26 @@ async def _check_entries(db: AsyncSession, portfolio: Portfolio, now: datetime) 
                 "adjusted_price": adjusted_price,
             }
         }
+
+        # Build entry snapshot from recommendation signal_breakdown
+        trail_signals = None
+        sb = trail_rec.signal_breakdown
+        if sb and isinstance(sb, dict):
+            from app.recommendations.scoring import SignalScore
+            trail_signals = [
+                SignalScore(name=k, score=v.get("score", 0), weight=v.get("weight", 0),
+                            detail=v.get("detail", ""))
+                for k, v in sb.items() if isinstance(v, dict)
+            ]
+        open_snap = build_entry_snapshot(
+            indicators=None, signals=trail_signals,
+            composite_score=float(trail_rec.score),
+            recommendation_type=trail_rec.recommendation_type,
+            confidence=trail_rec.confidence, risk_level=trail_rec.risk_level,
+            regime=regime, profile_name=profile.name,
+            change_24h_pct=None, avg_volume=None, latest_volume=None,
+        )
+        entry_slippage["entry_snapshot"] = open_snap
 
         pos = PortfolioPosition(
             portfolio_id=portfolio.id,

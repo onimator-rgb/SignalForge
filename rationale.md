@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0021`
+# Rationale for `marketpulse-task-2026-04-01-0023`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0021-implementation
+**branch:** task/marketpulse-task-2026-04-01-0023-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,65 +9,84 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0021 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0023 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** IndicatorHistory interface exists in api.ts with all fields matching backend schema
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** build_entry_snapshot returns dict with all expected keys when given full indicator data
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** TimeframeSignal interface exists in api.ts
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** build_entry_snapshot returns dict with null values for missing indicators (no crash on None inputs)
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** vue-tsc --noEmit passes with no errors
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** build_exit_snapshot returns dict with close_reason, pnl_pct, and indicator state
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Interval selector shows 4 options: 5m, 1h, 4h, 1d
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Both functions return JSON-serializable dicts (no dataclass/model objects)
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Confluence panel fetches indicators for all 4 intervals on mount
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** signals list in snapshot contains {name, score, weight, detail} for each SignalScore
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Each timeframe column shows RSI signal (bullish/bearish/neutral) and MACD signal with color coding
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** volume_ratio computed as latest_volume/avg_volume or None if either is missing
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Overall confluence line displays Strong Buy / Buy / Neutral / Sell / Strong Sell
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** All tests pass, mypy clean
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Loading state shown while confluence data is being fetched
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** All _record_decision calls include signal_snapshot in context_data
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Existing single-interval indicator detail cards are preserved and still work
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Protection-blocked decisions include snapshot with null indicator values
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** vue-tsc --noEmit passes with no type errors
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Confirmation-blocked and ranking-blocked decisions include full indicator snapshot
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** Position exit_context includes 'entry_snapshot' at open time and 'exit_snapshot' at close time
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** No additional database queries added â€” reuses existing indicator fetch at line 428
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** Existing entry_slippage and dca data in exit_context preserved (merged, not overwritten)
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** All tests pass, mypy clean
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `frontend/src/types/api.ts`
-- `frontend/src/views/AssetDetailView.vue`
+- `backend/app/portfolio/decision_context.py`
+- `backend/app/portfolio/service.py`
+- `backend/tests/test_rich_decisions.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd frontend && npx vue-tsc --noEmit` — passed
-  - `cd frontend && npx vue-tsc --noEmit` — passed
+  - `cd backend && uv run python -m pytest tests/test_rich_decisions.py -q` — passed
+  - `cd backend && uv run python -m mypy app/portfolio/decision_context.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_rich_decisions.py -q` — passed
+  - `cd backend && uv run python -m mypy app/portfolio/service.py --ignore-missing-imports` — FAILED
 
 ---
 
@@ -105,7 +124,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0021 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0021): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0023): implementation
 
 ---
 
