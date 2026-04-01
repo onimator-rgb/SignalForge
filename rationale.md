@@ -15,31 +15,19 @@ Automated implementation for task marketpulse-task-2026-04-01-0005 via coder_wor
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** StrategyProfile dataclass has slippage_buy_pct and slippage_sell_pct float fields
+- **Criteria:** calc_pivot_points returns PivotResult with correct pp, r1-r3, s1-s3 for known OHLC input
 - **Status:** `partial`
 - **Evidence:** Some checks failed
 
-- **Criteria:** All three profile instances (conservative, balanced, aggressive) have appropriate slippage values
+- **Criteria:** calc_pivot_points returns None when fewer than 2 bars provided
 - **Status:** `partial`
 - **Evidence:** Some checks failed
 
-- **Criteria:** mypy passes with no errors
+- **Criteria:** PivotOut schema is added to IndicatorSnapshot
 - **Status:** `partial`
 - **Evidence:** Some checks failed
 
-- **Criteria:** Entry price for new positions includes buy slippage (price * (1 + slippage_buy_pct))
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Exit price for closed positions includes sell slippage (price * (1 - slippage_sell_pct))
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Original market prices and slippage details are stored in exit_context JSONB
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Stop-loss/take-profit triggers still use raw market price (exits.py unchanged)
+- **Criteria:** Indicator service calls calc_pivot_points and returns pivot data
 - **Status:** `partial`
 - **Evidence:** Some checks failed
 
@@ -51,42 +39,34 @@ Automated implementation for task marketpulse-task-2026-04-01-0005 via coder_wor
 - **Status:** `partial`
 - **Evidence:** Some checks failed
 
-- **Criteria:** Tests verify buy slippage increases entry price
+- **Criteria:** Tests verify correct pivot calculations against known values
 - **Status:** `partial`
 - **Evidence:** Some checks failed
 
-- **Criteria:** Tests verify sell slippage decreases exit price
+- **Criteria:** Tests verify None returned for insufficient data
 - **Status:** `partial`
 - **Evidence:** Some checks failed
 
-- **Criteria:** Tests verify slippage audit data in exit_context JSONB
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Tests verify per-profile slippage values
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Tests verify zero slippage is a no-op
+- **Criteria:** Tests verify previous-bar behavior
 - **Status:** `partial`
 - **Evidence:** Some checks failed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/service.py`
-- `backend/app/strategy/profiles.py`
-- `backend/tests/test_slippage.py`
-- `rationale.md`
+- `backend/app/indicators/calculators/__init__.py`
+- `backend/app/indicators/calculators/pivot.py`
+- `backend/app/indicators/schemas.py`
+- `backend/app/indicators/service.py`
+- `backend/tests/test_pivot.py`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m mypy app/strategy/profiles.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/service.py --ignore-missing-imports` — FAILED
-  - `cd backend && uv run python -m pytest tests/test_slippage.py -q` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/service.py --ignore-missing-imports` — FAILED
+  - `cd backend && uv run python -m mypy app/indicators/calculators/pivot.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` — FAILED
+  - `cd backend && uv run python -m pytest tests/test_pivot.py -q` — passed
 
 ---
 
