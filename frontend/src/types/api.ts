@@ -320,6 +320,22 @@ export interface RiskMetrics {
   breakdown_by_reason: Record<string, number>
 }
 
+export interface EntryDecision {
+  id: string
+  symbol: string
+  asset_class: string
+  status: 'allowed' | 'blocked'
+  stage: string
+  reason_codes: string[] | null
+  reason_text: string | null
+  regime: string | null
+  profile: string | null
+  created_at: string
+  context_data: Record<string, any> | null
+  ranking_score: number | null
+  allocation_multiplier: number | null
+}
+
 export interface PortfolioSummary {
   stats: PortfolioStats
   open_positions: PortfolioPosition[]

@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0031`
+# Rationale for `marketpulse-task-2026-04-01-0033`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0031-implementation
+**branch:** task/marketpulse-task-2026-04-01-0033-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,63 +9,83 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0031 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0033 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** ProtectionEventItem interface exists with all 7 fields correctly typed
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** GET /portfolio/entry-decisions returns context_data dict for each decision
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** ProtectionsResponse interface exists with active and count fields
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** ranking_score and allocation_multiplier are extracted from context_data when present, null otherwise
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** vue-tsc --noEmit passes with no errors
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Existing fields (id, symbol, status, stage, reason_codes, reason_text, regime, profile, created_at) still present
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Safety panel renders in DashboardView with correct dark theme styling
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Test verifies enriched response with mock data
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Protections are fetched from /portfolio/protections in loadDashboard()
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** EntryDecision interface exported from types/api.ts with all fields
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Active protections show colored badges with type, reason, and expiry
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** PortfolioView uses ref<EntryDecision[]> instead of ref<any[]>
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Empty state shows green checkmark with 'no active protections' message
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** vue-tsc passes with no errors
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Overall status indicator shows green/yellow/red based on active count
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Each decision card shows symbol, status badge, stage badge, and timestamp
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** RouterLink to /portfolio exists in panel header
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Ranking score displayed as colored horizontal bar when available
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** vue-tsc --noEmit passes with no errors
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Reason codes shown as small pills
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** Regime and profile shown as colored badges
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** Section is collapsible with decision count in header
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** Dark theme with proper color coding matches existing PortfolioView style
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** vue-tsc passes
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 ---
 
 ## 3) Files changed (and rationale per file)
+- `backend/app/portfolio/router.py`
+- `backend/tests/test_entry_decisions_api.py`
 - `frontend/src/types/api.ts`
-- `frontend/src/views/DashboardView.vue`
+- `frontend/src/views/PortfolioView.vue`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
+  - `cd backend && uv run python -m pytest tests/test_entry_decisions_api.py -q` — passed
+  - `cd backend && uv run python -m mypy app/portfolio/router.py --ignore-missing-imports` — FAILED
   - `cd frontend && npx vue-tsc --noEmit` — passed
   - `cd frontend && npx vue-tsc --noEmit` — passed
 
@@ -105,7 +125,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0031 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0031): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0033): implementation
 
 ---
 

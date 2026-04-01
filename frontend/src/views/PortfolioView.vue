@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { fetchPortfolio, triggerEvaluation } from '../api/portfolio'
 import { fetchWatchlists, addAssetToWatchlist } from '../api/watchlists'
-import type { Watchlist, RiskMetrics } from '../types/api'
+import type { Watchlist, RiskMetrics, EntryDecision } from '../types/api'
 import { fmtPrice, fmtTime, timeAgo } from '../utils/format'
 import FreshnessBadge from '../components/FreshnessBadge.vue'
 import LastRefreshHint from '../components/LastRefreshHint.vue'
@@ -23,9 +23,10 @@ const evaluating = ref(false)
 const closingId = ref<string | null>(null)
 const expandedId = ref<string | null>(null)
 const protections = ref<any[]>([])
-const entryDecisions = ref<any[]>([])
+const entryDecisions = ref<EntryDecision[]>([])
 const riskMetrics = ref<RiskMetrics | null>(null)
 const riskLoading = ref(false)
+const decisionsExpanded = ref(false)
 
 async function load() {
   loading.value = true
@@ -145,6 +146,36 @@ function profitFactorColor(val: number | null): string {
 function fmtHours(h: number): string {
   if (h < 1) return '<1h'
   return h.toFixed(1) + 'h'
+}
+
+function rankingBarColor(score: number): string {
+  if (score < 40) return 'bg-red-500'
+  if (score < 65) return 'bg-yellow-500'
+  return 'bg-green-500'
+}
+
+function regimeColor(regime: string | null): string {
+  if (!regime) return 'text-gray-400 bg-gray-500/10 border-gray-500/30'
+  const r = regime.toLowerCase()
+  if (r === 'bullish') return 'text-green-400 bg-green-500/10 border-green-500/30'
+  if (r === 'bearish') return 'text-red-400 bg-red-500/10 border-red-500/30'
+  return 'text-blue-400 bg-blue-500/10 border-blue-500/30'
+}
+
+function profileColor(profile: string | null): string {
+  if (!profile) return 'text-gray-400 bg-gray-500/10 border-gray-500/30'
+  const p = profile.toLowerCase()
+  if (p === 'aggressive') return 'text-red-400 bg-red-500/10 border-red-500/30'
+  if (p === 'conservative') return 'text-green-400 bg-green-500/10 border-green-500/30'
+  return 'text-blue-400 bg-blue-500/10 border-blue-500/30'
+}
+
+function stageColor(stage: string): string {
+  const s = stage.toLowerCase()
+  if (s === 'protections') return 'text-orange-400 bg-orange-500/10 border-orange-500/30'
+  if (s === 'confirmations') return 'text-blue-400 bg-blue-500/10 border-blue-500/30'
+  if (s === 'ranking') return 'text-purple-400 bg-purple-500/10 border-purple-500/30'
+  return 'text-gray-400 bg-gray-500/10 border-gray-500/30'
 }
 
 const reasonLabels: Record<string, string> = {
@@ -283,17 +314,79 @@ const reasonLabels: Record<string, string> = {
 
       <!-- Entry Decisions -->
       <div v-if="entryDecisions.length > 0" class="mb-5">
-        <h2 class="font-semibold text-sm mb-2">Recent Entry Decisions</h2>
-        <div class="flex gap-2 flex-wrap">
+        <button
+          class="flex items-center gap-2 font-semibold text-sm mb-2 hover:text-gray-300 transition-colors"
+          @click="decisionsExpanded = !decisionsExpanded"
+        >
+          <span class="text-[10px]">{{ decisionsExpanded ? '▼' : '▶' }}</span>
+          Recent Entry Decisions ({{ entryDecisions.length }})
+        </button>
+
+        <div v-if="decisionsExpanded" class="grid grid-cols-2 gap-2">
           <div
-            v-for="d in entryDecisions.slice(0, 8)" :key="d.id"
-            class="px-2 py-1 rounded text-xs border"
-            :class="d.status === 'allowed'
-              ? 'bg-green-500/10 border-green-500/30 text-green-400'
-              : 'bg-red-500/10 border-red-500/30 text-red-400'"
+            v-for="d in entryDecisions.slice(0, 10)" :key="d.id"
+            class="bg-gray-800/50 border border-gray-700 rounded-lg p-3"
           >
-            <span class="font-medium">{{ d.symbol }}</span>
-            <span class="ml-1 opacity-70">{{ d.status === 'allowed' ? 'passed' : (d.reason_codes || []).join(', ') || d.stage }}</span>
+            <!-- Header: Symbol + Status + Stage -->
+            <div class="flex items-center gap-2 mb-2">
+              <span class="font-medium text-sm text-white">{{ d.symbol }}</span>
+              <span
+                class="px-1.5 py-0.5 rounded text-[10px] font-medium border"
+                :class="d.status === 'allowed'
+                  ? 'text-green-400 bg-green-500/10 border-green-500/30'
+                  : 'text-red-400 bg-red-500/10 border-red-500/30'"
+              >{{ d.status === 'allowed' ? 'Allowed' : 'Blocked' }}</span>
+              <span
+                class="px-1.5 py-0.5 rounded text-[10px] font-medium border"
+                :class="stageColor(d.stage)"
+              >{{ d.stage }}</span>
+              <span class="ml-auto text-[10px] text-gray-500">{{ timeAgo(d.created_at) }}</span>
+            </div>
+
+            <!-- Ranking Score Bar -->
+            <div v-if="d.ranking_score != null" class="mb-2">
+              <div class="flex items-center justify-between text-[10px] text-gray-400 mb-0.5">
+                <span>Ranking Score</span>
+                <span class="tabular-nums font-medium">{{ d.ranking_score.toFixed(1) }}</span>
+              </div>
+              <div class="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                <div
+                  class="h-full rounded-full transition-all"
+                  :class="rankingBarColor(d.ranking_score)"
+                  :style="{ width: Math.min(d.ranking_score, 100) + '%' }"
+                ></div>
+              </div>
+            </div>
+
+            <!-- Allocation Multiplier -->
+            <div v-if="d.allocation_multiplier != null" class="text-[10px] text-gray-400 mb-2">
+              Alloc: <span class="text-gray-300 font-medium tabular-nums">{{ d.allocation_multiplier.toFixed(2) }}x</span>
+            </div>
+
+            <!-- Reason Codes -->
+            <div v-if="d.reason_codes && d.reason_codes.length > 0" class="flex gap-1 flex-wrap mb-2">
+              <span
+                v-for="code in d.reason_codes" :key="code"
+                class="px-1.5 py-0.5 rounded text-[10px] border"
+                :class="d.status === 'blocked'
+                  ? 'text-red-400 bg-red-500/10 border-red-500/30'
+                  : 'text-gray-400 bg-gray-600/30 border-gray-600'"
+              >{{ code.replace(/_/g, ' ') }}</span>
+            </div>
+
+            <!-- Regime + Profile badges -->
+            <div class="flex gap-1.5">
+              <span
+                v-if="d.regime"
+                class="px-1.5 py-0.5 rounded text-[10px] font-medium border"
+                :class="regimeColor(d.regime)"
+              >{{ d.regime }}</span>
+              <span
+                v-if="d.profile"
+                class="px-1.5 py-0.5 rounded text-[10px] font-medium border"
+                :class="profileColor(d.profile)"
+              >{{ d.profile }}</span>
+            </div>
           </div>
         </div>
       </div>
