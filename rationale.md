@@ -1,82 +1,80 @@
-# Rationale for `marketpulse-task-2026-04-01-0015`
+# Rationale for `marketpulse-task-2026-04-01-0003`
 
-**author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0015-implementation
-**commit_sha:** 
+**author:** coder-agent (MarketPulse Coder)
+**branch:** task/marketpulse-task-2026-04-01-0003-implementation
+**commit_sha:** f3bedcf
 **date:** 2026-04-01
 **model_calls:** 1
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0015 via coder_worker.py with model integration.
+Comprehensive unit tests for all 4 anomaly detectors (26 tests, 225 LOC).
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** build_equity_curve([]) returns a single initial EquityPoint with equity == initial_capital and drawdown_pct == 0
+- **Criteria:** All 4 detectors have at least 4 test cases each
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** PriceSpikeDetector: 7, VolumeSpikeDetector: 6, RSIExtremeDetector: 8, SqueezeDetector: 5
 
-- **Criteria:** A buy transaction reduces cash and increases positions_value; a sell does the inverse
+- **Criteria:** Edge cases covered: empty/short data, at-threshold, zero-std, None RSI
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_returns_none_when_data_too_short, test_returns_none_when_no_spike (zero std), test_at_upper/lower_boundary, test_returns_none_when_rsi_is_none
 
-- **Criteria:** equity always equals cash + positions_value at every point
+- **Criteria:** PriceSpikeDetector: both spike and crash directions tested
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_detects_price_spike (z>0), test_detects_price_crash (z<0)
 
-- **Criteria:** drawdown_pct is correctly calculated as (equity - peak) / peak, always <= 0
+- **Criteria:** RSIExtremeDetector: both overbought and oversold tested
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_overbought (rsi=85), test_oversold (rsi=15), plus extreme severity tests
 
-- **Criteria:** EquityCurveOut.max_drawdown_pct equals the worst drawdown across all points
+- **Criteria:** SqueezeDetector: uses mocks for detect_squeeze dependency
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** All 5 SqueezeDetector tests use unittest.mock.patch on detect_squeeze
 
-- **Criteria:** GET /equity-curve returns 200 with valid JSON matching EquityCurveOut schema
+- **Criteria:** All tests pass with pytest
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** 26 passed in 0.41s
 
-- **Criteria:** All tests pass, mypy clean
+- **Criteria:** mypy passes with no errors
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Success: no issues found in 1 source file
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/equity_curve.py`
-- `backend/app/portfolio/router.py`
-- `backend/tests/test_equity_curve.py`
-- `rationale.md`
+- `backend/tests/test_anomaly_detectors_full.py` â€” new file, 225 LOC, all test logic
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_equity_curve.py -q` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/equity_curve.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_anomaly_detectors_full.py -q` â†’ 26 passed
+  - `cd backend && uv run python -m mypy tests/test_anomaly_detectors_full.py --ignore-missing-imports` â†’ Success
 
 ---
 
 ## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
+- Synthetic data generated with `np.random.default_rng(seed)` for reproducibility
+- _FakeSqueezeState dataclass for mocking
 
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code — **Severity:** medium — **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+- **Risk:** None significant â€” **Severity:** low â€” **Mitigation:** Pure unit tests with no side effects
 
 ---
 
 ## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
+- New test file only, no production code changed.
 
 ---
 
 ## 8) Performance considerations
-- No performance impact expected.
+- Tests run in <1s, no performance impact.
 
 ---
 
@@ -84,21 +82,21 @@ Automated implementation for task marketpulse-task-2026-04-01-0015 via coder_wor
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
-- API key logged: `no` (only presence check)
+- API key logged: `no`
 
 ---
 
 ## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
+1. Consider parametrized tests if threshold settings become per-symbol configurable.
 
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0015): implementation
+- `f3bedcf` â†’ test(anomalies): comprehensive unit tests for all 4 detectors
 
 ---
 
 ## 12) Final verdict (developer self-check)
 - **I confirm** that all acceptance criteria marked `pass` have test evidence attached: `yes`
 - **I confirm** no forbidden paths were modified: `yes`
-- **I request** next step: `validate`
+- **I request** next step: `approve`
