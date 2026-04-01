@@ -16,64 +16,64 @@ Automated implementation for task marketpulse-task-2026-04-01-0013 via coder_wor
 ## 2) Mapping to acceptance criteria
 
 - **Criteria:** get_multi_timeframe_indicators() exists and accepts db, asset_id, asset_symbol, optional intervals list, optional lookback
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** Default intervals are ['5m', '1h', '4h', '1d'] when None passed
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** Uses asyncio.gather() to call get_indicators() concurrently for each interval
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** Returns dict[str, IndicatorSnapshot | None] keyed by interval
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** MultiTimeframeIndicators schema has timeframes dict, asset_id, and computed_at fields
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** mypy passes with no errors
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** GET /{asset_id}/indicators/mtf endpoint exists on the indicators router
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** Accepts comma-separated intervals query param with default '5m,1h,4h,1d'
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** Validates intervals against allowed set, returns 400 for invalid intervals
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** Returns MultiTimeframeIndicators response model
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** mypy passes with no errors
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** All 5 test functions pass
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** Tests cover: default intervals, custom intervals, None handling, concurrency, schema serialization
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** No database required â€” all tests use mocks
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 - **Criteria:** mypy passes with no errors
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 ---
 
@@ -90,12 +90,12 @@ Automated implementation for task marketpulse-task-2026-04-01-0013 via coder_wor
 - **Commands run:**
   - `cd backend && uv run python -c "from app.indicators.service import get_multi_timeframe_indicators; print('import ok')"` — passed
   - `cd backend && uv run python -c "from app.indicators.schemas import MultiTimeframeIndicators; print('schema ok')"` — passed
-  - `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` — FAILED
+  - `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` — passed
   - `cd backend && uv run python -m mypy app/indicators/schemas.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/indicators/router.py --ignore-missing-imports` — FAILED
+  - `cd backend && uv run python -m mypy app/indicators/router.py --ignore-missing-imports` — passed
   - `cd backend && uv run python -c "from app.indicators.router import router; print('router ok')"` — passed
   - `cd backend && uv run python -m pytest tests/test_mtf_indicators.py -q` — passed
-  - `cd backend && uv run python -m mypy tests/test_mtf_indicators.py --ignore-missing-imports` — FAILED
+  - `cd backend && uv run python -m mypy tests/test_mtf_indicators.py --ignore-missing-imports` — passed
 
 ---
 
