@@ -1,0 +1,197 @@
+{
+  "source": "Continuation plan — failed tasks retry + new features",
+  "created_at": "2026-04-01",
+  "tiers": {
+    "20": {
+      "label": "Failed Task Retry (small chunks)",
+      "features": [
+        {
+          "id": "v3_backtest_core_logic",
+          "name": "Backtest engine — pure simulation logic (no API, no DB)",
+          "description": "Create backend/app/backtest/engine.py with pure functions: simulate_trades(prices: list[float], profile: StrategyProfile) -> list[Trade]. Trade = dataclass(entry_idx, exit_idx, entry_price, exit_price, pnl_pct, reason). Apply RSI+MACD buy/sell logic bar-by-bar. No async, no DB, no API — pure Python.",
+          "scope": "backend/app/backtest/engine.py — pure trade simulation from price list",
+          "files_hint": ["backend/app/backtest/__init__.py", "backend/app/backtest/engine.py", "backend/tests/test_backtest_engine.py"],
+          "complexity": "medium",
+          "depends_on": []
+        },
+        {
+          "id": "v3_backtest_metrics",
+          "name": "Backtest result metrics — calculate from trade list",
+          "description": "Add to backend/app/backtest/engine.py: backtest_metrics(trades: list[Trade], initial_capital: float) -> BacktestResult. BacktestResult has total_return, max_drawdown, sharpe_ratio, win_rate, profit_factor, equity_curve (list[float]). Pure function, no DB.",
+          "scope": "backend/app/backtest/engine.py — metrics calculation",
+          "files_hint": ["backend/app/backtest/engine.py", "backend/tests/test_backtest_metrics.py"],
+          "complexity": "small",
+          "depends_on": ["v3_backtest_core_logic"]
+        },
+        {
+          "id": "v3_backtest_api",
+          "name": "Backtest API endpoint — POST /api/v1/backtest/run",
+          "description": "Add POST /api/v1/backtest/run endpoint: accepts asset_id, interval, lookback_days, profile_name. Loads price_bars from DB, calls simulate_trades + backtest_metrics, returns JSON. Add router to main.py.",
+          "scope": "backend/app/backtest/router.py + schemas",
+          "files_hint": ["backend/app/backtest/router.py", "backend/app/backtest/schemas.py"],
+          "complexity": "medium",
+          "depends_on": ["v3_backtest_metrics"]
+        },
+        {
+          "id": "v3_backtest_fe",
+          "name": "Backtest View — frontend form + results",
+          "description": "New BacktestView.vue: form (asset select, days, profile), submit button, results table (return, MDD, Sharpe, win rate), trade list. Add to router + nav. Use existing component patterns.",
+          "scope": "frontend/src/views/BacktestView.vue",
+          "files_hint": ["frontend/src/views/BacktestView.vue", "frontend/src/router/index.ts", "frontend/src/components/AppLayout.vue"],
+          "complexity": "medium",
+          "depends_on": ["v3_backtest_api"]
+        },
+        {
+          "id": "v3_dca_pure_logic",
+          "name": "DCA engine — pure functions (no DB)",
+          "description": "Create backend/app/portfolio/dca.py with pure functions: should_dca(current_price, entry_price, dca_level, config) -> bool. calculate_dca_buy(entry_price, quantity, buy_price, tranche_pct) -> dict with new_avg_price, new_quantity, cost. DCAConfig dataclass with max_levels, drop_trigger_pct, tranche_pcts.",
+          "scope": "backend/app/portfolio/dca.py",
+          "files_hint": ["backend/app/portfolio/dca.py", "backend/tests/test_dca.py"],
+          "complexity": "small",
+          "depends_on": []
+        },
+        {
+          "id": "v3_sentiment_scoring",
+          "name": "Integrate sentiment score into recommendation scoring",
+          "description": "Add sentiment_score (weight 0.08) as 10th signal in backend/app/recommendations/scoring.py. Read from sentiment module if available, default to 0 (neutral) if not. Positive sentiment boosts buy, negative boosts avoid.",
+          "scope": "backend/app/recommendations/scoring.py",
+          "files_hint": ["backend/app/recommendations/scoring.py", "backend/tests/test_sentiment_scoring.py"],
+          "complexity": "small",
+          "depends_on": []
+        },
+        {
+          "id": "v3_rich_decisions",
+          "name": "Rich entry/exit decision context with signal breakdown",
+          "description": "Create backend/app/portfolio/decision_context.py with build_decision_context(asset_id, indicators, recommendation, regime, protections) -> dict. Returns full signal breakdown: each indicator value, score component, protection checks, trailing params. Pure function.",
+          "scope": "backend/app/portfolio/decision_context.py",
+          "files_hint": ["backend/app/portfolio/decision_context.py", "backend/tests/test_decision_context.py"],
+          "complexity": "small",
+          "depends_on": []
+        }
+      ]
+    },
+    "21": {
+      "label": "Frontend Polish & Missing Views",
+      "features": [
+        {
+          "id": "v3_fe_strategy_view",
+          "name": "Strategy Management View — full profile details + regime",
+          "description": "New StrategyView.vue showing: all 3 profiles with params (table), current active profile highlighted, regime gauge, auto-switch status, trailing/slippage/DCA params. Read from /strategy/summary. Add to router + nav.",
+          "scope": "frontend/src/views/StrategyView.vue",
+          "files_hint": ["frontend/src/views/StrategyView.vue", "frontend/src/router/index.ts", "frontend/src/components/AppLayout.vue"],
+          "complexity": "medium",
+          "depends_on": []
+        },
+        {
+          "id": "v3_fe_portfolio_details",
+          "name": "Expanded position cards with trailing/DCA/risk detail",
+          "description": "Expand PortfolioView.vue position cards: show trailing SL price vs peak, trailing TP state, DCA level, unrealized PnL with slippage, entry signal breakdown. Use existing exit_context data.",
+          "scope": "frontend/src/views/PortfolioView.vue",
+          "files_hint": ["frontend/src/views/PortfolioView.vue"],
+          "complexity": "medium",
+          "depends_on": []
+        },
+        {
+          "id": "v3_fe_signal_breakdown",
+          "name": "Signal breakdown bars in Recommendations View",
+          "description": "In RecommendationsView.vue, add expandable row per recommendation showing 9-signal breakdown: RSI bar, MACD bar, BB bar, ADX bar, StochRSI bar, price trend, volume, anomaly, volatility. Color-coded horizontal bars. Use signal_details from API.",
+          "scope": "frontend/src/views/RecommendationsView.vue",
+          "files_hint": ["frontend/src/views/RecommendationsView.vue"],
+          "complexity": "medium",
+          "depends_on": []
+        },
+        {
+          "id": "v3_fe_protection_history",
+          "name": "Protection events timeline in Portfolio",
+          "description": "Add collapsible section in PortfolioView showing last 20 protection events: type, reason, timestamp, expires_at. Color by type: red=stop_loss_guard, orange=daily_drawdown, purple=circuit_breaker, blue=cooldown.",
+          "scope": "frontend/src/views/PortfolioView.vue",
+          "files_hint": ["frontend/src/views/PortfolioView.vue"],
+          "complexity": "small",
+          "depends_on": []
+        },
+        {
+          "id": "v3_fe_performance_enhanced",
+          "name": "Enhanced Performance View with MDD/Sharpe/PF charts",
+          "description": "Enhance PerformanceView.vue: add risk metrics section (MDD gauge, Sharpe badge, Profit Factor, Win Rate donut). Pull from /portfolio/risk-metrics. Show alongside existing recommendation accuracy.",
+          "scope": "frontend/src/views/PerformanceView.vue",
+          "files_hint": ["frontend/src/views/PerformanceView.vue", "frontend/src/types/api.ts"],
+          "complexity": "medium",
+          "depends_on": []
+        }
+      ]
+    },
+    "22": {
+      "label": "Advanced Trading Logic",
+      "features": [
+        {
+          "id": "v3_volume_filter",
+          "name": "Min volume filter for portfolio entries",
+          "description": "Add volume filter to portfolio entry checks: only allow buy if asset's avg 24h volume > configurable minimum (default: $100k for crypto, $1M for stocks). Check in protections.py using recent price_bars volume data.",
+          "scope": "backend/app/portfolio/protections.py",
+          "files_hint": ["backend/app/portfolio/protections.py", "backend/tests/test_volume_filter.py"],
+          "complexity": "small",
+          "depends_on": []
+        },
+        {
+          "id": "v3_multi_interval_ingestion",
+          "name": "Ingest 4h and 1d intervals alongside 1h",
+          "description": "Extend ingestion to also fetch 4h and 1d candles from Binance/Yahoo. Add interval parameter to scheduler jobs. Store in same price_bars table with interval='4h'/'1d'. Enables multi-timeframe analysis with real data.",
+          "scope": "backend/app/scheduler.py + ingestion/service.py",
+          "files_hint": ["backend/app/scheduler.py", "backend/tests/test_multi_interval.py"],
+          "complexity": "medium",
+          "depends_on": []
+        },
+        {
+          "id": "v3_equity_curve_tracking",
+          "name": "Portfolio equity curve history",
+          "description": "Track portfolio equity value at each evaluation cycle. Store as list in portfolio metadata or a lightweight in-memory buffer. Expose via GET /portfolio/equity-curve returning [{timestamp, equity, drawdown_pct}]. Needed for MDD chart and backtest comparison.",
+          "scope": "backend/app/portfolio/service.py + router",
+          "files_hint": ["backend/app/portfolio/service.py", "backend/app/portfolio/router.py", "backend/tests/test_equity_curve.py"],
+          "complexity": "medium",
+          "depends_on": []
+        },
+        {
+          "id": "v3_trade_journal",
+          "name": "Trade journal — human-readable trade history with context",
+          "description": "Create GET /portfolio/journal endpoint returning completed trades with: entry/exit prices, hold time, PnL, entry signal (which indicators triggered), exit reason, regime at entry/exit, protection events during hold. Aggregate from positions + transactions.",
+          "scope": "backend/app/portfolio/router.py + journal logic",
+          "files_hint": ["backend/app/portfolio/router.py", "backend/tests/test_trade_journal.py"],
+          "complexity": "medium",
+          "depends_on": []
+        }
+      ]
+    },
+    "23": {
+      "label": "Quality & Testing",
+      "features": [
+        {
+          "id": "v3_test_portfolio_integration",
+          "name": "Portfolio service integration tests",
+          "description": "Add integration-style tests for portfolio evaluation cycle: mock DB with realistic positions, verify entry/exit decisions, DCA triggers, trailing updates, protection checks all work together. Test the full evaluate_portfolio flow.",
+          "scope": "backend/tests/test_portfolio_integration.py",
+          "files_hint": ["backend/tests/test_portfolio_integration.py"],
+          "complexity": "medium",
+          "depends_on": []
+        },
+        {
+          "id": "v3_test_scoring_regression",
+          "name": "Scoring regression tests with known outcomes",
+          "description": "Add tests with hardcoded indicator values that should produce known recommendation types. Verify scoring is deterministic and produces expected candidate_buy/avoid/neutral for specific market conditions.",
+          "scope": "backend/tests/test_scoring_regression.py",
+          "files_hint": ["backend/tests/test_scoring_regression.py"],
+          "complexity": "small",
+          "depends_on": []
+        },
+        {
+          "id": "v3_test_anomaly_detectors",
+          "name": "Anomaly detector unit tests for all detector types",
+          "description": "Comprehensive tests for PriceSpikeDetector, VolumeSpikeDetector, RSIExtremeDetector, and SqueezeDetector. Test with edge cases: empty data, single bar, exactly-at-threshold, extreme values.",
+          "scope": "backend/tests/test_anomaly_detectors.py",
+          "files_hint": ["backend/tests/test_anomaly_detectors.py"],
+          "complexity": "small",
+          "depends_on": []
+        }
+      ]
+    }
+  }
+}
