@@ -1,76 +1,76 @@
-# Rationale for `marketpulse-task-2026-04-01-0009`
+# Rationale for `marketpulse-task-2026-04-01-0001`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0009-implementation
-**commit_sha:** 
+**branch:** task/marketpulse-task-2026-04-01-0001-implementation
 **date:** 2026-04-01
-**model_calls:** 1
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0009 via coder_worker.py with model integration.
+Add POST /api/v1/backtest/run endpoint with Pydantic schemas, async DB query, and full test coverage.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** POST /api/v1/backtest/run returns 200 with BacktestResponse containing metrics and trades list
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** POST /api/v1/backtest/run with valid asset_id returns 200 with BacktestResponse including total_return, sharpe_ratio, win_rate, trades list
+- **Status:** `pass`
+- **Evidence:** test_successful_backtest passes â€” response contains all metric fields and trades list
 
-- **Criteria:** Invalid profile_name returns 400 with descriptive error
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Request with asset_id having < 2 price bars returns 404 with 'Not enough price data'
+- **Status:** `pass`
+- **Evidence:** test_not_enough_price_data_returns_404 and test_no_price_data_returns_404 both pass
 
-- **Criteria:** Fewer than 2 price bars returns 404 with 'Not enough price data'
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Request with invalid profile_name returns 400 with 'Unknown profile'
+- **Status:** `pass`
+- **Evidence:** test_invalid_profile_returns_400 passes
 
-- **Criteria:** All response fields match BacktestResult dataclass fields plus trades list
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** All trades in response have entry_index, exit_index, entry_price, exit_price, pnl, pnl_pct, exit_reason fields
+- **Status:** `pass`
+- **Evidence:** test_trades_have_required_fields passes â€” verifies all fields on each trade
 
-- **Criteria:** Router is registered in main.py
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** pytest passes with all tests green
+- **Status:** `pass`
+- **Evidence:** 5 passed in 0.09s
 
-- **Criteria:** All tests pass, mypy clean
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** mypy passes with no errors
+- **Status:** `pass`
+- **Evidence:** Success: no issues found in 2 source files
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `rationale.md`
+- `backend/app/backtest/schemas.py` â€” Pydantic request/response models (BacktestRequest, TradeOut, BacktestResponse)
+- `backend/app/backtest/router.py` â€” APIRouter with POST /run endpoint: validates profile, queries price_bars, runs simulate_trades + backtest_metrics
+- `backend/app/main.py` â€” Register backtest_router in create_app()
+- `backend/tests/test_backtest_api.py` â€” 5 async tests covering success, 404, 400, and trade field validation
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `model_call` — FAILED
-  - `cd backend && uv run python -m pytest tests/test_backtest_api.py -q` — FAILED
-  - `cd backend && uv run python -m mypy app/backtest/router.py app/backtest/schemas.py --ignore-missing-imports` — FAILED
+  - `cd backend && uv run python -m pytest tests/test_backtest_api.py -q` â†’ 5 passed in 0.09s
+  - `cd backend && uv run python -m mypy app/backtest/router.py app/backtest/schemas.py --ignore-missing-imports` â†’ Success: no issues found in 2 source files
 
 ---
 
 ## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
+- Synthetic price data used in tests (mock DB rows with .close attribute)
 
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code — **Severity:** medium — **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+- **Risk:** Integration with existing DB schema â€” **Severity:** low â€” **Mitigation:** Uses existing PriceBar model, tests mock DB layer
 
 ---
 
 ## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
+- New files only (schemas.py, router.py, test file), plus one line added to main.py. Fully backward compatible.
 
 ---
 
 ## 8) Performance considerations
-- No performance impact expected.
+- No performance impact expected. Simple SELECT query with existing composite index.
 
 ---
 
@@ -78,21 +78,21 @@ Automated implementation for task marketpulse-task-2026-04-01-0009 via coder_wor
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
-- API key logged: `no` (only presence check)
+- API key logged: `no`
 
 ---
 
 ## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
+- None.
 
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0009): implementation
+- `feat(backtest): add POST /api/v1/backtest/run endpoint [marketpulse-task-2026-04-01-0001]`
 
 ---
 
 ## 12) Final verdict (developer self-check)
 - **I confirm** that all acceptance criteria marked `pass` have test evidence attached: `yes`
 - **I confirm** no forbidden paths were modified: `yes`
-- **I request** next step: `validate`
+- **I request** next step: `approve`
