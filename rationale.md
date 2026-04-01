@@ -1,85 +1,83 @@
-# Rationale for `marketpulse-task-2026-04-01-0007`
+# Rationale for `marketpulse-task-2026-04-02-0041`
 
-**author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0007-implementation
-**commit_sha:** 
-**date:** 2026-04-01
-**model_calls:** 1
+**author:** coder-agent (MarketPulse Coder)
+**branch:** task/marketpulse-task-2026-04-02-0041-implementation
+**date:** 2026-04-02
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_worker.py with model integration.
+Added GET /api/v1/marketplace/ranking endpoint returning public strategies ranked by deterministic mock Sharpe ratio.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** DCAConfig dataclass is frozen with sensible defaults
+- **Criteria:** GET /api/v1/marketplace/ranking returns 200 with list of RankedStrategy objects
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_ranking_empty, test_ranked_strategy_fields_present pass
 
-- **Criteria:** DCAConfig post-init validates lengths match max_levels and tranche_pcts sum to ~1.0
+- **Criteria:** Only public strategies appear in ranking
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_ranking_returns_only_public — creates 3 strategies, publishes 2, asserts len == 2
 
-- **Criteria:** should_dca returns True only when drop exceeds the threshold for the current level
+- **Criteria:** Default sort is by sharpe_ratio descending
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_ranking_sorted_by_sharpe_descending verifies order
 
-- **Criteria:** should_dca returns False when all DCA levels are exhausted
+- **Criteria:** sort_by query param supports sharpe_ratio, total_return_pct, copy_count
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_sort_by_copy_count, test_sort_by_total_return pass
 
-- **Criteria:** compute_dca_order returns correct tranche USD amount
+- **Criteria:** limit query param caps the result list (default 20, max 100)
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_limit_parameter creates 10, requests limit=3, asserts len == 3
 
-- **Criteria:** compute_dca_order raises ValueError when levels exhausted
+- **Criteria:** Metrics are deterministic — same strategy id always produces same metrics
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_metrics_deterministic calls endpoint twice, asserts identical JSON
 
-- **Criteria:** compute_new_avg_price returns correct weighted average
+- **Criteria:** All tests pass, mypy clean
 - **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** All tests pass, mypy passes with no errors
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** 9 passed, mypy Success: no issues found in 1 source file
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/dca.py`
-- `backend/tests/test_dca.py`
-- `rationale.md`
+- `backend/app/strategies/__init__.py` — package init (restored from prior branch)
+- `backend/app/strategies/models.py` — Strategy model + StrategyStore (restored from prior branch)
+- `backend/app/strategies/router.py` — Strategy CRUD endpoints (restored from prior branch)
+- `backend/app/strategies/marketplace.py` — Added RankedStrategy schema, compute_mock_metrics(), GET /api/v1/marketplace/ranking endpoint
+- `backend/app/main.py` — Registered strategies_router and marketplace_router
+- `backend/tests/test_marketplace_ranking.py` — 9 tests for ranking endpoint
+- `rationale.md` — This file
 
 ---
 
 ## 4) Tests run & results
-- **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_dca.py -q` � passed
-  - `cd backend && uv run python -m mypy app/portfolio/dca.py --ignore-missing-imports` � passed
+- `cd backend && uv run python -m pytest tests/test_marketplace_ranking.py -q` → 9 passed in 0.25s
+- `cd backend && uv run python -m mypy app/strategies/marketplace.py --ignore-missing-imports` → Success
 
 ---
 
 ## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
+- Deterministic metrics generated via SHA-256 hash of strategy id seeding float ranges
+- No external data; all synthetic/in-memory
 
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code � **Severity:** medium � **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+- **Risk:** Mock metrics will be replaced by real backtest (feature 40) — **Severity:** low — **Mitigation:** compute_mock_metrics function signature designed to be swappable
 
 ---
 
 ## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
+- New endpoint only; existing marketplace endpoints (publish/unpublish/list) unchanged
 
 ---
 
 ## 8) Performance considerations
-- No performance impact expected.
+- O(n log n) sort on in-memory list; negligible for expected strategy counts
 
 ---
 
@@ -87,21 +85,21 @@ Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_wor
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
-- API key logged: `no` (only presence check)
+- API key logged: `no`
 
 ---
 
 ## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
+1. Replace compute_mock_metrics with real backtest integration when feature 40 lands.
 
 ---
 
 ## 11) Short changelog
-- `N/A` � feat(marketpulse-task-2026-04-01-0007): implementation
+- feat(marketpulse-task-2026-04-02-0041): marketplace ranking with deterministic mock Sharpe
 
 ---
 
 ## 12) Final verdict (developer self-check)
 - **I confirm** that all acceptance criteria marked `pass` have test evidence attached: `yes`
 - **I confirm** no forbidden paths were modified: `yes`
-- **I request** next step: `validate`
+- **I request** next step: `approve`
