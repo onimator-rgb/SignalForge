@@ -41,5 +41,7 @@ class IndicatorSnapshot(BaseModel):
     mfi_14: float | None = None
     stoch_rsi_k: float | None = None
     stoch_rsi_d: float | None = None
+    mfi_14: float | None = None
     vwap: float | None = None
+    obv: float | None = None
     bars_available: int  # how many bars were used
