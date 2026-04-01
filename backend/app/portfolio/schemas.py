@@ -69,6 +69,10 @@ class RiskMetricsOut(BaseModel):
     wins: int
     losses: int
     win_rate: float | None
+    avg_win_pct: float | None = None
+    avg_loss_pct: float | None = None
+    best_trade_pct: float | None = None
+    worst_trade_pct: float | None = None
     breakdown_by_reason: dict[str, int]
 
 

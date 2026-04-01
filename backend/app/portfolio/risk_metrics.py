@@ -20,6 +20,10 @@ class RiskMetricsResult:
     wins: int
     losses: int
     win_rate: float | None
+    avg_win_pct: float | None
+    avg_loss_pct: float | None
+    best_trade_pct: float | None
+    worst_trade_pct: float | None
     breakdown_by_reason: dict[str, int] = field(default_factory=dict)
 
 
@@ -42,6 +46,10 @@ def compute_risk_metrics(positions: list[object]) -> RiskMetricsResult:
             wins=0,
             losses=0,
             win_rate=None,
+            avg_win_pct=None,
+            avg_loss_pct=None,
+            best_trade_pct=None,
+            worst_trade_pct=None,
             breakdown_by_reason={},
         )
 
@@ -78,6 +86,24 @@ def compute_risk_metrics(positions: list[object]) -> RiskMetricsResult:
 
         reason = close_reason or "unknown"
         breakdown[reason] = breakdown.get(reason, 0) + 1
+
+    # Avg win/loss and best/worst trade
+    win_returns = [float(getattr(p, "realized_pnl_pct", 0.0))
+                   for p in positions
+                   if (getattr(p, "realized_pnl_usd", None) or 0) > 0
+                   and getattr(p, "realized_pnl_pct", None) is not None]
+    loss_returns = [float(getattr(p, "realized_pnl_pct", 0.0))
+                    for p in positions
+                    if (getattr(p, "realized_pnl_usd", None) or 0) < 0
+                    and getattr(p, "realized_pnl_pct", None) is not None]
+    all_pnl_pcts = [float(getattr(p, "realized_pnl_pct", 0.0))
+                    for p in positions
+                    if getattr(p, "realized_pnl_pct", None) is not None]
+
+    avg_win_pct = round(sum(win_returns) / len(win_returns), 4) if win_returns else None
+    avg_loss_pct = round(sum(loss_returns) / len(loss_returns), 4) if loss_returns else None
+    best_trade_pct = round(max(all_pnl_pcts), 4) if all_pnl_pcts else None
+    worst_trade_pct = round(min(all_pnl_pcts), 4) if all_pnl_pcts else None
 
     # Sharpe ratio (annualized, 365 days)
     sharpe: float | None = None
@@ -124,6 +150,10 @@ def compute_risk_metrics(positions: list[object]) -> RiskMetricsResult:
         wins=wins,
         losses=losses,
         win_rate=round(win_rate, 2) if win_rate is not None else None,
+        avg_win_pct=avg_win_pct,
+        avg_loss_pct=avg_loss_pct,
+        best_trade_pct=best_trade_pct,
+        worst_trade_pct=worst_trade_pct,
         breakdown_by_reason=breakdown,
     )
 
