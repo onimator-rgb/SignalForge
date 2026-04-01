@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0011`
+# Rationale for `marketpulse-task-2026-04-01-0013`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0011-implementation
+**branch:** task/marketpulse-task-2026-04-01-0013-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,78 +9,97 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0011 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0013 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** calc_fibonacci returns None when fewer than lookback bars are provided
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** get_dca_state returns default state when exit_context is None or has no DCA data
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** calc_fibonacci returns None when swing_high equals swing_low (flat price)
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** should_dca returns True when price drops below threshold for current level
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** calc_fibonacci returns FibonacciResult with correct Fibonacci ratios for known uptrend data
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** should_dca returns False when max levels reached
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** calc_fibonacci returns FibonacciResult with correct Fibonacci ratios for known downtrend data
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** calculate_dca_buy returns None when available cash is insufficient
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** level_0 == swing_low and level_100 == swing_high always
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** calculate_dca_buy uses level multiplier to scale position size
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** trend field is 'up' when swing_low occurs before swing_high, 'down' otherwise
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** apply_dca_to_position correctly calculates weighted average entry price
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** All levels are rounded to 2 decimal places
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** evaluate_portfolio returns dca_count in summary dict
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** FibonacciResult and calc_fibonacci are exported from calculators __init__.py
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** _check_dca iterates open positions and triggers DCA when conditions met
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** FibonacciOut schema has all 10 fields (swing_high, swing_low, 7 levels, trend)
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** DCA buy creates a PortfolioTransaction with tx_type='dca_buy'
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** IndicatorSnapshot includes fibonacci: FibonacciOut | None = None
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Cash is deducted from portfolio after DCA buy
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** service.py calls calc_fibonacci and maps result via _fib_to_out helper
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Slippage is applied to DCA buy price
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** mypy passes on service.py and schemas.py with no errors
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Cash reserve (MIN_CASH_RESERVE_PCT) is respected
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** All tests pass
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** At least 10 test cases covering happy path and edge cases
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** Weighted average calculation verified with known values
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** DCA level boundaries tested (0, max-1, max)
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** Insufficient cash scenario tested
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/indicators/calculators/__init__.py`
-- `backend/app/indicators/calculators/fibonacci.py`
-- `backend/app/indicators/schemas.py`
-- `backend/app/indicators/service.py`
-- `backend/tests/test_fibonacci.py`
+- `backend/app/portfolio/dca.py`
+- `backend/app/portfolio/service.py`
+- `backend/tests/test_dca.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_fibonacci.py -q` — passed
-  - `cd backend && uv run python -m mypy app/indicators/calculators/fibonacci.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/indicators/schemas.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -c "from app.portfolio.dca import get_dca_state, should_dca, calculate_dca_buy, apply_dca_to_position; print('OK')"` — passed
+  - `cd backend && uv run python -m mypy app/portfolio/dca.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m mypy app/portfolio/service.py --ignore-missing-imports` — FAILED
+  - `cd backend && uv run python -m pytest tests/test_dca.py -q` — passed
+  - `cd backend && uv run python -m mypy app/portfolio/dca.py --ignore-missing-imports` — passed
 
 ---
 
@@ -118,7 +137,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0011 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0011): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0013): implementation
 
 ---
 

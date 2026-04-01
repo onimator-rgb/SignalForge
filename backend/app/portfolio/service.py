@@ -45,16 +45,17 @@ async def evaluate_portfolio(db: AsyncSession) -> dict:
     now = datetime.now(timezone.utc)
 
     closed = await _check_exits(db, portfolio, now)
+    dca_count = await _check_dca(db, portfolio, now)
     opened = await _check_entries(db, portfolio, now)
 
     await db.flush()
     portfolio.updated_at = now
     await db.commit()
 
-    if closed or opened:
-        log.info("portfolio.evaluate_done", closed=closed, opened=opened,
-                 cash=float(portfolio.current_cash))
-    return {"closed": closed, "opened": opened}
+    if closed or dca_count or opened:
+        log.info("portfolio.evaluate_done", closed=closed, dca_buys=dca_count,
+                 opened=opened, cash=float(portfolio.current_cash))
+    return {"closed": closed, "dca_buys": dca_count, "opened": opened}
 
 
 async def manual_close_position(db: AsyncSession, position_id: uuid.UUID) -> dict:
@@ -136,6 +137,88 @@ async def _check_exits(db: AsyncSession, portfolio: Portfolio, now: datetime) ->
         await db.flush()
 
     return closed
+
+
+async def _check_dca(db: AsyncSession, portfolio: Portfolio, now: datetime) -> int:
+    """Check open positions for DCA opportunities and execute buys."""
+    from app.portfolio.dca import (
+        apply_dca_to_position, calculate_dca_buy, get_dca_state, should_dca,
+    )
+
+    profile = get_active_profile()
+
+    result = await db.execute(
+        select(PortfolioPosition).where(
+            PortfolioPosition.portfolio_id == portfolio.id,
+            PortfolioPosition.status == "open",
+        )
+    )
+    positions = list(result.scalars().all())
+    dca_count = 0
+
+    for pos in positions:
+        price_data = await get_latest_price(db, pos.asset_id)
+        if not price_data:
+            continue
+
+        current_price = price_data.close
+        dca_state = get_dca_state(pos)
+
+        if not should_dca(float(pos.entry_price), current_price, dca_state["dca_level"]):
+            continue
+
+        # Compute available cash respecting reserve
+        reserve = float(portfolio.initial_capital) * MIN_CASH_RESERVE_PCT
+        available = float(portfolio.current_cash) - reserve
+        if available < MIN_POSITION_USD:
+            continue
+
+        dca_buy = calculate_dca_buy(
+            original_value=dca_state["original_entry"] * dca_state["original_qty"],
+            dca_level=dca_state["dca_level"],
+            current_price=current_price,
+            available_cash=available,
+            min_position_usd=MIN_POSITION_USD,
+        )
+        if dca_buy is None:
+            continue
+
+        # Apply slippage to DCA buy price
+        adjusted_price = round(current_price * (1 + profile.slippage_buy_pct), 8)
+        dca_buy["price"] = adjusted_price
+        dca_buy["quantity"] = dca_buy["buy_value"] / adjusted_price
+
+        updated_state = apply_dca_to_position(pos, dca_buy, profile)
+
+        # Record DCA transaction
+        tx = PortfolioTransaction(
+            portfolio_id=portfolio.id,
+            position_id=pos.id,
+            tx_type="dca_buy",
+            asset_id=pos.asset_id,
+            price=adjusted_price,
+            quantity=dca_buy["quantity"],
+            value_usd=dca_buy["buy_value"],
+            executed_at=now,
+        )
+        db.add(tx)
+
+        portfolio.current_cash = float(portfolio.current_cash) - dca_buy["buy_value"]
+
+        asset_res = await db.execute(select(Asset.symbol).where(Asset.id == pos.asset_id))
+        symbol = asset_res.scalar_one_or_none() or "?"
+        log.info(
+            "portfolio.dca_buy",
+            symbol=symbol,
+            level=updated_state["dca_level"],
+            price=adjusted_price,
+            new_avg=float(pos.entry_price),
+        )
+
+        await db.flush()
+        dca_count += 1
+
+    return dca_count
 
 
 async def _close_position(
