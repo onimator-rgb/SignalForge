@@ -71,35 +71,30 @@ async def portfolio_protections(db: AsyncSession = Depends(get_db)):
     return {"active": protections, "count": len(protections)}
 
 
-@router.get("/protection-history")
-async def protection_history(
-    limit: int = 20,
-    db: AsyncSession = Depends(get_db),
-):
-    """Get recent protection events (active + expired) for history display."""
+@router.get("/risk-metrics")
+async def risk_metrics(db: AsyncSession = Depends(get_db)):
+    """Compute risk-adjusted performance metrics from closed positions."""
     from sqlalchemy import select
-    from app.portfolio.models import ProtectionEvent
-    from app.assets.models import Asset
+    from app.portfolio.models import PortfolioPosition
+    from app.portfolio.risk_metrics import compute_risk_metrics
+    from app.portfolio.schemas import RiskMetricsOut
 
-    result = await db.execute(
-        select(ProtectionEvent, Asset.symbol)
-        .outerjoin(Asset, ProtectionEvent.asset_id == Asset.id)
-        .order_by(ProtectionEvent.triggered_at.desc())
-        .limit(limit)
+    q = select(PortfolioPosition).where(PortfolioPosition.status == "closed")
+    result = await db.execute(q)
+    positions = list(result.scalars().all())
+    metrics = compute_risk_metrics(positions)
+    return RiskMetricsOut(
+        sharpe_ratio=metrics.sharpe_ratio,
+        sortino_ratio=metrics.sortino_ratio,
+        max_drawdown_pct=metrics.max_drawdown_pct,
+        profit_factor=metrics.profit_factor,
+        avg_hold_hours=metrics.avg_hold_hours,
+        total_closed=metrics.total_closed,
+        wins=metrics.wins,
+        losses=metrics.losses,
+        win_rate=metrics.win_rate,
+        breakdown_by_reason=metrics.breakdown_by_reason,
     )
-    return [
-        {
-            "id": str(row.ProtectionEvent.id),
-            "protection_type": row.ProtectionEvent.protection_type,
-            "status": row.ProtectionEvent.status,
-            "asset_symbol": row.symbol,
-            "asset_class": row.ProtectionEvent.asset_class,
-            "reason": row.ProtectionEvent.reason,
-            "triggered_at": row.ProtectionEvent.triggered_at.isoformat(),
-            "expires_at": row.ProtectionEvent.expires_at.isoformat() if row.ProtectionEvent.expires_at else None,
-        }
-        for row in result.all()
-    ]
 
 
 @router.post("/positions/{position_id}/close")

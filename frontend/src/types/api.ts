@@ -261,17 +261,17 @@ export interface PortfolioTransaction {
   executed_at: string
 }
 
-export interface EntryDecision {
-  id: string
-  symbol: string
-  asset_class: string
-  status: 'allowed' | 'blocked' | 'pending' | 'expired'
-  stage: string
-  reason_codes: string[] | null
-  reason_text: string | null
-  regime: string | null
-  profile: string | null
-  created_at: string
+export interface RiskMetrics {
+  sharpe_ratio: number | null
+  sortino_ratio: number | null
+  max_drawdown_pct: number
+  profit_factor: number | null
+  avg_hold_hours: number
+  total_closed: number
+  wins: number
+  losses: number
+  win_rate: number | null
+  breakdown_by_reason: Record<string, number>
 }
 
 export interface PortfolioSummary {

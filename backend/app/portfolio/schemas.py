@@ -59,6 +59,19 @@ class PortfolioStatsOut(BaseModel):
     total_realized_pnl: float
 
 
+class RiskMetricsOut(BaseModel):
+    sharpe_ratio: float | None
+    sortino_ratio: float | None
+    max_drawdown_pct: float
+    profit_factor: float | None
+    avg_hold_hours: float
+    total_closed: int
+    wins: int
+    losses: int
+    win_rate: float | None
+    breakdown_by_reason: dict[str, int]
+
+
 class PortfolioSummaryOut(BaseModel):
     stats: PortfolioStatsOut
     open_positions: list[PositionOut]

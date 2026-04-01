@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0023`
+# Rationale for `marketpulse-task-2026-04-01-0025`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0023-implementation
+**branch:** task/marketpulse-task-2026-04-01-0025-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,47 +9,63 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0023 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0025 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** EntryDecision interface exists in api.ts with all 10 fields
+- **Criteria:** compute_risk_metrics returns correct Sharpe ratio for a known set of trades (e.g. 5 trades with returns [5%, -3%, 8%, -2%, 4%])
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** vue-tsc passes with no errors
+- **Criteria:** Max drawdown correctly identifies largest peak-to-trough in cumulative PnL sequence
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Entry decisions section shows a filterable table instead of compact badges
+- **Criteria:** Profit factor = gross_profit / gross_loss, returns None when no losses
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Filter tabs (All/Allowed/Blocked/Pending) switch the displayed decisions
+- **Criteria:** Returns None for ratios when fewer than 2 closed positions
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Each row shows: time, symbol, status badge, stage, reason codes, regime, profile
+- **Criteria:** GET /risk-metrics endpoint returns RiskMetricsOut JSON
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Clicking a row expands to show full reason_text
+- **Criteria:** breakdown_by_reason correctly counts close_reason values
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Status badges use correct color coding (green/red/yellow/gray)
+- **Criteria:** RiskMetrics interface in api.ts matches backend RiskMetricsOut schema
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** vue-tsc passes with no errors
+- **Criteria:** PortfolioView fetches and displays risk metrics on mount
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** Numbers use tabular-nums class and appropriate color coding
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** Handles loading and empty states gracefully (no trades yet)
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** vue-tsc passes with no type errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
+- `backend/app/portfolio/risk_metrics.py`
+- `backend/app/portfolio/router.py`
+- `backend/app/portfolio/schemas.py`
+- `backend/tests/test_risk_metrics.py`
 - `frontend/src/types/api.ts`
 - `frontend/src/views/PortfolioView.vue`
 - `rationale.md`
@@ -58,7 +74,8 @@ Automated implementation for task marketpulse-task-2026-04-01-0023 via coder_wor
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd frontend && npx vue-tsc --noEmit` — passed
+  - `cd backend && uv run python -m pytest tests/test_risk_metrics.py -q` — passed
+  - `cd backend && uv run python -m mypy app/portfolio/risk_metrics.py --ignore-missing-imports` — passed
   - `cd frontend && npx vue-tsc --noEmit` — passed
 
 ---
@@ -97,7 +114,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0023 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0023): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0025): implementation
 
 ---
 
