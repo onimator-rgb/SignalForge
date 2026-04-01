@@ -1,85 +1,91 @@
-# Rationale for `marketpulse-task-2026-04-01-0007`
+# Rationale for `marketpulse-task-2026-04-01-0009`
 
-**author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0007-implementation
-**commit_sha:** 
+**author:** coder-agent (MarketPulse Coder)
+**branch:** task/marketpulse-task-2026-04-01-0009-implementation
 **date:** 2026-04-01
-**model_calls:** 1
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_worker.py with model integration.
+Implemented generate_dca_rules() pure-logic preset for Dollar-Cost Averaging bot with comprehensive tests.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** DCAConfig dataclass is frozen with sensible defaults
+- **Criteria:** generate_dca_rules(24, 50.0, 10) returns exactly 2 rules (1 buy + 1 hold)
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_two_rules_without_bonus confirms len(rules)==2
 
-- **Criteria:** DCAConfig post-init validates lengths match max_levels and tranche_pcts sum to ~1.0
+- **Criteria:** generate_dca_rules(24, 50.0, 10, 5.0) returns exactly 3 rules (2 buy + 1 hold)
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_three_rules_with_bonus confirms len(rules)==3
 
-- **Criteria:** should_dca returns True only when drop exceeds the threshold for the current level
+- **Criteria:** Bonus buy rule has double the amount_per_buy
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_bonus_buy_has_double_amount confirms amount==100.0 for amount_per_buy=50.0
 
-- **Criteria:** should_dca returns False when all DCA levels are exhausted
+- **Criteria:** Max buys guard has action='hold' and highest weight
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_max_buys_guard confirms action='hold' and weight=10.0
 
-- **Criteria:** compute_dca_order returns correct tranche USD amount
+- **Criteria:** All rules have keys: conditions, action, weight, description, amount
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_rule_dict_keys checks all rules have exactly those keys
 
-- **Criteria:** compute_dca_order raises ValueError when levels exhausted
+- **Criteria:** Rules sorted by weight ascending
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_rules_sorted_by_weight confirms weights == sorted(weights)
 
-- **Criteria:** compute_new_avg_price returns correct weighted average
+- **Criteria:** ValueError raised for invalid params
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** 7 validation tests cover all invalid param combinations
 
-- **Criteria:** All tests pass, mypy passes with no errors
+- **Criteria:** generate_dca_rules is re-exported from presets __init__.py
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** __init__.py imports and exports via __all__
+
+- **Criteria:** All tests pass with pytest
+- **Status:** `pass`
+- **Evidence:** 16 passed in 0.07s
+
+- **Criteria:** mypy passes with no errors
+- **Status:** `pass`
+- **Evidence:** Success: no issues found in 1 source file
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/dca.py`
-- `backend/tests/test_dca.py`
-- `rationale.md`
+- `backend/app/strategies/presets/dca_bot.py` â€“ new file: generate_dca_rules() function
+- `backend/app/strategies/presets/__init__.py` â€“ re-export generate_dca_rules
+- `backend/tests/test_bot_dca.py` â€“ comprehensive test suite (16 tests)
+- `backend/app/strategies/__init__.py` â€“ empty package init for strategies module
 
 ---
 
 ## 4) Tests run & results
-- **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_dca.py -q` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/dca.py --ignore-missing-imports` — passed
+- `cd backend && uv run python -m pytest tests/test_bot_dca.py -q` â†’ 16 passed
+- `cd backend && uv run python -m mypy app/strategies/presets/dca_bot.py --ignore-missing-imports` â†’ Success
 
 ---
 
 ## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
+- Pure logic function, no external data. Test fixtures use inline values.
 
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code — **Severity:** medium — **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+- **Risk:** Low â€“ pure logic module with no external dependencies or side effects.
 
 ---
 
 ## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
+- New files only, fully backward compatible.
 
 ---
 
 ## 8) Performance considerations
-- No performance impact expected.
+- No performance impact; simple list construction and sort.
 
 ---
 
@@ -87,21 +93,21 @@ Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_wor
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
-- API key logged: `no` (only presence check)
+- API key logged: `no`
 
 ---
 
 ## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
+1. Consider adding generate_btd_rules and generate_grid_rules to __init__.py once those presets are merged.
 
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0007): implementation
+- feat(marketpulse-task-2026-04-01-0009): DCA Bot preset â€“ generate_dca_rules()
 
 ---
 
 ## 12) Final verdict (developer self-check)
 - **I confirm** that all acceptance criteria marked `pass` have test evidence attached: `yes`
 - **I confirm** no forbidden paths were modified: `yes`
-- **I request** next step: `validate`
+- **I request** next step: `approve`
