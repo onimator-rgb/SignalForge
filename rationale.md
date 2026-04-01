@@ -1,92 +1,76 @@
-# Rationale for `marketpulse-task-2026-04-01-0011`
+# Rationale for `marketpulse-task-2026-04-01-0007`
 
-**author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0011-implementation
-**commit_sha:** 
-**date:** 2026-03-31
-**model_calls:** 1
+**author:** coder-agent (MarketPulse Coder)
+**branch:** task/marketpulse-task-2026-04-01-0007-implementation
+**date:** 2026-04-01
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0011 via coder_worker.py with model integration.
+Replace flat 24h asset cooldown with variable cooldown: 48h after a loss, 12h after a profit.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** REGIME_TO_PROFILE maps risk_onâ†’aggressive, neutralâ†’balanced, risk_offâ†’conservative
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** _check_asset_cooldown queries the most recent closed position for the asset and reads its realized_pnl_usd
+- **Status:** `pass`
+- **Evidence:** Query uses `order_by(closed_at.desc()).limit(1)` and reads `realized_pnl_usd`
 
-- **Criteria:** auto_select_profile is async, calls calculate_regime, and returns correct profile+regime tuple
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** After a losing close (realized_pnl_usd < 0), re-entry is blocked for 48 hours
+- **Status:** `pass`
+- **Evidence:** test_loss_blocks_within_48h passes
 
-- **Criteria:** is_auto_switch_enabled reads from settings with False default
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** After a profitable close (realized_pnl_usd >= 0), re-entry is blocked for 12 hours
+- **Status:** `pass`
+- **Evidence:** test_profit_blocks_within_12h passes
 
-- **Criteria:** /summary endpoint includes auto_switch section with enabled, recommended_profile, reason fields
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** If no prior closed position exists for the asset, entry is allowed
+- **Status:** `pass`
+- **Evidence:** test_no_prior_closes_allows_entry passes
 
-- **Criteria:** All 6 tests pass
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** ProtectionEvent is logged with correct expires_at reflecting the variable cooldown
+- **Status:** `pass`
+- **Evidence:** test_protection_event_logged_with_correct_expiry passes
 
-- **Criteria:** Tests cover all 3 regimeâ†’profile mappings
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Tests verify auto-switch enabled/disabled behavior
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** No DB fixtures needed â€” regime calculation is mocked
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** All tests pass and mypy reports no errors
+- **Status:** `pass`
+- **Evidence:** 7 passed, mypy Success: no issues found in 1 source file
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/config.py`
-- `backend/app/strategy/profiles.py`
-- `backend/app/strategy/router.py`
-- `backend/app/strategy/service.py`
-- `backend/tests/test_auto_switch.py`
-- `rationale.md`
+- `backend/app/portfolio/protections.py` â€” variable cooldown logic, new constants, 3-tuple return
+- `backend/tests/test_buy_cooldown.py` â€” 7 unit tests covering all criteria + edge cases
+- `rationale.md` â€” this file
 
 ---
 
 ## 4) Tests run & results
-- **Commands run:**
-  - `cd backend && uv run python -m py_compile app/strategy/service.py` — passed
-  - `cd backend && uv run python -m mypy app/strategy/service.py --ignore-missing-imports` — FAILED
-  - `cd backend && uv run python -m mypy app/strategy/profiles.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/strategy/router.py --ignore-missing-imports` — FAILED
-  - `cd backend && uv run python -m pytest tests/test_auto_switch.py -q` — passed
-  - `cd backend && uv run python -m mypy tests/test_auto_switch.py --ignore-missing-imports` — FAILED
+- `cd backend && uv run python -m pytest tests/test_buy_cooldown.py -q` â†’ 7 passed
+- `cd backend && uv run python -m mypy app/portfolio/protections.py --ignore-missing-imports` â†’ Success
 
 ---
 
-## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
+## 5) Design decisions
+- 3-tuple return `(blocked, reason, cooldown_hours)` â€” minimal change, only one caller
+- Zero PnL treated as non-loss (shorter 12h cooldown)
+- Kept legacy `ASSET_COOLDOWN_HOURS` constant for backward compatibility
 
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code — **Severity:** medium — **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+- **Risk:** 2-tuple â†’ 3-tuple return signature â€” **Severity:** low â€” **Mitigation:** only one caller, updated together
 
 ---
 
 ## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
+- No DB migration needed. `ASSET_COOLDOWN_HOURS` kept but unused.
 
 ---
 
 ## 8) Performance considerations
-- No performance impact expected.
+- Changed from `count()` to `limit(1)` fetch â€” equivalent or better performance.
 
 ---
 
@@ -94,21 +78,20 @@ Automated implementation for task marketpulse-task-2026-04-01-0011 via coder_wor
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
-- API key logged: `no` (only presence check)
 
 ---
 
 ## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
+None.
 
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0011): implementation
+- feat(marketpulse-task-2026-04-01-0007): loss-aware variable buy cooldown
 
 ---
 
 ## 12) Final verdict (developer self-check)
 - **I confirm** that all acceptance criteria marked `pass` have test evidence attached: `yes`
 - **I confirm** no forbidden paths were modified: `yes`
-- **I request** next step: `validate`
+- **I request** next step: `approve`
