@@ -309,3 +309,18 @@ export interface PortfolioSummary {
   recent_closed: PortfolioPosition[]
   recent_transactions: PortfolioTransaction[]
 }
+
+export interface ProtectionEventItem {
+  id: string
+  type: string
+  status: string
+  asset_class: string | null
+  reason: string
+  triggered_at: string
+  expires_at: string | null
+}
+
+export interface ProtectionsResponse {
+  active: ProtectionEventItem[]
+  count: number
+}
