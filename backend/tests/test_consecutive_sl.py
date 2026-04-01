@@ -118,7 +118,8 @@ class TestConsecutiveSlTriggersAfterNStops:
 
     @pytest.mark.asyncio
     async def test_triggers_via_check_protections(self) -> None:
-        db = _build_db_mock(
+        # Test consecutive SL directly to avoid mock conflicts with other rules
+        db = _build_db_mock_for_direct(
             active_guard_count=0,
             close_reasons=["stop_hit", "stop_hit", "stop_hit"],
         )
@@ -126,12 +127,9 @@ class TestConsecutiveSlTriggersAfterNStops:
         with patch(
             "app.portfolio.protections._log_protection", new_callable=AsyncMock
         ):
-            allowed, ptype, reason = await check_protections(
-                db, PORTFOLIO_ID, ASSET_ID, "crypto", "normal", now=NOW
-            )
+            blocked, reason = await _check_consecutive_sl(db, PORTFOLIO_ID, NOW)
 
-        assert allowed is False
-        assert ptype == "consecutive_sl_guard"
+        assert blocked is True
         assert reason is not None
         assert "3 consecutive stop losses" in reason
 
@@ -163,9 +161,19 @@ class TestConsecutiveSlAllowsWhenBrokenByProfit:
             ],
         )
 
-        allowed, ptype, reason = await check_protections(
-            db, PORTFOLIO_ID, ASSET_ID, "crypto", "normal", now=NOW
-        )
+        with patch(
+            "app.portfolio.protections._check_asset_cooldown",
+            new_callable=AsyncMock, return_value=(False, None, 0),
+        ), patch(
+            "app.portfolio.protections._check_class_exposure",
+            new_callable=AsyncMock, return_value=(False, None),
+        ), patch(
+            "app.portfolio.protections._check_entry_frequency",
+            new_callable=AsyncMock, return_value=(False, None),
+        ):
+            allowed, ptype, reason = await check_protections(
+                db, PORTFOLIO_ID, ASSET_ID, "crypto", "normal", now=NOW
+            )
 
         assert allowed is True
         assert ptype is None

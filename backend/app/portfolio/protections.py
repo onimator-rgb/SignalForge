@@ -24,6 +24,8 @@ log = get_logger(__name__)
 # ── Config ────────────────────────────────────────
 
 ASSET_COOLDOWN_HOURS = 24
+COOLDOWN_AFTER_LOSS_HOURS = 48
+COOLDOWN_AFTER_PROFIT_HOURS = 12
 STOPLOSS_GUARD_LOOKBACK_HOURS = 12
 STOPLOSS_GUARD_MAX_LOSSES = 2
 STOPLOSS_GUARD_LOCK_HOURS = 6
@@ -51,12 +53,12 @@ async def check_protections(
     # Expire old protections
     await _expire_protections(db, now)
 
-    # A. Asset cooldown
-    blocked, reason = await _check_asset_cooldown(db, portfolio_id, asset_id, now)
+    # A. Asset cooldown (loss-aware)
+    blocked, reason, cooldown_hours = await _check_asset_cooldown(db, portfolio_id, asset_id, now)
     if blocked:
         assert reason is not None
         await _log_protection(db, "asset_cooldown", reason, asset_id=asset_id, now=now,
-                              expires=now + timedelta(hours=ASSET_COOLDOWN_HOURS))
+                              expires=now + timedelta(hours=cooldown_hours))
         return False, "asset_cooldown", reason
 
     # B. Stoploss guard
@@ -117,19 +119,31 @@ async def get_active_protections(db: AsyncSession, portfolio_id: uuid.UUID) -> l
 
 async def _check_asset_cooldown(
     db: AsyncSession, portfolio_id: uuid.UUID, asset_id: uuid.UUID, now: datetime
-) -> tuple[bool, str | None]:
-    cutoff = now - timedelta(hours=ASSET_COOLDOWN_HOURS)
+) -> tuple[bool, str | None, int]:
+    """Loss-aware cooldown: longer cooldown after a losing trade.
+    Returns (blocked, reason, cooldown_hours)."""
     result = await db.execute(
-        select(func.count()).where(
+        select(PortfolioPosition).where(
             PortfolioPosition.portfolio_id == portfolio_id,
             PortfolioPosition.asset_id == asset_id,
             PortfolioPosition.status == "closed",
-            PortfolioPosition.closed_at >= cutoff,
-        )
+            PortfolioPosition.closed_at.isnot(None),
+        ).order_by(PortfolioPosition.closed_at.desc()).limit(1)
     )
-    if result.scalar_one() > 0:
-        return True, f"Asset closed within last {ASSET_COOLDOWN_HOURS}h"
-    return False, None
+    position = result.scalars().first()
+    if position is None or position.closed_at is None:
+        return False, None, 0
+
+    cooldown_hours = (
+        COOLDOWN_AFTER_LOSS_HOURS
+        if position.realized_pnl_usd is not None and float(position.realized_pnl_usd) < 0
+        else COOLDOWN_AFTER_PROFIT_HOURS
+    )
+
+    if now - position.closed_at < timedelta(hours=cooldown_hours):
+        label = "loss" if cooldown_hours == COOLDOWN_AFTER_LOSS_HOURS else "profit"
+        return True, f"Asset closed at {label} within last {cooldown_hours}h", cooldown_hours
+    return False, None, 0
 
 
 async def _check_stoploss_guard(
