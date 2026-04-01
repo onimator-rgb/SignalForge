@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { fetchPerformance, type PerformanceMetrics } from '../api/performance'
-import { fetchPortfolio } from '../api/portfolio'
-import type { PortfolioSummary } from '../types/api'
+import { fetchPortfolio, fetchRiskMetrics } from '../api/portfolio'
+import type { PortfolioSummary, RiskMetrics } from '../types/api'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ErrorBox from '../components/ErrorBox.vue'
 
@@ -10,6 +10,8 @@ const loading = ref(true)
 const error = ref('')
 const perf = ref<PerformanceMetrics | null>(null)
 const portfolio = ref<PortfolioSummary | null>(null)
+const risk = ref<RiskMetrics | null>(null)
+const riskLoading = ref(false)
 
 async function load() {
   loading.value = true
@@ -23,6 +25,14 @@ async function load() {
   } finally {
     loading.value = false
   }
+  try {
+    riskLoading.value = true
+    risk.value = await fetchRiskMetrics()
+  } catch {
+    // risk metrics failure should not break the page
+  } finally {
+    riskLoading.value = false
+  }
 }
 
 onMounted(load)
@@ -35,6 +45,27 @@ function fmtPct(val: number | null): string {
 function pctClass(val: number | null): string {
   if (val === null) return 'text-gray-500'
   return val >= 0 ? 'text-green-400' : 'text-red-400'
+}
+
+function sharpeColor(val: number | null): string {
+  if (val === null) return 'text-gray-500'
+  if (val >= 1.0) return 'text-green-400'
+  if (val >= 0.5) return 'text-yellow-400'
+  return 'text-red-400'
+}
+
+function profitFactorColor(val: number | null): string {
+  if (val === null) return 'text-gray-500'
+  if (val >= 1.5) return 'text-green-400'
+  if (val >= 1.0) return 'text-yellow-400'
+  return 'text-red-400'
+}
+
+function reasonColor(reason: string): string {
+  if (reason === 'stop_loss') return 'bg-red-900/60 text-red-300'
+  if (reason === 'take_profit') return 'bg-green-900/60 text-green-300'
+  if (reason === 'max_hold') return 'bg-blue-900/60 text-blue-300'
+  return 'bg-gray-800 text-gray-400'
 }
 
 const typeLabels: Record<string, string> = {
@@ -200,6 +231,91 @@ const typeLabels: Record<string, string> = {
             </tbody>
           </table>
         </div>
+      </div>
+
+      <!-- Risk Metrics section -->
+      <div class="mb-6">
+        <h2 class="text-lg font-bold mb-3">Risk Metrics</h2>
+        <div v-if="riskLoading" class="text-gray-500 text-sm">Loading risk metrics…</div>
+        <div v-else-if="!risk || risk.total_closed === 0" class="bg-gray-900 border border-gray-800 rounded-lg p-6 text-center text-gray-500 text-sm">
+          No risk data yet
+        </div>
+        <template v-else>
+          <!-- 4-card grid -->
+          <div class="grid grid-cols-4 gap-3 mb-3">
+            <div class="bg-gray-900 border border-gray-800 rounded-lg p-3">
+              <div class="text-xs text-gray-500 uppercase">Sharpe</div>
+              <div class="text-lg font-bold mt-1 tabular-nums" :class="sharpeColor(risk.sharpe_ratio)">
+                {{ risk.sharpe_ratio !== null ? risk.sharpe_ratio.toFixed(2) : '--' }}
+              </div>
+            </div>
+            <div class="bg-gray-900 border border-gray-800 rounded-lg p-3">
+              <div class="text-xs text-gray-500 uppercase">Max Drawdown</div>
+              <div class="text-lg font-bold mt-1 tabular-nums text-red-400">
+                {{ risk.max_drawdown_pct !== null ? '-' + risk.max_drawdown_pct.toFixed(2) + '%' : '--' }}
+              </div>
+            </div>
+            <div class="bg-gray-900 border border-gray-800 rounded-lg p-3">
+              <div class="text-xs text-gray-500 uppercase">Profit Factor</div>
+              <div class="text-lg font-bold mt-1 tabular-nums" :class="profitFactorColor(risk.profit_factor)">
+                {{ risk.profit_factor !== null ? risk.profit_factor.toFixed(2) : '--' }}
+              </div>
+            </div>
+            <div class="bg-gray-900 border border-gray-800 rounded-lg p-3">
+              <div class="text-xs text-gray-500 uppercase">Win Rate</div>
+              <div class="text-lg font-bold mt-1 tabular-nums" :class="risk.win_rate !== null && risk.win_rate >= 50 ? 'text-green-400' : 'text-red-400'">
+                {{ risk.win_rate !== null ? risk.win_rate.toFixed(1) + '%' : '--' }}
+              </div>
+              <div class="text-xs text-gray-500 mt-0.5">{{ risk.wins }}W / {{ risk.losses }}L</div>
+            </div>
+          </div>
+
+          <!-- 2-column detail row -->
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div class="bg-gray-900 border border-gray-800 rounded-lg p-3 flex items-center gap-4">
+              <div>
+                <div class="text-xs text-gray-500 uppercase">Sortino</div>
+                <div class="text-sm font-bold tabular-nums" :class="sharpeColor(risk.sortino_ratio)">
+                  {{ risk.sortino_ratio !== null ? risk.sortino_ratio.toFixed(2) : '--' }}
+                </div>
+              </div>
+              <div>
+                <div class="text-xs text-gray-500 uppercase">Avg Hold</div>
+                <div class="text-sm font-bold tabular-nums text-gray-300">{{ risk.avg_hold_hours.toFixed(1) }}h</div>
+              </div>
+            </div>
+            <div class="bg-gray-900 border border-gray-800 rounded-lg p-3 flex items-center gap-4">
+              <div>
+                <div class="text-xs text-gray-500 uppercase">Avg Win</div>
+                <div class="text-sm font-bold tabular-nums text-green-400">{{ risk.avg_win_pct !== null ? '+' + risk.avg_win_pct.toFixed(2) + '%' : '--' }}</div>
+              </div>
+              <div>
+                <div class="text-xs text-gray-500 uppercase">Avg Loss</div>
+                <div class="text-sm font-bold tabular-nums text-red-400">{{ risk.avg_loss_pct !== null ? risk.avg_loss_pct.toFixed(2) + '%' : '--' }}</div>
+              </div>
+              <div>
+                <div class="text-xs text-gray-500 uppercase">Best</div>
+                <div class="text-sm font-bold tabular-nums text-green-400">{{ risk.best_trade_pct !== null ? '+' + risk.best_trade_pct.toFixed(2) + '%' : '--' }}</div>
+              </div>
+              <div>
+                <div class="text-xs text-gray-500 uppercase">Worst</div>
+                <div class="text-sm font-bold tabular-nums text-red-400">{{ risk.worst_trade_pct !== null ? risk.worst_trade_pct.toFixed(2) + '%' : '--' }}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Close reason breakdown -->
+          <div v-if="Object.keys(risk.breakdown_by_reason).length > 0" class="flex flex-wrap gap-2">
+            <span
+              v-for="(count, reason) in risk.breakdown_by_reason"
+              :key="reason"
+              class="px-2 py-1 rounded text-xs font-medium tabular-nums"
+              :class="reasonColor(String(reason))"
+            >
+              {{ reason }}: {{ count }}
+            </span>
+          </div>
+        </template>
       </div>
 
       <!-- Portfolio section -->
