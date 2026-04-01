@@ -6,15 +6,15 @@ import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.indicators.calculators.adx import ADXResult, calc_adx
+from app.indicators.calculators.adx import calc_adx
 from app.indicators.calculators.bollinger import BollingerResult, calc_bollinger
 from app.indicators.calculators.macd import MACDResult, calc_macd
 from app.indicators.calculators.mfi import calc_mfi
-from app.indicators.calculators.obv import calc_obv
 from app.indicators.calculators.rsi import calc_rsi
 from app.indicators.calculators.stochrsi import calc_stochrsi
+from app.indicators.calculators.squeeze import KeltnerResult, calc_keltner
 from app.indicators.calculators.vwap import calc_vwap
-from app.indicators.schemas import ADXOut, BollingerOut, IndicatorSnapshot, MACDOut
+from app.indicators.schemas import BollingerOut, IndicatorSnapshot, KeltnerOut, MACDOut
 from app.logging_config import get_logger
 from app.market_data.models import PriceBar
 
@@ -68,7 +68,7 @@ async def get_indicators(
     mfi_val = calc_mfi(highs, lows, closes, volumes, period=14)
     stochrsi_res = calc_stochrsi(closes)
     vwap_res = calc_vwap(highs, lows, closes, volumes)
-    obv_val = calc_obv(closes, volumes)
+    kc_res = calc_keltner(closes, highs, lows, ema_period=20, atr_period=10, atr_mult=1.5)
 
     log.debug(
         "indicators_calc_done",
@@ -78,10 +78,10 @@ async def get_indicators(
         has_macd=macd_res is not None,
         has_bb=bb_res is not None,
         has_adx=adx_res is not None,
-        mfi=mfi_val.mfi if mfi_val else None,
+        mfi=mfi_val,
         has_stochrsi=stochrsi_res is not None,
         has_vwap=vwap_res is not None,
-        obv=obv_val,
+        has_keltner=kc_res is not None,
     )
 
     return IndicatorSnapshot(
@@ -93,15 +93,14 @@ async def get_indicators(
         rsi_14=rsi_val,
         macd=_macd_to_out(macd_res),
         bollinger=_bb_to_out(bb_res),
-        adx=_adx_to_out(adx_res),
         adx_14=adx_res.adx if adx_res else None,
         plus_di=adx_res.plus_di if adx_res else None,
         minus_di=adx_res.minus_di if adx_res else None,
-        mfi=mfi_val.mfi if mfi_val else None,
+        mfi_14=mfi_val,
         stoch_rsi_k=stochrsi_res.k if stochrsi_res else None,
         stoch_rsi_d=stochrsi_res.d if stochrsi_res else None,
         vwap=vwap_res.vwap if vwap_res else None,
-        obv=obv_val,
+        keltner=_kc_to_out(kc_res),
         bars_available=len(bars),
     )
 
@@ -141,7 +140,7 @@ def _bb_to_out(res: BollingerResult | None) -> BollingerOut | None:
     return BollingerOut(upper=res.upper, middle=res.middle, lower=res.lower, width=res.width)
 
 
-def _adx_to_out(res: ADXResult | None) -> ADXOut | None:
+def _kc_to_out(res: KeltnerResult | None) -> KeltnerOut | None:
     if res is None:
         return None
-    return ADXOut(adx=res.adx, plus_di=res.plus_di, minus_di=res.minus_di)
+    return KeltnerOut(upper=res.upper, middle=res.middle, lower=res.lower)

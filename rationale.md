@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0033`
+# Rationale for `marketpulse-task-2026-04-01-0035`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0033-implementation
+**branch:** task/marketpulse-task-2026-04-01-0035-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,76 +9,56 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0033 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0035 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** calc_mfi returns MFIResult with mfi float in [0, 100]
+- **Criteria:** KeltnerOut model has upper, middle, lower float fields
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Returns None when len(closes) < period + 1
+- **Criteria:** IndicatorSnapshot has keltner: KeltnerOut | None = None field
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** MFIResult is a frozen dataclass
+- **Criteria:** get_indicators() computes Keltner and includes it in the returned snapshot
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Handles zero negative money flow (returns 100.0)
+- **Criteria:** mypy passes on both files
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** calc_mfi and MFIResult are exported from calculators/__init__.py
+- **Criteria:** All 6 tests pass
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** IndicatorSnapshot has mfi: float | None = None field
+- **Criteria:** Tests cover insufficient data, valid output structure, channel width properties, and module exports
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** get_indicators() computes MFI and includes it in the returned snapshot
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** mypy passes with no errors on both files
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** All tests pass
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** At least 6 test functions covering edge cases and typical scenarios
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** mypy passes on test file
+- **Criteria:** mypy passes on the test file
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/indicators/calculators/__init__.py`
-- `backend/app/indicators/calculators/mfi.py`
 - `backend/app/indicators/schemas.py`
 - `backend/app/indicators/service.py`
-- `backend/tests/test_mfi.py`
+- `backend/tests/test_keltner.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -c "from app.indicators.calculators.mfi import calc_mfi, MFIResult; print('import ok')"` — passed
-  - `cd backend && uv run python -m mypy app/indicators/calculators/mfi.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` — passed
   - `cd backend && uv run python -m mypy app/indicators/schemas.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m pytest tests/test_mfi.py -q` — passed
-  - `cd backend && uv run python -m mypy tests/test_mfi.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_keltner.py -q` — passed
+  - `cd backend && uv run python -m mypy tests/test_keltner.py --ignore-missing-imports` — passed
 
 ---
 
@@ -116,7 +96,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0033 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0033): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0035): implementation
 
 ---
 

@@ -19,6 +19,12 @@ class BollingerOut(BaseModel):
     width: float
 
 
+class KeltnerOut(BaseModel):
+    upper: float
+    middle: float
+    lower: float
+
+
 class IndicatorSnapshot(BaseModel):
     asset_id: UUID
     asset_symbol: str
@@ -35,4 +41,6 @@ class IndicatorSnapshot(BaseModel):
     stoch_rsi_d: float | None = None
     mfi: float | None = None
     vwap: float | None = None
+    mfi_14: float | None = None
+    keltner: KeltnerOut | None = None
     bars_available: int  # how many bars were used
