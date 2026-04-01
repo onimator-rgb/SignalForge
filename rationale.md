@@ -1,83 +1,91 @@
-# Rationale for `marketpulse-task-2026-04-01-0011`
+# Rationale for `marketpulse-task-2026-04-01-0015`
 
-**author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0011-implementation
-**commit_sha:** 
+**author:** coder-agent (MarketPulse Coder)
+**branch:** task/marketpulse-task-2026-04-01-0015-implementation
+**commit_sha:** (pending)
 **date:** 2026-04-01
 **model_calls:** 1
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0011 via coder_worker.py with model integration.
+Added REST CRUD endpoints (POST, GET list, GET by id, DELETE) for custom strategies with in-memory storage and full Pydantic validation.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** GET /api/v1/strategies/presets returns 200 with a JSON list of 3 preset descriptors (grid, dca, btd)
+- **Criteria:** POST /api/v1/strategies with valid rules returns 201 with strategy id
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_create_strategy_success passes
 
-- **Criteria:** Each preset descriptor includes preset_type, display_name, description, and params array with name/type/description
+- **Criteria:** POST /api/v1/strategies with empty rules returns 422
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_create_strategy_invalid_rules_empty passes
 
-- **Criteria:** POST /api/v1/strategies/from-preset with {preset_type: 'dca', params: {interval_hours: 4, amount_per_buy: 50, max_buys: 10}} returns 200 with generated rules
+- **Criteria:** POST /api/v1/strategies with invalid rule schema returns 422
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_create_strategy_bad_rule_schema passes
 
-- **Criteria:** POST /api/v1/strategies/from-preset with unknown preset_type returns 422
+- **Criteria:** GET /api/v1/strategies returns list of all strategies with count
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_list_strategies_empty + test_list_strategies_with_items pass
 
-- **Criteria:** POST /api/v1/strategies/from-preset with invalid params (e.g. negative values) returns 422 with descriptive error
+- **Criteria:** GET /api/v1/strategies/{id} returns strategy or 404
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_get_strategy_success + test_get_strategy_not_found pass
 
-- **Criteria:** All tests pass, mypy clean
+- **Criteria:** DELETE /api/v1/strategies/{id} returns 204 or 404
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_delete_strategy_success + test_delete_strategy_not_found pass
+
+- **Criteria:** Existing /presets and /from-preset endpoints remain functional
+- **Status:** `pass`
+- **Evidence:** Existing endpoints untouched; only new routes added to same router
+
+- **Criteria:** All 9 tests pass
+- **Status:** `pass`
+- **Evidence:** `pytest tests/test_strategy_crud.py -q` -> 9 passed
+
+- **Criteria:** mypy passes on router.py and schemas.py
+- **Status:** `pass`
+- **Evidence:** `mypy app/strategies/router.py --ignore-missing-imports` -> Success; `mypy app/strategies/schemas.py --ignore-missing-imports` -> Success
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/strategies/__init__.py`
-- `backend/app/strategies/presets/__init__.py`
-- `backend/app/strategies/presets/btd.py`
-- `backend/app/strategies/presets/dca_bot.py`
-- `backend/app/strategies/presets/grid.py`
-- `backend/app/strategies/router.py`
-- `backend/app/strategies/schemas.py`
-- `backend/tests/test_presets_api.py`
-- `rationale.md`
+- `backend/app/strategies/schemas.py` -- Added CreateStrategyRequest, StrategyResponse, StrategyListResponse Pydantic models for CRUD request/response validation.
+- `backend/app/strategies/router.py` -- Added module-level _strategies_store dict and 4 CRUD endpoints (POST, GET list, GET by id, DELETE). Kept existing preset endpoints intact.
+- `backend/tests/test_strategy_crud.py` -- 9 async tests covering all CRUD operations, error cases, and store cleanup between tests.
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_presets_api.py -q` — passed
-  - `cd backend && uv run python -m mypy app/strategies/router.py app/strategies/schemas.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_strategy_crud.py -q` -> 9 passed
+  - `cd backend && uv run python -m mypy app/strategies/router.py --ignore-missing-imports` -> Success
+  - `cd backend && uv run python -m mypy app/strategies/schemas.py --ignore-missing-imports` -> Success
 
 ---
 
 ## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
+- All tests use synthetic strategy data with valid StrategyRule/StrategyCondition/StrategyAction structures.
 
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code — **Severity:** medium — **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+- **Risk:** In-memory store not persisted -> **Severity:** low -> **Mitigation:** Acceptable for MVP; future task will add DB backing.
+- **Risk:** Concurrent access to _strategies_store -> **Severity:** low -> **Mitigation:** Single-process async; no thread-safety issues.
 
 ---
 
 ## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
+- Additive changes only. Existing /presets and /from-preset routes unchanged.
 
 ---
 
 ## 8) Performance considerations
-- No performance impact expected.
+- No performance impact. Dict operations are O(1) for CRUD.
 
 ---
 
@@ -85,21 +93,22 @@ Automated implementation for task marketpulse-task-2026-04-01-0011 via coder_wor
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
-- API key logged: `no` (only presence check)
+- API key logged: `no`
 
 ---
 
 ## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
+1. Future task should persist strategies to a database.
+2. Consider adding PUT/PATCH for strategy updates.
 
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0011): implementation
+- feat(marketpulse-task-2026-04-01-0015): Strategy CRUD API with in-memory store
 
 ---
 
 ## 12) Final verdict (developer self-check)
 - **I confirm** that all acceptance criteria marked `pass` have test evidence attached: `yes`
 - **I confirm** no forbidden paths were modified: `yes`
-- **I request** next step: `validate`
+- **I request** next step: `approve`

@@ -1,20 +1,30 @@
-"""Preset strategies API — list presets and generate rules."""
+"""Strategies API — CRUD endpoints and preset helpers."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
+from pydantic import ValidationError
 
+from app.strategies.models import Strategy, StrategyRule
 from app.strategies.presets import generate_btd_rules, generate_dca_rules, generate_grid_rules
 from app.strategies.schemas import (
+    CreateStrategyRequest,
     GenerateFromPresetRequest,
     GenerateFromPresetResponse,
     PresetInfo,
     PresetParamSchema,
+    StrategyListResponse,
+    StrategyResponse,
 )
 
 router = APIRouter(prefix="/api/v1/strategies", tags=["strategies"])
+
+# ---------------------------------------------------------------------------
+# In-memory store for custom strategies
+# ---------------------------------------------------------------------------
+_strategies_store: dict[str, Strategy] = {}
 
 PRESETS_REGISTRY: dict[str, dict[str, Any]] = {
     "grid": {
@@ -94,3 +104,69 @@ async def generate_from_preset(body: GenerateFromPresetRequest) -> GenerateFromP
         rules=rules,
         num_rules=len(rules),
     )
+
+
+# ---------------------------------------------------------------------------
+# CRUD endpoints
+# ---------------------------------------------------------------------------
+
+
+def _strategy_to_response(s: Strategy) -> StrategyResponse:
+    return StrategyResponse(
+        id=s.id,
+        name=s.name,
+        description=s.description,
+        rules=[r.model_dump() for r in s.rules],
+        profile_name=s.profile_name,
+        is_preset=s.is_preset,
+        created_at=s.created_at,
+        num_rules=len(s.rules),
+    )
+
+
+@router.post("", response_model=StrategyResponse, status_code=201)
+async def create_strategy(body: CreateStrategyRequest) -> StrategyResponse:
+    """Create a custom strategy from user-supplied rules."""
+    # Validate each rule dict as a StrategyRule
+    parsed_rules: list[StrategyRule] = []
+    for idx, rule_dict in enumerate(body.rules):
+        try:
+            parsed_rules.append(StrategyRule(**rule_dict))
+        except ValidationError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid rule at index {idx}: {exc.error_count()} validation error(s)",
+            ) from exc
+
+    strategy = Strategy(
+        name=body.name,
+        description=body.description,
+        rules=parsed_rules,
+        profile_name=body.profile_name,
+    )
+    _strategies_store[strategy.id] = strategy
+    return _strategy_to_response(strategy)
+
+
+@router.get("", response_model=StrategyListResponse)
+async def list_strategies() -> StrategyListResponse:
+    """Return all custom strategies."""
+    items = [_strategy_to_response(s) for s in _strategies_store.values()]
+    return StrategyListResponse(strategies=items, count=len(items))
+
+
+@router.get("/{strategy_id}", response_model=StrategyResponse)
+async def get_strategy(strategy_id: str) -> StrategyResponse:
+    """Get a single strategy by ID."""
+    strategy = _strategies_store.get(strategy_id)
+    if strategy is None:
+        raise HTTPException(status_code=404, detail="Strategy not found")
+    return _strategy_to_response(strategy)
+
+
+@router.delete("/{strategy_id}", status_code=204)
+async def delete_strategy(strategy_id: str) -> Response:
+    """Delete a strategy by ID."""
+    if _strategies_store.pop(strategy_id, None) is None:
+        raise HTTPException(status_code=404, detail="Strategy not found")
+    return Response(status_code=204)
