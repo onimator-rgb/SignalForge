@@ -49,6 +49,30 @@ def test_adx_range() -> None:
     assert 0 <= result.minus_di <= 100
 
 
+def test_adx_strong_downtrend() -> None:
+    """Steadily falling prices should produce ADX > 25 and -DI > +DI."""
+    n = 80
+    highs = pd.Series([500.0 - i * 2.0 + 1.0 for i in range(n)])
+    lows = pd.Series([500.0 - i * 2.0 - 1.0 for i in range(n)])
+    closes = pd.Series([500.0 - i * 2.0 for i in range(n)])
+
+    result = calc_adx(highs, lows, closes, period=14)
+    assert result is not None
+    assert result.adx > 25, f"Expected ADX > 25 for downtrend, got {result.adx}"
+    assert result.minus_di > result.plus_di, (
+        f"Expected -DI > +DI for downtrend, got +DI={result.plus_di}, -DI={result.minus_di}"
+    )
+
+
+def test_adx_exported_from_init() -> None:
+    """ADXResult and calc_adx should be importable from calculators __init__."""
+    from app.indicators.calculators import ADXResult as ADXResult2
+    from app.indicators.calculators import calc_adx as calc_adx2
+
+    assert ADXResult2 is ADXResult
+    assert calc_adx2 is calc_adx
+
+
 def test_adx_sideways_market() -> None:
     """Flat/oscillating prices should produce ADX < 25."""
     import random

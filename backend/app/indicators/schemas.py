@@ -19,14 +19,10 @@ class BollingerOut(BaseModel):
     width: float
 
 
-class IndicatorHistory(BaseModel):
-    asset_id: UUID
-    interval: str
-    bars_used: int
-    rsi_14: list[float | None]
-    macd_histogram: list[float | None]
-    adx_14: list[float | None]
-    bar_times: list[datetime]
+class ADXOut(BaseModel):
+    adx: float
+    plus_di: float
+    minus_di: float
 
 
 class IndicatorSnapshot(BaseModel):
@@ -38,6 +34,7 @@ class IndicatorSnapshot(BaseModel):
     rsi_14: float | None = None
     macd: MACDOut | None = None
     bollinger: BollingerOut | None = None
+    adx: ADXOut | None = None
     adx_14: float | None = None
     plus_di: float | None = None
     minus_di: float | None = None

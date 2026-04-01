@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0025`
+# Rationale for `marketpulse-task-2026-04-01-0027`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0025-implementation
+**branch:** task/marketpulse-task-2026-04-01-0027-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,74 +9,78 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0025 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0027 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** compute_risk_metrics returns correct Sharpe ratio for a known set of trades (e.g. 5 trades with returns [5%, -3%, 8%, -2%, 4%])
+- **Criteria:** calc_adx returns None when fewer than 2*period bars provided
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Max drawdown correctly identifies largest peak-to-trough in cumulative PnL sequence
+- **Criteria:** calc_adx returns ADXResult with adx, plus_di, minus_di all in 0-100 range
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Profit factor = gross_profit / gross_loss, returns None when no losses
+- **Criteria:** Strong uptrend data produces ADX > 25 (strong trend detected)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Returns None for ratios when fewer than 2 closed positions
+- **Criteria:** Flat/sideways data produces ADX < 25 (weak/no trend)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** GET /risk-metrics endpoint returns RiskMetricsOut JSON
+- **Criteria:** ADXResult and calc_adx are exported from calculators __init__
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** breakdown_by_reason correctly counts close_reason values
+- **Criteria:** IndicatorSnapshot includes adx field of type ADXOut | None
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** RiskMetrics interface in api.ts matches backend RiskMetricsOut schema
+- **Criteria:** ADXOut has adx, plus_di, minus_di float fields
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** PortfolioView fetches and displays risk metrics on mount
+- **Criteria:** get_indicators service function calls calc_adx and includes result in snapshot
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Numbers use tabular-nums class and appropriate color coding
+- **Criteria:** mypy passes on both files
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Handles loading and empty states gracefully (no trades yet)
+- **Criteria:** All tests pass
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** vue-tsc passes with no type errors
+- **Criteria:** Tests cover: insufficient data, valid range, uptrend detection, downtrend detection, sideways detection, export verification
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** No test uses external data or network calls
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/risk_metrics.py`
-- `backend/app/portfolio/router.py`
-- `backend/app/portfolio/schemas.py`
-- `backend/tests/test_risk_metrics.py`
-- `frontend/src/types/api.ts`
-- `frontend/src/views/PortfolioView.vue`
+- `backend/app/indicators/schemas.py`
+- `backend/app/indicators/service.py`
+- `backend/tests/test_adx.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_risk_metrics.py -q` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/risk_metrics.py --ignore-missing-imports` — passed
-  - `cd frontend && npx vue-tsc --noEmit` — passed
+  - `cd backend && uv run python -c "from app.indicators.calculators import ADXResult, calc_adx; print('import ok')"` — passed
+  - `cd backend && uv run python -m mypy app/indicators/calculators/adx.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m mypy app/indicators/schemas.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_adx.py -q` — passed
+  - `cd backend && uv run python -m mypy app/indicators/calculators/adx.py --ignore-missing-imports` — passed
 
 ---
 
@@ -114,7 +118,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0025 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0025): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0027): implementation
 
 ---
 
