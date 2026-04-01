@@ -33,6 +33,8 @@ MAX_PER_CLASS = 3  # max open positions per asset_class
 MAX_NEW_POSITIONS_PER_6H = 2
 CONSECUTIVE_SL_THRESHOLD = 3
 CONSECUTIVE_SL_LOCK_MINUTES = 120
+DAILY_DD_LIMIT_PCT = -0.05
+DAILY_DD_RULE = "daily_drawdown"
 
 
 async def check_protections(
@@ -257,6 +259,83 @@ async def _check_consecutive_sl(
         return True, reason
 
     return False, None
+
+
+# ── Daily drawdown guard ─────────────────────────
+
+
+def daily_drawdown_guard(
+    opening_equity: float,
+    current_equity: float,
+    threshold_pct: float = DAILY_DD_LIMIT_PCT,
+) -> dict | None:
+    """Pure function: check if intraday drawdown exceeds threshold.
+
+    Returns blocking dict if drawdown breached, else None.
+    """
+    if opening_equity <= 0:
+        return None
+    drawdown_pct = (current_equity - opening_equity) / opening_equity
+    if drawdown_pct <= threshold_pct:
+        return {
+            "blocked": True,
+            "rule": DAILY_DD_RULE,
+            "drawdown_pct": round(drawdown_pct, 4),
+            "threshold_pct": threshold_pct,
+            "opening_equity": opening_equity,
+            "current_equity": current_equity,
+        }
+    return None
+
+
+async def check_daily_drawdown(
+    session: AsyncSession,
+    portfolio_id: uuid.UUID,
+    opening_equity: float,
+    current_equity: float,
+    now: datetime | None = None,
+) -> bool:
+    """Check daily drawdown and create ProtectionEvent if breached.
+
+    Returns True if entries should be blocked, False otherwise.
+    """
+    now = now or datetime.now(timezone.utc)
+    start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    # Check if already blocked today
+    result = await session.execute(
+        select(func.count()).where(
+            ProtectionEvent.protection_type == DAILY_DD_RULE,
+            ProtectionEvent.status == "active",
+            ProtectionEvent.triggered_at >= start_of_day,
+        )
+    )
+    if result.scalar_one() > 0:
+        return True
+
+    guard = daily_drawdown_guard(opening_equity, current_equity)
+    if guard is None:
+        return False
+
+    end_of_day = start_of_day + timedelta(days=1)
+    event = ProtectionEvent(
+        protection_type=DAILY_DD_RULE,
+        status="active",
+        reason=(
+            f"Daily drawdown {guard['drawdown_pct']:.1%} exceeded "
+            f"{guard['threshold_pct']:.1%} limit"
+        ),
+        context_data=guard,
+        triggered_at=now,
+        expires_at=end_of_day,
+    )
+    session.add(event)
+    log.info(
+        "portfolio.protection_triggered",
+        type=DAILY_DD_RULE,
+        reason=event.reason,
+    )
+    return True
 
 
 # ── Helpers ───────────────────────────────────────

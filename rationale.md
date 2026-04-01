@@ -1,84 +1,76 @@
-# Rationale for `marketpulse-task-2026-04-01-0035`
+# Rationale for `marketpulse-task-2026-04-01-0017`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0035-implementation
-**commit_sha:** 
+**branch:** task/marketpulse-task-2026-04-01-0017-implementation
 **date:** 2026-04-01
-**model_calls:** 1
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0035 via coder_worker.py with model integration.
+Add daily drawdown circuit breaker guard to halt new entries when intraday equity drops >5%.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** KeltnerOut model has upper, middle, lower float fields
+- **Criteria:** daily_drawdown_guard() returns None when drawdown is within limit
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_no_block_when_equity_above_threshold (opening=1000, current=960 â†’ None)
 
-- **Criteria:** IndicatorSnapshot has keltner: KeltnerOut | None = None field
+- **Criteria:** daily_drawdown_guard() returns blocking dict when drawdown exceeds 5%
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_blocks_at_exact_threshold, test_blocks_below_threshold
 
-- **Criteria:** get_indicators() computes Keltner and includes it in the returned snapshot
+- **Criteria:** daily_drawdown_guard() handles edge case of zero opening equity
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_zero_opening_equity_returns_none, test_negative_opening_equity_returns_none
 
-- **Criteria:** mypy passes on both files
+- **Criteria:** check_daily_drawdown() creates ProtectionEvent when triggered
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_creates_protection_event_on_breach verifies db.add called with correct event
 
-- **Criteria:** All 6 tests pass
+- **Criteria:** check_daily_drawdown() returns True if already blocked today without creating duplicate
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_returns_true_when_already_blocked_today verifies no db.add call
 
-- **Criteria:** Tests cover insufficient data, valid output structure, channel width properties, and module exports
+- **Criteria:** Existing protections.py functions remain unchanged
 - **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** mypy passes on the test file
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** New code appended before helpers section; no existing functions modified
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/indicators/schemas.py`
-- `backend/app/indicators/service.py`
-- `backend/tests/test_keltner.py`
-- `rationale.md`
+- `backend/app/portfolio/protections.py` â€” Added DAILY_DD_LIMIT_PCT, DAILY_DD_RULE constants + daily_drawdown_guard() pure function + check_daily_drawdown() async function
+- `backend/tests/test_daily_drawdown.py` â€” 13 tests: 9 pure function, 4 async integration
+- `rationale.md` â€” Updated for this task
 
 ---
 
 ## 4) Tests run & results
-- **Commands run:**
-  - `cd backend && uv run python -m mypy app/indicators/schemas.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m pytest tests/test_keltner.py -q` — passed
-  - `cd backend && uv run python -m mypy tests/test_keltner.py --ignore-missing-imports` — passed
+- `cd backend && uv run python -m pytest tests/test_daily_drawdown.py -v` â†’ 13 passed
+- `cd backend && uv run python -m mypy app/portfolio/protections.py --ignore-missing-imports` â†’ Success, no issues
 
 ---
 
 ## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
+- Pure function tested with synthetic equity values (no DB fixtures needed)
+- Async tests use MagicMock/AsyncMock for session
 
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code — **Severity:** medium — **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+- **Risk:** integration â€” adding to existing protections.py â€” **Severity:** low â€” **Mitigation:** no existing functions modified, additive only
 
 ---
 
 ## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
+- No DB migrations needed (uses existing ProtectionEvent model)
+- New functions only, fully backward compatible
 
 ---
 
 ## 8) Performance considerations
-- No performance impact expected.
+- Single COUNT query to check existing events; no performance impact
 
 ---
 
@@ -86,21 +78,22 @@ Automated implementation for task marketpulse-task-2026-04-01-0035 via coder_wor
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
-- API key logged: `no` (only presence check)
+- API key logged: `no`
 
 ---
 
 ## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
+1. Caller integration in service.py (out of scope for this task)
+2. Optional DailyDrawdownStatus API schema if endpoint is needed
 
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0035): implementation
+- feat(marketpulse-task-2026-04-01-0017): add daily drawdown circuit breaker guard
 
 ---
 
 ## 12) Final verdict (developer self-check)
 - **I confirm** that all acceptance criteria marked `pass` have test evidence attached: `yes`
 - **I confirm** no forbidden paths were modified: `yes`
-- **I request** next step: `validate`
+- **I request** next step: `approve`
