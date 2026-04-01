@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0013`
+# Rationale for `marketpulse-task-2026-04-01-0015`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0013-implementation
+**branch:** task/marketpulse-task-2026-04-01-0015-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,93 +9,73 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0013 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0015 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** get_multi_timeframe_indicators() exists and accepts db, asset_id, asset_symbol, optional intervals list, optional lookback
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** score_mtf_confluence returns SignalScore with score in [-1.0, 1.0]
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Default intervals are ['5m', '1h', '4h', '1d'] when None passed
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** When RSI oversold on both 4h and 1d, confluence score is strongly positive (>0.5)
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Uses asyncio.gather() to call get_indicators() concurrently for each interval
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** When RSI oversold on 1h only but overbought on 4h and 1d, confluence score is negative
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Returns dict[str, IndicatorSnapshot | None] keyed by interval
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** MultiTimeframeIndicators schema has timeframes dict, asset_id, and computed_at fields
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Returns score=0.0 when mtf_indicators is None or has <2 timeframes
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** mypy passes with no errors
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** GET /{asset_id}/indicators/mtf endpoint exists on the indicators router
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** compute_recommendation accepts optional mtf_indicators parameter
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Accepts comma-separated intervals query param with default '5m,1h,4h,1d'
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Weights sum to exactly 1.00
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Validates intervals against allowed set, returns 400 for invalid intervals
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Calling without mtf_indicators produces same classification as before (backward compatible)
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Returns MultiTimeframeIndicators response model
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Calling with strong bullish MTF data increases composite score vs without
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** mypy passes with no errors
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** All 5 test functions pass
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** Tests cover: default intervals, custom intervals, None handling, concurrency, schema serialization
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** No database required â€” all tests use mocks
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** All existing tests still pass
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 - **Criteria:** mypy passes with no errors
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/indicators/router.py`
-- `backend/app/indicators/schemas.py`
-- `backend/app/indicators/service.py`
-- `backend/tests/test_mtf_indicators.py`
+- `backend/app/recommendations/scoring.py`
+- `backend/tests/test_mtf_scoring.py`
+- `backend/tests/test_stochrsi.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -c "from app.indicators.service import get_multi_timeframe_indicators; print('import ok')"` — passed
-  - `cd backend && uv run python -c "from app.indicators.schemas import MultiTimeframeIndicators; print('schema ok')"` — passed
-  - `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/indicators/schemas.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/indicators/router.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -c "from app.indicators.router import router; print('router ok')"` — passed
-  - `cd backend && uv run python -m pytest tests/test_mtf_indicators.py -q` — passed
-  - `cd backend && uv run python -m mypy tests/test_mtf_indicators.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_mtf_scoring.py -q` — passed
+  - `cd backend && uv run python -m mypy app/recommendations/scoring.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_mtf_scoring.py -q` — passed
+  - `cd backend && uv run python -m pytest tests/ -q --timeout=30` — FAILED
+  - `cd backend && uv run python -m mypy app/recommendations/scoring.py --ignore-missing-imports` — passed
 
 ---
 
@@ -133,7 +113,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0013 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0013): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0015): implementation
 
 ---
 
