@@ -2,6 +2,7 @@
 
 from app.indicators.calculators.adx import ADXResult, calc_adx
 from app.indicators.calculators.bollinger import BollingerResult, calc_bollinger
+from app.indicators.calculators.cci import calc_cci
 from app.indicators.calculators.macd import MACDResult, calc_macd
 from app.indicators.calculators.mfi import calc_mfi
 from app.indicators.calculators.obv import calc_obv
@@ -25,6 +26,7 @@ __all__ = [
     "VWAPResult",
     "calc_adx",
     "calc_bollinger",
+    "calc_cci",
     "calc_keltner",
     "calc_macd",
     "calc_mfi",
