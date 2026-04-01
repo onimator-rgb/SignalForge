@@ -97,7 +97,7 @@ async def get_indicators(
         adx_14=adx_res.adx if adx_res else None,
         plus_di=adx_res.plus_di if adx_res else None,
         minus_di=adx_res.minus_di if adx_res else None,
-        mfi_14=mfi_val,
+        mfi_14=mfi_val.mfi if mfi_val else None,
         stoch_rsi_k=stochrsi_res.k if stochrsi_res else None,
         stoch_rsi_d=stochrsi_res.d if stochrsi_res else None,
         vwap=vwap_res.vwap if vwap_res else None,
@@ -180,8 +180,8 @@ async def get_indicator_history(
         if i < 28:
             adx_series.append(None)
         else:
-            res = calc_adx(highs[: i + 1], lows[: i + 1], closes[: i + 1], period=14)
-            adx_series.append(round(res.adx, 2) if res else None)
+            adx_res_i = calc_adx(highs[: i + 1], lows[: i + 1], closes[: i + 1], period=14)
+            adx_series.append(round(adx_res_i.adx, 2) if adx_res_i else None)
 
     return IndicatorHistory(
         asset_id=asset_id,
