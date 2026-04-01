@@ -8,9 +8,11 @@ Scoring version history:
   v2: Calibrated weights + lowered candidate_buy to 63
       - MACD 0.20→0.15, volume 0.10→0.05 (weak signals)
       - volatility 0.05→0.10, price_trend 0.15→0.20 (underweighted)
+  v3: Added MTF confluence as 10th signal (weight 0.08)
+      - Redistributed weights to sum to 1.00
 """
 
-SCORING_VERSION = "v2"
+SCORING_VERSION = "v3"
 
 from dataclasses import dataclass
 
@@ -41,15 +43,23 @@ class ScoringResult:
 # ── Signal weights ──────────────────────────────
 
 WEIGHTS = {
-    "rsi": 0.15,
-    "macd": 0.15,
-    "bollinger": 0.15,
-    "price_trend": 0.15,
+    "rsi": 0.14,
+    "macd": 0.14,
+    "bollinger": 0.14,
+    "price_trend": 0.14,
     "volume": 0.05,
-    "anomaly": 0.10,
-    "volatility": 0.10,
-    "adx": 0.10,
-    "stoch_rsi": 0.05,
+    "anomaly": 0.09,
+    "volatility": 0.09,
+    "adx": 0.09,
+    "stoch_rsi": 0.04,
+    "mtf_confluence": 0.08,
+}
+
+# Timeframe weights for multi-timeframe confluence scoring
+MTF_TIMEFRAME_WEIGHTS: dict[str, float] = {
+    "1h": 0.20,
+    "4h": 0.35,
+    "1d": 0.45,
 }
 
 
@@ -243,6 +253,103 @@ def score_stochrsi(k: float | None, d: float | None) -> SignalScore:
     return SignalScore("stoch_rsi", s, WEIGHTS["stoch_rsi"], detail)
 
 
+# ── Multi-timeframe confluence ──────────────────
+
+def _rsi_direction(rsi: float | None) -> float:
+    """RSI signal direction: oversold=+1, overbought=-1, neutral=0."""
+    if rsi is None:
+        return 0.0
+    if rsi < 30:
+        return 1.0
+    if rsi > 70:
+        return -1.0
+    return 0.0
+
+
+def _macd_direction(macd: MACDOut | None) -> float:
+    """MACD signal direction: histogram>0 = +1, <0 = -1."""
+    if macd is None:
+        return 0.0
+    if macd.histogram > 0:
+        return 1.0
+    if macd.histogram < 0:
+        return -1.0
+    return 0.0
+
+
+def _bollinger_direction(bb: BollingerOut | None, close: float | None) -> float:
+    """Bollinger position: below lower=+1, above upper=-1, middle=0."""
+    if bb is None or close is None:
+        return 0.0
+    band_range = bb.upper - bb.lower
+    if band_range <= 0:
+        return 0.0
+    position = (close - bb.lower) / band_range
+    if position < 0.25:
+        return 1.0
+    if position > 0.75:
+        return -1.0
+    return 0.0
+
+
+def score_mtf_confluence(
+    mtf_indicators: dict[str, IndicatorSnapshot | None] | None,
+) -> SignalScore:
+    """Score multi-timeframe signal confluence.
+
+    Compares RSI, MACD, and Bollinger directions across 1h/4h/1d timeframes.
+    Higher timeframes receive more weight. When signals agree across
+    timeframes, the confluence score is strong; disagreement yields weak scores.
+    """
+    if mtf_indicators is None:
+        return SignalScore("mtf_confluence", 0.0, WEIGHTS["mtf_confluence"],
+                          "insufficient data")
+
+    # Filter timeframes that have data and are in our weight map
+    valid: dict[str, IndicatorSnapshot] = {}
+    for tf, snap in mtf_indicators.items():
+        if snap is not None and tf in MTF_TIMEFRAME_WEIGHTS:
+            valid[tf] = snap
+
+    if len(valid) < 2:
+        return SignalScore("mtf_confluence", 0.0, WEIGHTS["mtf_confluence"],
+                          "insufficient data")
+
+    # Compute weighted agreement for each indicator type
+    rsi_agreement = 0.0
+    macd_agreement = 0.0
+    bb_agreement = 0.0
+    total_weight = sum(MTF_TIMEFRAME_WEIGHTS[tf] for tf in valid)
+
+    per_tf_details: list[str] = []
+    for tf, snap in valid.items():
+        w = MTF_TIMEFRAME_WEIGHTS[tf]
+        r_dir = _rsi_direction(snap.rsi_14)
+        m_dir = _macd_direction(snap.macd)
+        b_dir = _bollinger_direction(snap.bollinger, snap.close)
+
+        rsi_agreement += r_dir * w
+        macd_agreement += m_dir * w
+        bb_agreement += b_dir * w
+
+        per_tf_details.append(
+            f"{tf}:RSI={r_dir:+.0f}/MACD={m_dir:+.0f}/BB={b_dir:+.0f}"
+        )
+
+    # Normalize by total weight of available timeframes
+    rsi_agreement /= total_weight
+    macd_agreement /= total_weight
+    bb_agreement /= total_weight
+
+    # Average the three indicator agreements → [-1.0, +1.0]
+    confluence = (rsi_agreement + macd_agreement + bb_agreement) / 3.0
+    confluence = max(-1.0, min(1.0, confluence))
+
+    detail = f"confluence={confluence:+.3f} ({', '.join(per_tf_details)})"
+    return SignalScore("mtf_confluence", round(confluence, 4),
+                       WEIGHTS["mtf_confluence"], detail)
+
+
 # ── Composite scoring ────────────────────────────
 
 def compute_recommendation(
@@ -257,6 +364,7 @@ def compute_recommendation(
     adx_14: float | None = None,
     plus_di: float | None = None,
     minus_di: float | None = None,
+    mtf_indicators: dict[str, IndicatorSnapshot | None] | None = None,
 ) -> ScoringResult:
     """Compute composite recommendation from all signals."""
 
@@ -287,6 +395,7 @@ def compute_recommendation(
         score_volatility(bb_width, asset_class),
         score_adx(adx_14, plus_di, minus_di),
         score_stochrsi(stoch_rsi_k, stoch_rsi_d),
+        score_mtf_confluence(mtf_indicators),
     ]
 
     # Weighted sum: range [-1.0, +1.0]
