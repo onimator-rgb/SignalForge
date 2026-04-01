@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0003`
+# Rationale for `marketpulse-task-2026-04-01-0005`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0003-implementation
+**branch:** task/marketpulse-task-2026-04-01-0005-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,47 +9,66 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0003 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0005 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** Protection events section is visible in PortfolioView (even when empty, showing 'No protection events')
+- **Criteria:** Trade dataclass is frozen with all specified fields
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Section is collapsed by default, expands on click
+- **Criteria:** simulate_trades returns empty list for empty/single price input
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Each protection event shows type, reason, and timestamps
+- **Criteria:** Stop loss triggers when price drops by stop_loss_pct from entry
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Events are color-coded by protection type (red/orange/yellow/blue/purple)
+- **Criteria:** Take profit triggers when price rises by take_profit_pct from entry
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** vue-tsc --noEmit passes with no errors
+- **Criteria:** Max hold exit triggers after max_hold_hours bars
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Existing portfolio functionality is not broken
+- **Criteria:** End of data closes any open position
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** Slippage is applied to both entry and exit prices
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** PnL and PnL% are calculated correctly including slippage
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** 1-bar cooldown between consecutive trades
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** All tests pass, mypy clean
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `frontend/src/views/PortfolioView.vue`
+- `backend/app/backtest/__init__.py`
+- `backend/app/backtest/engine.py`
+- `backend/tests/test_backtest_engine.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd frontend && npx vue-tsc --noEmit` — passed
+  - `cd backend && uv run python -m pytest tests/test_backtest_engine.py -q` — passed
+  - `cd backend && uv run python -m mypy app/backtest/engine.py --ignore-missing-imports` — passed
 
 ---
 
@@ -87,7 +106,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0003 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0003): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0005): implementation
 
 ---
 
