@@ -40,5 +40,6 @@ class IndicatorSnapshot(BaseModel):
     stoch_rsi_k: float | None = None
     stoch_rsi_d: float | None = None
     vwap: float | None = None
+    mfi_14: float | None = None
     keltner: KeltnerOut | None = None
     bars_available: int  # how many bars were used
