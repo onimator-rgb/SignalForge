@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0035`
+# Rationale for `marketpulse-task-2026-04-01-0009`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0035-implementation
+**branch:** task/marketpulse-task-2026-04-01-0009-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,64 +9,48 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0035 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0009 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** RiskMetricsResult has avg_win_pct, avg_loss_pct, best_trade_pct, worst_trade_pct fields
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** POST /api/v1/backtest/run returns 200 with BacktestResponse containing metrics and trades list
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** compute_risk_metrics returns correct values for all edge cases
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Invalid profile_name returns 400 with descriptive error
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** All existing tests still pass (no regression)
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Fewer than 2 price bars returns 404 with 'Not enough price data'
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** mypy passes with no errors
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** All response fields match BacktestResult dataclass fields plus trades list
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** RiskMetrics TypeScript interface includes all four new fields
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Router is registered in main.py
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** PortfolioView displays avg win, avg loss, best trade, worst trade in the metrics grid
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** Values are color-coded: green for positive, red for negative
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** Null values show '--' gracefully
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** vue-tsc passes with no type errors
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** All tests pass, mypy clean
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/risk_metrics.py`
-- `backend/tests/test_risk_dashboard_metrics.py`
-- `frontend/src/types/api.ts`
-- `frontend/src/views/PortfolioView.vue`
-- `rationale.md`
+
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_risk_dashboard_metrics.py -q` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/risk_metrics.py --ignore-missing-imports` — passed
-  - `cd frontend && npx vue-tsc --noEmit` — passed
+  - `model_call` — FAILED
+  - `cd backend && uv run python -m pytest tests/test_backtest_api.py -q` — FAILED
+  - `cd backend && uv run python -m mypy app/backtest/router.py app/backtest/schemas.py --ignore-missing-imports` — FAILED
 
 ---
 
@@ -104,7 +88,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0035 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0035): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0009): implementation
 
 ---
 
