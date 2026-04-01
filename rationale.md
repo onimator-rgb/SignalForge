@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0001`
+# Rationale for `marketpulse-task-2026-04-01-0005`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0001-implementation
+**branch:** task/marketpulse-task-2026-04-01-0005-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,41 +9,57 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0001 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0005 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** RiskMetricsResult dataclass has avg_win_pct, avg_loss_pct, best_trade_pct, worst_trade_pct fields
+- **Criteria:** _compute_daily_returns groups positions by closed_at date and returns per-day summed returns
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** RiskMetricsOut schema has matching 4 new Optional[float] fields
+- **Criteria:** Sharpe uses sqrt(252) not sqrt(365)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** All existing test_risk_metrics.py tests still pass without modification
+- **Criteria:** Sharpe subtracts daily risk_free_rate from mean daily return
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** mypy passes on both modified files
+- **Criteria:** Sharpe requires >= 2 distinct trading days, returns None otherwise
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** All new tests pass
+- **Criteria:** compute_risk_metrics accepts optional risk_free_rate parameter defaulting to 0.0
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** All existing risk metrics tests still pass
+- **Criteria:** Existing Sortino, max_drawdown, profit_factor calculations remain unchanged
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** At least 12 test cases covering avg_win_pct, avg_loss_pct, best_trade_pct, worst_trade_pct
+- **Criteria:** Existing test_risk_metrics.py tests still pass (update expected Sharpe values if needed due to formula change)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Edge cases covered: empty list, all wins, all losses, single trade, breakeven trade
+- **Criteria:** All tests in test_sharpe.py pass
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** All tests in test_risk_metrics.py pass with updated expectations
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** test_sharpe_known_values verifies exact Sharpe value within 0.001 tolerance
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** test_sharpe_with_risk_free_rate confirms rf > 0 lowers Sharpe
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** Edge cases (single day, empty, None closed_at) all return Sharpe=None
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
@@ -51,19 +67,18 @@ Automated implementation for task marketpulse-task-2026-04-01-0001 via coder_wor
 
 ## 3) Files changed (and rationale per file)
 - `backend/app/portfolio/risk_metrics.py`
-- `backend/app/portfolio/schemas.py`
-- `backend/tests/test_profit_factor.py`
+- `backend/tests/test_risk_metrics.py`
+- `backend/tests/test_sharpe.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
+  - `cd backend && uv run python -m pytest tests/test_sharpe.py -q` — passed
   - `cd backend && uv run python -m pytest tests/test_risk_metrics.py -q` — passed
   - `cd backend && uv run python -m mypy app/portfolio/risk_metrics.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/schemas.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m pytest tests/test_profit_factor.py -q -v` — passed
-  - `cd backend && uv run python -m pytest tests/test_risk_metrics.py -q` — passed
+  - `cd backend && uv run python -m pytest tests/test_sharpe.py tests/test_risk_metrics.py -q -v` — passed
 
 ---
 
@@ -101,7 +116,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0001 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0001): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0005): implementation
 
 ---
 
