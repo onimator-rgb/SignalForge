@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0001`
+# Rationale for `marketpulse-task-2026-04-01-0003`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0001-implementation
+**branch:** task/marketpulse-task-2026-04-01-0003-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,51 +9,66 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0001 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0003 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** POST /api/v1/backtest/run with valid asset_id returns 200 with BacktestResponse including total_return, sharpe_ratio, win_rate, trades list
+- **Criteria:** frontend/src/views/BacktestView.vue exists with <script setup lang="ts"> and uses Composition API
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Request with asset_id having < 2 price bars returns 404 with 'Not enough price data'
+- **Criteria:** frontend/src/api/backtest.ts exports runBacktest() that POSTs to /backtest/run
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Request with invalid profile_name returns 400 with 'Unknown profile'
+- **Criteria:** Asset dropdown populates from /assets API on mount
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** All trades in response have entry_index, exit_index, entry_price, exit_price, pnl, pnl_pct, exit_reason fields
+- **Criteria:** Form has asset select, lookback days input, profile select (balanced/aggressive/conservative), and Run button
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** pytest passes with all tests green
+- **Criteria:** Results section shows metrics grid: total_return_pct, max_drawdown_pct, sharpe_ratio, win_rate, profit_factor, total_trades
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** mypy passes with no errors
+- **Criteria:** Trade table displays entry_price, exit_price, pnl_pct (color-coded green/red), exit_reason
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** Route /backtest added to router/index.ts
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** Nav item 'Backtest' added to AppLayout.vue navItems array
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** vue-tsc --noEmit passes with no type errors
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** Dark theme styling consistent with existing views (bg-gray-800 cards, bg-gray-900 page, text-gray-300)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/backtest/router.py`
-- `backend/app/backtest/schemas.py`
-- `backend/app/main.py`
-- `backend/tests/test_backtest_api.py`
+- `frontend/src/api/backtest.ts`
+- `frontend/src/components/AppLayout.vue`
+- `frontend/src/router/index.ts`
+- `frontend/src/views/BacktestView.vue`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_backtest_api.py -q` — passed
-  - `cd backend && uv run python -m mypy app/backtest/router.py app/backtest/schemas.py --ignore-missing-imports` — passed
+  - `cd frontend && npx vue-tsc --noEmit` — passed
 
 ---
 
@@ -91,7 +106,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0001 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0001): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0003): implementation
 
 ---
 
