@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0015`
+# Rationale for `marketpulse-task-2026-04-01-0017`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0015-implementation
+**branch:** task/marketpulse-task-2026-04-01-0017-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,73 +9,67 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0015 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0017 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** score_mtf_confluence returns SignalScore with score in [-1.0, 1.0]
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** daily_drawdown_guard() returns None when drawdown is within limit
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** When RSI oversold on both 4h and 1d, confluence score is strongly positive (>0.5)
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** daily_drawdown_guard() returns blocking dict when drawdown exceeds 5%
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** When RSI oversold on 1h only but overbought on 4h and 1d, confluence score is negative
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** daily_drawdown_guard() handles edge case of zero opening equity
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** Returns score=0.0 when mtf_indicators is None or has <2 timeframes
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** check_daily_drawdown() creates ProtectionEvent when triggered
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** mypy passes with no errors
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** check_daily_drawdown() returns True if already blocked today without creating duplicate event
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** compute_recommendation accepts optional mtf_indicators parameter
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Existing protections.py functions remain unchanged
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** Weights sum to exactly 1.00
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** All tests pass with pytest
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** Calling without mtf_indicators produces same classification as before (backward compatible)
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** At least 7 test cases covering normal, edge, and async paths
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** Calling with strong bullish MTF data increases composite score vs without
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Tests use MagicMock/AsyncMock, no real database required
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** All existing tests still pass
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** mypy passes with no errors
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Tests verify both return values and side effects (ProtectionEvent creation)
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/recommendations/scoring.py`
-- `backend/tests/test_mtf_scoring.py`
-- `backend/tests/test_stochrsi.py`
+- `backend/app/portfolio/protections.py`
+- `backend/tests/test_daily_drawdown.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_mtf_scoring.py -q` — passed
-  - `cd backend && uv run python -m mypy app/recommendations/scoring.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m pytest tests/test_mtf_scoring.py -q` — passed
-  - `cd backend && uv run python -m pytest tests/ -q --timeout=30` — FAILED
-  - `cd backend && uv run python -m mypy app/recommendations/scoring.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_daily_drawdown.py -q` — passed
+  - `cd backend && uv run python -m mypy app/portfolio/protections.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_daily_drawdown.py -v` — passed
+  - `cd backend && uv run python -m mypy app/portfolio/protections.py --ignore-missing-imports` — passed
 
 ---
 
@@ -113,7 +107,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0015 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0015): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0017): implementation
 
 ---
 
