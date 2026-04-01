@@ -25,6 +25,16 @@ class KeltnerOut(BaseModel):
     lower: float
 
 
+class IndicatorHistory(BaseModel):
+    asset_id: UUID
+    interval: str
+    bars_used: int
+    rsi_14: list[float | None]
+    macd_histogram: list[float | None]
+    adx_14: list[float | None]
+    bar_times: list[datetime]
+
+
 class IndicatorSnapshot(BaseModel):
     asset_id: UUID
     asset_symbol: str
