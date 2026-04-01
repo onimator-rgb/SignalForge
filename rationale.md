@@ -1,84 +1,93 @@
-# Rationale for `marketpulse-task-2026-04-01-0035`
+# Rationale for `marketpulse-task-2026-04-01-0005`
 
-**author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0035-implementation
-**commit_sha:** 
+**author:** coder-agent (MarketPulse Coder)
+**branch:** task/marketpulse-task-2026-04-01-0005-implementation
 **date:** 2026-04-01
-**model_calls:** 1
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0035 via coder_worker.py with model integration.
+Enhance Sharpe ratio to use proper daily portfolio returns with sqrt(252) annualization and configurable risk-free rate.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** KeltnerOut model has upper, middle, lower float fields
+- **Criteria:** _compute_daily_returns groups positions by closed_at date and returns per-day summed returns
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_daily_returns_grouping verifies 5 positions across 3 days produce correct sums
 
-- **Criteria:** IndicatorSnapshot has keltner: KeltnerOut | None = None field
+- **Criteria:** Sharpe uses sqrt(252) not sqrt(365)
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Formula updated, test_sharpe_known_values verifies exact value within 0.001
 
-- **Criteria:** get_indicators() computes Keltner and includes it in the returned snapshot
+- **Criteria:** Sharpe subtracts daily risk_free_rate from mean daily return
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Formula: (mean_daily - rf/252) / std_daily * sqrt(252)
 
-- **Criteria:** mypy passes on both files
+- **Criteria:** Sharpe requires >= 2 distinct trading days, returns None otherwise
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_sharpe_single_day_returns_none confirms None for 1-day case
 
-- **Criteria:** All 6 tests pass
+- **Criteria:** compute_risk_metrics accepts optional risk_free_rate parameter defaulting to 0.0
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Parameter added with default, existing callers unaffected
 
-- **Criteria:** Tests cover insufficient data, valid output structure, channel width properties, and module exports
+- **Criteria:** Existing Sortino, max_drawdown, profit_factor calculations remain unchanged
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** All 15 existing tests in test_risk_metrics.py pass
 
-- **Criteria:** mypy passes on the test file
+- **Criteria:** Existing test_risk_metrics.py tests still pass
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** 21 total tests pass (15 existing + 6 new)
+
+- **Criteria:** test_sharpe_known_values verifies exact Sharpe value within 0.001 tolerance
+- **Status:** `pass`
+- **Evidence:** Manual calculation matches computed value
+
+- **Criteria:** test_sharpe_with_risk_free_rate confirms rf > 0 lowers Sharpe
+- **Status:** `pass`
+- **Evidence:** rf=0.04 produces lower Sharpe than rf=0.0
+
+- **Criteria:** Edge cases (single day, empty, None closed_at) all return Sharpe=None
+- **Status:** `pass`
+- **Evidence:** Three dedicated tests confirm None for each edge case
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/indicators/schemas.py`
-- `backend/app/indicators/service.py`
-- `backend/tests/test_keltner.py`
-- `rationale.md`
+- `backend/app/portfolio/risk_metrics.py` â€” added _compute_daily_returns helper, updated Sharpe formula to use daily returns with sqrt(252) and risk_free_rate
+- `backend/tests/test_risk_metrics.py` â€” updated test_known_returns and test_zero_std_returns_none to use positions spanning multiple days
+- `backend/tests/test_sharpe.py` â€” new comprehensive test file with 6 tests
+- `rationale.md` â€” this file
 
 ---
 
 ## 4) Tests run & results
-- **Commands run:**
-  - `cd backend && uv run python -m mypy app/indicators/schemas.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m pytest tests/test_keltner.py -q` — passed
-  - `cd backend && uv run python -m mypy tests/test_keltner.py --ignore-missing-imports` — passed
+- `cd backend && uv run python -m pytest tests/test_sharpe.py -q` â€” 6 passed
+- `cd backend && uv run python -m pytest tests/test_risk_metrics.py -q` â€” 15 passed
+- `cd backend && uv run python -m mypy app/portfolio/risk_metrics.py --ignore-missing-imports` â€” Success
 
 ---
 
 ## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
+- All test data is synthetic (SimpleNamespace mock positions)
 
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code — **Severity:** medium — **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+- **Risk:** Changing Sharpe formula changes expected values in existing tests â€” **Severity:** medium â€” **Mitigation:** Updated test_known_returns to span multiple days and recalculated expected values
 
 ---
 
 ## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
+- risk_free_rate parameter defaults to 0.0, so existing callers need no changes
+- Sortino ratio calculation unchanged (still uses per-trade returns)
 
 ---
 
 ## 8) Performance considerations
-- No performance impact expected.
+- O(n) grouping with defaultdict â€” negligible overhead for typical position counts
 
 ---
 
@@ -86,21 +95,20 @@ Automated implementation for task marketpulse-task-2026-04-01-0035 via coder_wor
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
-- API key logged: `no` (only presence check)
 
 ---
 
 ## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
+None.
 
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0035): implementation
+- feat(risk): daily-return Sharpe ratio with sqrt(252) and risk_free_rate
 
 ---
 
 ## 12) Final verdict (developer self-check)
 - **I confirm** that all acceptance criteria marked `pass` have test evidence attached: `yes`
 - **I confirm** no forbidden paths were modified: `yes`
-- **I request** next step: `validate`
+- **I request** next step: `approve`

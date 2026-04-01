@@ -61,26 +61,37 @@ class TestSharpeRatio:
     """Tests for Sharpe ratio calculation."""
 
     def test_known_returns(self) -> None:
-        """5 trades with returns [5%, -3%, 8%, -2%, 4%]."""
+        """5 trades on 5 different days with returns [5%, -3%, 8%, -2%, 4%]."""
+        base = datetime(2026, 1, 1, 12, 0)
         returns_pct = [5.0, -3.0, 8.0, -2.0, 4.0]
         positions = [
-            _pos(pnl_pct=r, pnl_usd=r * 10) for r in returns_pct
+            _pos(
+                pnl_pct=r,
+                pnl_usd=r * 10,
+                opened_at=base,
+                closed_at=base + timedelta(days=i + 1),
+            )
+            for i, r in enumerate(returns_pct)
         ]
         result = compute_risk_metrics(positions)
 
-        # Manual: mean=0.024, std(sample)=0.04527..., sharpe=0.024/0.04527*sqrt(365)
-        returns = [r / 100 for r in returns_pct]
-        mean_r = sum(returns) / len(returns)
-        var_r = sum((x - mean_r) ** 2 for x in returns) / (len(returns) - 1)
-        std_r = math.sqrt(var_r)
-        expected_sharpe = (mean_r / std_r) * math.sqrt(365)
+        # Daily returns (one trade per day): [0.05, -0.03, 0.08, -0.02, 0.04]
+        daily = [r / 100 for r in returns_pct]
+        mean_d = sum(daily) / len(daily)
+        var_d = sum((x - mean_d) ** 2 for x in daily) / (len(daily) - 1)
+        std_d = math.sqrt(var_d)
+        expected_sharpe = (mean_d - 0.0 / 252) / std_d * math.sqrt(252)
 
         assert result.sharpe_ratio is not None
         assert abs(result.sharpe_ratio - round(expected_sharpe, 4)) < 0.001
 
     def test_zero_std_returns_none(self) -> None:
-        """If all returns are identical, std=0 -> Sharpe is None."""
-        positions = [_pos(pnl_pct=3.0, pnl_usd=30.0) for _ in range(3)]
+        """If all daily returns are identical, std=0 -> Sharpe is None."""
+        base = datetime(2026, 1, 1, 12, 0)
+        positions = [
+            _pos(pnl_pct=3.0, pnl_usd=30.0, closed_at=base + timedelta(days=i + 1))
+            for i in range(3)
+        ]
         result = compute_risk_metrics(positions)
         assert result.sharpe_ratio is None
 

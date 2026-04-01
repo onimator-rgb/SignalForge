@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import math
+from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 
 
 @dataclass
@@ -23,7 +24,26 @@ class RiskMetricsResult:
     breakdown_by_reason: dict[str, int] = field(default_factory=dict)
 
 
-def compute_risk_metrics(positions: list[object]) -> RiskMetricsResult:
+def _compute_daily_returns(positions: list[object]) -> list[float]:
+    """Group positions by closed_at date and sum daily returns as fractions.
+
+    Positions without closed_at are skipped. Returns sorted by date.
+    """
+    daily: dict[date, float] = defaultdict(float)
+    for pos in positions:
+        closed_at: datetime | None = getattr(pos, "closed_at", None)
+        pnl_pct = getattr(pos, "realized_pnl_pct", None)
+        if closed_at is None or pnl_pct is None:
+            continue
+        day = closed_at.date()
+        daily[day] += float(pnl_pct) / 100.0
+    return [daily[d] for d in sorted(daily)]
+
+
+def compute_risk_metrics(
+    positions: list[object],
+    risk_free_rate: float = 0.0,
+) -> RiskMetricsResult:
     """Compute risk metrics from closed portfolio positions.
 
     Each position must have: realized_pnl_pct (float|None), realized_pnl_usd (float|None),
@@ -79,13 +99,14 @@ def compute_risk_metrics(positions: list[object]) -> RiskMetricsResult:
         reason = close_reason or "unknown"
         breakdown[reason] = breakdown.get(reason, 0) + 1
 
-    # Sharpe ratio (annualized, 365 days)
+    # Sharpe ratio (annualized, 252 trading days, using daily returns)
     sharpe: float | None = None
-    if len(returns) >= 2:
-        mean_ret = sum(returns) / len(returns)
-        std_ret = _std(returns)
-        if std_ret > 0:
-            sharpe = (mean_ret / std_ret) * math.sqrt(365)
+    daily_returns = _compute_daily_returns(positions)
+    if len(daily_returns) >= 2:
+        mean_daily = sum(daily_returns) / len(daily_returns)
+        std_daily = _std(daily_returns)
+        if std_daily > 0:
+            sharpe = (mean_daily - risk_free_rate / 252) / std_daily * math.sqrt(252)
 
     # Sortino ratio (annualized, 365 days)
     sortino: float | None = None
