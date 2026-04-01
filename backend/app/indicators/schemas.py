@@ -19,6 +19,12 @@ class BollingerOut(BaseModel):
     width: float
 
 
+class PSAROut(BaseModel):
+    sar: float
+    trend: str
+    af: float
+
+
 class IndicatorSnapshot(BaseModel):
     asset_id: UUID
     asset_symbol: str
@@ -31,9 +37,9 @@ class IndicatorSnapshot(BaseModel):
     adx_14: float | None = None
     plus_di: float | None = None
     minus_di: float | None = None
+    mfi_14: float | None = None
     stoch_rsi_k: float | None = None
     stoch_rsi_d: float | None = None
-    mfi_14: float | None = None
     vwap: float | None = None
-    cci_20: float | None = None
+    psar: PSAROut | None = None
     bars_available: int  # how many bars were used
