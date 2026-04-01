@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0023`
+# Rationale for `marketpulse-task-2026-04-01-0025`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0023-implementation
+**branch:** task/marketpulse-task-2026-04-01-0025-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,84 +9,83 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0023 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0025 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** build_entry_snapshot returns dict with all expected keys when given full indicator data
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Headline dataclass has title, published, source, url fields
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** build_entry_snapshot returns dict with null values for missing indicators (no crash on None inputs)
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** fetch_feed parses RSS XML and returns list[Headline]
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** build_exit_snapshot returns dict with close_reason, pnl_pct, and indicator state
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** fetch_all_feeds fetches multiple feeds concurrently and merges results
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** Both functions return JSON-serializable dicts (no dataclass/model objects)
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Errors in individual feeds don't crash the whole fetch
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** signals list in snapshot contains {name, score, weight, detail} for each SignalScore
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** classify_headline returns SentimentResult with score in [-1, 1]
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** volume_ratio computed as latest_volume/avg_volume or None if either is missing
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Positive headline ('Bitcoin surges to record high') scores > 0
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** All tests pass, mypy clean
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Negative headline ('Crypto crash wipes billions') scores < 0
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** All _record_decision calls include signal_snapshot in context_data
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Neutral headline ('SEC schedules meeting') scores ~0
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** Protection-blocked decisions include snapshot with null indicator values
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** classify_batch aggregates scores and optionally filters by symbol
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** Confirmation-blocked and ranking-blocked decisions include full indicator snapshot
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** All tests pass with pytest
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** Position exit_context includes 'entry_snapshot' at open time and 'exit_snapshot' at close time
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Fetcher tests use mocked HTTP (no real network calls)
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** No additional database queries added â€” reuses existing indicator fetch at line 428
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Classifier tests cover positive, negative, neutral, mixed, and empty cases
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** Existing entry_slippage and dca data in exit_context preserved (merged, not overwritten)
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** All tests pass, mypy clean
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Batch tests verify aggregation and symbol filtering
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/decision_context.py`
-- `backend/app/portfolio/service.py`
-- `backend/tests/test_rich_decisions.py`
+- `backend/app/sentiment/__init__.py`
+- `backend/app/sentiment/classifier.py`
+- `backend/app/sentiment/fetcher.py`
+- `backend/tests/test_sentiment.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_rich_decisions.py -q` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/decision_context.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m pytest tests/test_rich_decisions.py -q` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/service.py --ignore-missing-imports` — FAILED
+  - `cd backend && uv run python -c "from app.sentiment.fetcher import fetch_feed, fetch_all_feeds, Headline; print('import ok')"` — passed
+  - `cd backend && uv run python -m mypy app/sentiment/fetcher.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -c "from app.sentiment.classifier import classify_headline, classify_batch, SentimentResult; print('import ok')"` — passed
+  - `cd backend && uv run python -m mypy app/sentiment/classifier.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_sentiment.py -q` — passed
+  - `cd backend && uv run python -m mypy app/sentiment/ --ignore-missing-imports` — passed
 
 ---
 
@@ -124,7 +123,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0023 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0023): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0025): implementation
 
 ---
 
