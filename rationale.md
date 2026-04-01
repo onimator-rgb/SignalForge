@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0005`
+# Rationale for `marketpulse-task-2026-04-01-0007`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0005-implementation
+**branch:** task/marketpulse-task-2026-04-01-0007-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,65 +9,79 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0005 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** calc_pivot_points returns PivotResult with correct pp, r1-r3, s1-s3 for known OHLC input
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** check_confirmations() blocks entry when avg_volume < MIN_ABS_VOLUME for the asset class
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** calc_pivot_points returns None when fewer than 2 bars provided
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** check_confirmations() allows entry when avg_volume >= MIN_ABS_VOLUME
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** PivotOut schema is added to IndicatorSnapshot
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** check_confirmations() allows entry when avg_volume is None (no data = no block)
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Indicator service calls calc_pivot_points and returns pivot data
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** risk_off regime uses tighter thresholds
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** mypy passes with no errors
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** crypto and stock asset classes use different thresholds
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** All 5 tests pass
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** reason_code 'low_abs_volume' appears in blocked result
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Tests verify correct pivot calculations against known values
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** context includes avg_volume_usd and min_volume_threshold fields
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Tests verify None returned for insufficient data
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** All 9 test cases pass
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Tests verify previous-bar behavior
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Tests cover both asset classes (crypto, stock)
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** Tests cover both regimes (neutral, risk_off)
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** Tests verify None volume handling
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** Tests verify context dict contents
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** No database or async needed â€” pure function tests
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/indicators/calculators/__init__.py`
-- `backend/app/indicators/calculators/pivot.py`
-- `backend/app/indicators/schemas.py`
-- `backend/app/indicators/service.py`
-- `backend/tests/test_pivot.py`
+- `backend/app/portfolio/confirmations.py`
+- `backend/tests/test_volume_filter.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m mypy app/indicators/calculators/pivot.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m pytest tests/test_pivot.py -q` — passed
+  - `cd backend && uv run python -m pytest tests/test_volume_filter.py -q` — passed
+  - `cd backend && uv run python -m mypy app/portfolio/confirmations.py --ignore-missing-imports` — FAILED
+  - `cd backend && uv run python -m pytest tests/test_volume_filter.py -q -v` — passed
+  - `cd backend && uv run python -m mypy app/portfolio/confirmations.py --ignore-missing-imports` — FAILED
 
 ---
 
@@ -105,7 +119,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0005 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0005): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0007): implementation
 
 ---
 

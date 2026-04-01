@@ -1,10 +1,11 @@
 """Entry confirmation engine v1 — quality filters before opening positions.
 
-4 confirmation rules:
+5 confirmation rules:
   1. weak_momentum — MACD bearish + negative price trend
   2. no_chasing — price extended near upper Bollinger + strong rally
   3. weak_volume — volume below threshold vs average
   4. stale_signal — recommendation too old
+  5. low_abs_volume — average volume below absolute USD floor for asset class
 
 All must pass for entry to proceed.
 """
@@ -27,6 +28,12 @@ SIGNAL_MAX_AGE_STOCK_H = 12
 RISKOFF_CHASING_BB = 0.75
 RISKOFF_CHASING_CHANGE = 2.5
 RISKOFF_VOLUME_RATIO = 1.0
+
+# Absolute volume floor (USD equivalent)
+MIN_ABS_VOLUME_CRYPTO = 50_000
+MIN_ABS_VOLUME_STOCK = 100_000
+RISKOFF_ABS_VOLUME_CRYPTO = 100_000
+RISKOFF_ABS_VOLUME_STOCK = 200_000
 
 
 def check_confirmations(
@@ -81,6 +88,17 @@ def check_confirmations(
         if vol_ratio < vol_thresh:
             reasons.append("weak_volume")
 
+    # ── 5. Absolute volume floor ──────────────────
+    if avg_volume is not None:
+        context["avg_volume_usd"] = round(avg_volume, 2)
+        if asset_class == "crypto":
+            abs_thresh = RISKOFF_ABS_VOLUME_CRYPTO if risk_off else MIN_ABS_VOLUME_CRYPTO
+        else:
+            abs_thresh = RISKOFF_ABS_VOLUME_STOCK if risk_off else MIN_ABS_VOLUME_STOCK
+        context["min_volume_threshold"] = abs_thresh
+        if avg_volume < abs_thresh:
+            reasons.append("low_abs_volume")
+
     # ── 4. Fresh signal confirmation ──────────────
     if rec_generated_at:
         age_h = (now - rec_generated_at).total_seconds() / 3600
@@ -98,6 +116,7 @@ def check_confirmations(
             "no_chasing": "price extended near upper band",
             "weak_volume": "volume below confirmation threshold",
             "stale_signal": "recommendation signal is stale",
+            "low_abs_volume": "average volume below minimum threshold for asset class",
         }
         reason_text = "Entry blocked: " + "; ".join(parts.get(r, r) for r in reasons) + "."
 
