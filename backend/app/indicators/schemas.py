@@ -41,6 +41,7 @@ class IndicatorSnapshot(BaseModel):
     adx_14: float | None = None
     plus_di: float | None = None
     minus_di: float | None = None
+    mfi_14: float | None = None
     stoch_rsi_k: float | None = None
     stoch_rsi_d: float | None = None
     vwap: float | None = None

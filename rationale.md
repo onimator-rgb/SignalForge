@@ -69,8 +69,8 @@ Add mini indicator sparklines (RSI, MACD histogram, ADX) to AssetDetailView, bac
 ## 4) Tests run & results
 - `cd backend && uv run python -m pytest tests/test_indicator_history.py -q` → 11 passed
 - `cd backend && uv run python -m mypy app/indicators/schemas.py --ignore-missing-imports` → Success
-- `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` → 1 pre-existing error (mfi_14), no new errors
-- `cd backend && uv run python -m mypy app/indicators/router.py --ignore-missing-imports` → Same pre-existing error only
+- `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` → Success (mfi_14 field added to schema)
+- `cd backend && uv run python -m mypy app/indicators/router.py --ignore-missing-imports` → Success
 - `cd frontend && npx vue-tsc --noEmit` → Success
 
 ---
@@ -109,7 +109,7 @@ Add mini indicator sparklines (RSI, MACD histogram, ADX) to AssetDetailView, bac
 
 ## 10) Open questions & follow-ups
 1. Consider caching indicator history if request volume grows
-2. Pre-existing mypy error (mfi_14 keyword) in get_indicators should be fixed separately
+2. mfi_14 field was missing from IndicatorSnapshot schema — now fixed
 
 ---
 
