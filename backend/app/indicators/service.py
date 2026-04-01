@@ -6,14 +6,14 @@ import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.indicators.calculators.adx import calc_adx
+from app.indicators.calculators.adx import ADXResult, calc_adx
 from app.indicators.calculators.bollinger import BollingerResult, calc_bollinger
 from app.indicators.calculators.macd import MACDResult, calc_macd
 from app.indicators.calculators.mfi import calc_mfi
 from app.indicators.calculators.rsi import calc_rsi
 from app.indicators.calculators.stochrsi import calc_stochrsi
 from app.indicators.calculators.vwap import calc_vwap
-from app.indicators.schemas import BollingerOut, IndicatorSnapshot, MACDOut
+from app.indicators.schemas import ADXOut, BollingerOut, IndicatorSnapshot, MACDOut
 from app.logging_config import get_logger
 from app.market_data.models import PriceBar
 
@@ -90,6 +90,7 @@ async def get_indicators(
         rsi_14=rsi_val,
         macd=_macd_to_out(macd_res),
         bollinger=_bb_to_out(bb_res),
+        adx=_adx_to_out(adx_res),
         adx_14=adx_res.adx if adx_res else None,
         plus_di=adx_res.plus_di if adx_res else None,
         minus_di=adx_res.minus_di if adx_res else None,
@@ -134,3 +135,9 @@ def _bb_to_out(res: BollingerResult | None) -> BollingerOut | None:
     if res is None:
         return None
     return BollingerOut(upper=res.upper, middle=res.middle, lower=res.lower, width=res.width)
+
+
+def _adx_to_out(res: ADXResult | None) -> ADXOut | None:
+    if res is None:
+        return None
+    return ADXOut(adx=res.adx, plus_di=res.plus_di, minus_di=res.minus_di)

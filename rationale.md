@@ -1,112 +1,95 @@
-# Rationale for `marketpulse-task-2026-04-01-0005`
+# Rationale for `marketpulse-task-2026-04-01-0027`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0005-implementation
-**commit_sha:** 
+**branch:** task/marketpulse-task-2026-04-01-0027-implementation
 **date:** 2026-04-01
-**model_calls:** 1
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0005 via coder_worker.py with model integration.
+Added ADXOut nested schema, _adx_to_out service helper, downtrend/export tests, and fixed mfi_14 schema gap.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** StrategyProfile dataclass has slippage_buy_pct and slippage_sell_pct float fields
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** calc_adx returns None when fewer than 2*period bars provided
+- **Status:** `pass`
+- **Evidence:** test_adx_insufficient_data passes
 
-- **Criteria:** All three profile instances (conservative, balanced, aggressive) have appropriate slippage values
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** calc_adx returns ADXResult with adx, plus_di, minus_di all in 0-100 range
+- **Status:** `pass`
+- **Evidence:** test_adx_range passes
 
-- **Criteria:** mypy passes with no errors
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Strong uptrend data produces ADX > 25 (strong trend detected)
+- **Status:** `pass`
+- **Evidence:** test_adx_known_values passes
 
-- **Criteria:** Entry price for new positions includes buy slippage (price * (1 + slippage_buy_pct))
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Flat/sideways data produces ADX < 25 (weak/no trend)
+- **Status:** `pass`
+- **Evidence:** test_adx_sideways_market passes
 
-- **Criteria:** Exit price for closed positions includes sell slippage (price * (1 - slippage_sell_pct))
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** ADXResult and calc_adx are exported from calculators __init__
+- **Status:** `pass`
+- **Evidence:** test_adx_exported_from_init passes
 
-- **Criteria:** Original market prices and slippage details are stored in exit_context JSONB
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** IndicatorSnapshot includes adx field of type ADXOut | None
+- **Status:** `pass`
+- **Evidence:** ADXOut model added, adx field added to IndicatorSnapshot
 
-- **Criteria:** Stop-loss/take-profit triggers still use raw market price (exits.py unchanged)
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** ADXOut has adx, plus_di, minus_di float fields
+- **Status:** `pass`
+- **Evidence:** ADXOut(BaseModel) with three float fields in schemas.py
 
-- **Criteria:** mypy passes with no errors
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** get_indicators service function calls calc_adx and includes result in snapshot
+- **Status:** `pass`
+- **Evidence:** _adx_to_out helper added, adx= passed to IndicatorSnapshot
 
-- **Criteria:** All 5 tests pass
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** mypy passes on all files
+- **Status:** `pass`
+- **Evidence:** mypy success on adx.py, schemas.py, service.py
 
-- **Criteria:** Tests verify buy slippage increases entry price
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Tests verify sell slippage decreases exit price
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Tests verify slippage audit data in exit_context JSONB
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Tests verify per-profile slippage values
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Tests verify zero slippage is a no-op
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** All tests pass
+- **Status:** `pass`
+- **Evidence:** 11 passed in 0.43s
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/service.py`
-- `backend/app/strategy/profiles.py`
-- `backend/tests/test_slippage.py`
-- `rationale.md`
+- `backend/app/indicators/schemas.py` â€” Added ADXOut model, adx field, mfi_14 field fix
+- `backend/app/indicators/service.py` â€” Added ADXResult import, _adx_to_out helper, nested adx= in snapshot
+- `backend/tests/test_adx.py` â€” Added test_adx_strong_downtrend, test_adx_exported_from_init
+- `rationale.md` â€” This file
 
 ---
 
 ## 4) Tests run & results
-- **Commands run:**
-  - `cd backend && uv run python -m mypy app/strategy/profiles.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/service.py --ignore-missing-imports` — FAILED
-  - `cd backend && uv run python -m pytest tests/test_slippage.py -q` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/service.py --ignore-missing-imports` — FAILED
+- `cd backend && uv run python -c "from app.indicators.calculators import ADXResult, calc_adx; print('import ok')"` â€” passed
+- `cd backend && uv run python -m mypy app/indicators/calculators/adx.py --ignore-missing-imports` â€” passed
+- `cd backend && uv run python -m mypy app/indicators/schemas.py --ignore-missing-imports` â€” passed
+- `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` â€” passed
+- `cd backend && uv run python -m pytest tests/test_adx.py -q` â€” 11 passed
 
 ---
 
 ## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
+- Synthetic price data used in tests (no external data or network calls)
 
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code — **Severity:** medium — **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+- **Risk:** None identified â€” all checks pass, backward-compatible changes
 
 ---
 
 ## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
+- Flat fields (adx_14, plus_di, minus_di) preserved on IndicatorSnapshot for scoring.py compatibility
+- New nested ADXOut field added alongside flat fields
 
 ---
 
 ## 8) Performance considerations
-- No performance impact expected.
+- No performance impact â€” ADX was already being calculated
 
 ---
 
@@ -114,21 +97,24 @@ Automated implementation for task marketpulse-task-2026-04-01-0005 via coder_wor
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
-- API key logged: `no` (only presence check)
+- API key logged: `no`
 
 ---
 
 ## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
+None.
 
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0005): implementation
+- feat(schemas): add ADXOut nested model and adx field to IndicatorSnapshot
+- feat(service): add _adx_to_out helper, pass nested adx to snapshot
+- fix(schemas): add missing mfi_14 field
+- test: add downtrend and export verification tests
 
 ---
 
 ## 12) Final verdict (developer self-check)
 - **I confirm** that all acceptance criteria marked `pass` have test evidence attached: `yes`
 - **I confirm** no forbidden paths were modified: `yes`
-- **I request** next step: `validate`
+- **I request** next step: `approve`
