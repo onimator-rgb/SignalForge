@@ -13,7 +13,7 @@ from app.indicators.calculators.mfi import calc_mfi
 from app.indicators.calculators.rsi import calc_rsi
 from app.indicators.calculators.stochrsi import calc_stochrsi
 from app.indicators.calculators.vwap import calc_vwap
-from app.indicators.schemas import BollingerOut, IndicatorSnapshot, MACDOut
+from app.indicators.schemas import BollingerOut, IndicatorHistory, IndicatorSnapshot, MACDOut
 from app.logging_config import get_logger
 from app.market_data.models import PriceBar
 
@@ -98,6 +98,84 @@ async def get_indicators(
         stoch_rsi_d=stochrsi_res.d if stochrsi_res else None,
         vwap=vwap_res.vwap if vwap_res else None,
         bars_available=len(bars),
+    )
+
+
+async def get_indicator_history(
+    db: AsyncSession,
+    asset_id: uuid.UUID,
+    asset_symbol: str,
+    interval: str = "1h",
+    lookback: int = 48,
+) -> IndicatorHistory | None:
+    """Compute rolling indicator history (RSI, MACD histogram, ADX) for display sparklines.
+
+    Returns the last 24 data points of each indicator, or None if no bars available.
+    """
+    log.debug("indicator_history_start", asset=asset_symbol, interval=interval)
+
+    result = await db.execute(
+        select(PriceBar)
+        .where(PriceBar.asset_id == asset_id, PriceBar.interval == interval)
+        .order_by(PriceBar.time.desc())
+        .limit(lookback)
+    )
+    bars = list(result.scalars().all())
+
+    if not bars:
+        return None
+
+    bars.reverse()
+
+    closes = pd.Series([float(b.close) for b in bars])
+    highs = pd.Series([float(b.high) for b in bars])
+    lows = pd.Series([float(b.low) for b in bars])
+    bar_times = [b.time for b in bars]
+
+    # Rolling RSI: needs 14 bars minimum
+    rsi_values: list[float | None] = []
+    for i in range(14, len(closes)):
+        val = calc_rsi(closes[: i + 1], period=14)
+        rsi_values.append(val)
+
+    # Rolling MACD histogram: needs 35 bars minimum (26 slow + 9 signal)
+    macd_values: list[float | None] = []
+    for i in range(35, len(closes)):
+        macd_res = calc_macd(closes[: i + 1], fast=12, slow=26, signal_period=9)
+        macd_values.append(macd_res.histogram if macd_res else None)
+
+    # Rolling ADX: needs 28 bars minimum (2*14)
+    adx_values: list[float | None] = []
+    for i in range(28, len(closes)):
+        adx_res = calc_adx(highs[: i + 1], lows[: i + 1], closes[: i + 1], period=14)
+        adx_values.append(adx_res.adx if adx_res else None)
+
+    # Align all arrays to same length by front-padding with None
+    max_len = max(len(rsi_values), len(macd_values), len(adx_values)) if rsi_values or macd_values or adx_values else 0
+
+    def pad_front(arr: list[float | None], target: int) -> list[float | None]:
+        pad = target - len(arr)
+        return [None] * pad + arr
+
+    rsi_values = pad_front(rsi_values, max_len)
+    macd_values = pad_front(macd_values, max_len)
+    adx_values = pad_front(adx_values, max_len)
+
+    # Take last 24 entries
+    display_count = min(24, max_len)
+    rsi_out = rsi_values[-display_count:] if display_count > 0 else []
+    macd_out = macd_values[-display_count:] if display_count > 0 else []
+    adx_out = adx_values[-display_count:] if display_count > 0 else []
+    times_out = bar_times[-display_count:] if display_count > 0 else []
+
+    return IndicatorHistory(
+        asset_id=asset_id,
+        interval=interval,
+        bars_used=len(bars),
+        rsi_14=rsi_out,
+        macd_histogram=macd_out,
+        adx_14=adx_out,
+        bar_times=times_out,
     )
 
 

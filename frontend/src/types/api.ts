@@ -53,6 +53,16 @@ export interface AssetIndicatorsSummary {
   bars_available: number | null
 }
 
+export interface IndicatorHistory {
+  asset_id: string
+  interval: string
+  bars_used: number
+  rsi_14: (number | null)[]
+  macd_histogram: (number | null)[]
+  adx_14: (number | null)[]
+  bar_times: string[]
+}
+
 export interface AssetDetail {
   id: string
   symbol: string
