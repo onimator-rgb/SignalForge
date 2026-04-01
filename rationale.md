@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0009`
+# Rationale for `marketpulse-task-2026-04-01-0011`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0009-implementation
+**branch:** task/marketpulse-task-2026-04-01-0011-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,67 +9,94 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0009 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0011 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** scaling.py has 5 exported functions: get_scale_state, should_scale_up, calculate_scale_buy, apply_scale_to_position, plus constants
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** calculate_regime() returns avg_adx in inputs dict
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** should_scale_up returns False when scale_level >= max_levels
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** calculate_regime() returns price_trend_score in inputs dict
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** should_scale_up returns False when profit < threshold
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** ADX contributes Â±2 to regime score when avg_adx > 30
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** apply_scale_to_position moves stop_loss to original entry price (break-even)
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Price trend contributes Â±1 to regime score based on median 24h change
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Scale state stored in exit_context['scale'] JSONB (not a new column)
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** If ADX data unavailable, function still works (graceful degradation)
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** mypy passes with no errors
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** All tests pass including new ADX and price trend test cases
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** All tests pass with pytest
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** detect_regime_transition() correctly identifies regime changes
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** At least 10 test cases covering happy path, edge cases, and boundary conditions
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** detect_regime_transition() returns (False, None) when regime unchanged
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Tests use lightweight fakes (no database required)
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** apply_profile_to_open_positions() updates exit_context JSONB for all open positions
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** 100% function coverage of scaling.py
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** auto_select_profile() returns transition info in result dict
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** Regime transition is logged via structlog
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** All tests pass
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** At least 10 test cases covering ADX scoring, price trend, transitions, and position updates
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** All tests pass
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** Tests use mocks (no real DB required)
+- **Status:** `partial`
+- **Evidence:** Some checks failed
+
+- **Criteria:** Edge cases covered: no data, no positions, repeated same regime
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/scaling.py`
-- `backend/tests/test_scaling.py`
+- `backend/app/strategy/regime.py`
+- `backend/app/strategy/service.py`
+- `backend/tests/test_regime_switch.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -c "from app.portfolio.scaling import get_scale_state, should_scale_up, calculate_scale_buy, apply_scale_to_position; print('imports OK')"` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/scaling.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m pytest tests/test_scaling.py -q` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/scaling.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_regime_switch.py -q -x` — passed
+  - `cd backend && uv run python -m mypy app/strategy/regime.py --ignore-missing-imports` — FAILED
+  - `cd backend && uv run python -m pytest tests/test_regime_switch.py -q -x` — passed
+  - `cd backend && uv run python -m mypy app/strategy/service.py --ignore-missing-imports` — FAILED
+  - `cd backend && uv run python -m pytest tests/test_regime_switch.py -q -x -v` — passed
+  - `cd backend && uv run python -m mypy app/strategy/regime.py app/strategy/service.py --ignore-missing-imports` — FAILED
 
 ---
 
@@ -107,7 +134,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0009 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0009): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0011): implementation
 
 ---
 
