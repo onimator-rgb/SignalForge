@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0009`
+# Rationale for `marketpulse-task-2026-04-01-0011`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0009-implementation
+**branch:** task/marketpulse-task-2026-04-01-0011-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,63 +9,78 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0009 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0011 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** ProtectionEvent interface exists in api.ts with all required fields
+- **Criteria:** calc_fibonacci returns None when fewer than lookback bars are provided
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** API function exists to fetch protection events (or data is available from existing portfolio summary)
+- **Criteria:** calc_fibonacci returns None when swing_high equals swing_low (flat price)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** vue-tsc passes with no errors
+- **Criteria:** calc_fibonacci returns FibonacciResult with correct Fibonacci ratios for known uptrend data
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Protection History section renders below active protections
+- **Criteria:** calc_fibonacci returns FibonacciResult with correct Fibonacci ratios for known downtrend data
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Table shows protection_type, asset, reason, status, triggered_at, expires_at
+- **Criteria:** level_0 == swing_low and level_100 == swing_high always
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Status badges are color-coded: active=red, expired=green
+- **Criteria:** trend field is 'up' when swing_low occurs before swing_high, 'down' otherwise
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Protection type badges use distinct colors per type
+- **Criteria:** All levels are rounded to 2 decimal places
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Empty state shows placeholder message
+- **Criteria:** FibonacciResult and calc_fibonacci are exported from calculators __init__.py
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** vue-tsc passes with no errors
+- **Criteria:** FibonacciOut schema has all 10 fields (swing_high, swing_low, 7 levels, trend)
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** IndicatorSnapshot includes fibonacci: FibonacciOut | None = None
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** service.py calls calc_fibonacci and maps result via _fib_to_out helper
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** mypy passes on service.py and schemas.py with no errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/router.py`
-- `frontend/src/api/portfolio.ts`
-- `frontend/src/types/api.ts`
-- `frontend/src/views/PortfolioView.vue`
+- `backend/app/indicators/calculators/__init__.py`
+- `backend/app/indicators/calculators/fibonacci.py`
+- `backend/app/indicators/schemas.py`
+- `backend/app/indicators/service.py`
+- `backend/tests/test_fibonacci.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd frontend && npx vue-tsc --noEmit` — passed
-  - `cd frontend && npx vue-tsc --noEmit` — passed
+  - `cd backend && uv run python -m pytest tests/test_fibonacci.py -q` — passed
+  - `cd backend && uv run python -m mypy app/indicators/calculators/fibonacci.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m mypy app/indicators/schemas.py --ignore-missing-imports` — passed
 
 ---
 
@@ -103,7 +118,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0009 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0009): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0011): implementation
 
 ---
 
