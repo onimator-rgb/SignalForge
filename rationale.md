@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0013`
+# Rationale for `marketpulse-task-2026-04-01-0015`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0013-implementation
+**branch:** task/marketpulse-task-2026-04-01-0015-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,47 +9,54 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0013 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0015 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** Expanded position card shows DCA level (0/3, 1/3, 2/3, 3/3) with purple color when DCA state exists in exit_context.dca
+- **Criteria:** build_equity_curve([]) returns a single initial EquityPoint with equity == initial_capital and drawdown_pct == 0
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** When no DCA data present, card shows 'No DCA' in muted gray
+- **Criteria:** A buy transaction reduces cash and increases positions_value; a sell does the inverse
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Entry signals section renders key indicator scores from exit_context.entry_snapshot when available
+- **Criteria:** equity always equals cash + positions_value at every point
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Signal scores are color-coded: green > 0.1, red < -0.1, gray neutral
+- **Criteria:** drawdown_pct is correctly calculated as (equity - peak) / peak, always <= 0
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** vue-tsc --noEmit passes with no type errors
+- **Criteria:** EquityCurveOut.max_drawdown_pct equals the worst drawdown across all points
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** No changes to backend code
+- **Criteria:** GET /equity-curve returns 200 with valid JSON matching EquityCurveOut schema
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** All tests pass, mypy clean
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `frontend/src/views/PortfolioView.vue`
+- `backend/app/portfolio/equity_curve.py`
+- `backend/app/portfolio/router.py`
+- `backend/tests/test_equity_curve.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd frontend && npx vue-tsc --noEmit` — passed
+  - `cd backend && uv run python -m pytest tests/test_equity_curve.py -q` — passed
+  - `cd backend && uv run python -m mypy app/portfolio/equity_curve.py --ignore-missing-imports` — passed
 
 ---
 
@@ -87,7 +94,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0013 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0013): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0015): implementation
 
 ---
 

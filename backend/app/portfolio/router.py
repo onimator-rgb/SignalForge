@@ -101,60 +101,54 @@ async def risk_metrics(db: AsyncSession = Depends(get_db)):
     )
 
 
-@router.get("/journal")
-async def trade_journal(
-    limit: int = 50,
-    offset: int = 0,
-    db: AsyncSession = Depends(get_db),
-):
-    """Closed-position trade journal with rich context."""
-    from sqlalchemy import func, select
-    from app.assets.models import Asset
-    from app.portfolio.journal import format_journal
-    from app.portfolio.models import PortfolioPosition, PortfolioTransaction
-    from app.portfolio.schemas import JournalResponse
+@router.get("/equity-curve")
+async def equity_curve(db: AsyncSession = Depends(get_db)):
+    """Get equity curve computed from portfolio transactions."""
+    from sqlalchemy import select
+    from app.portfolio.models import PortfolioTransaction
+    from app.portfolio.service import get_or_create_portfolio
+    from app.portfolio.equity_curve import build_equity_curve, EquityCurveOut
 
-    # Total count of closed positions
-    count_q = select(func.count()).select_from(PortfolioPosition).where(
-        PortfolioPosition.status == "closed"
+    portfolio = await get_or_create_portfolio(db)
+    q = (
+        select(PortfolioTransaction)
+        .where(PortfolioTransaction.portfolio_id == portfolio.id)
+        .order_by(PortfolioTransaction.executed_at.asc())
     )
-    total = (await db.execute(count_q)).scalar_one()
+    result = await db.execute(q)
+    rows = result.scalars().all()
 
-    # Fetch closed positions with asset symbol
-    pos_q = (
-        select(PortfolioPosition, Asset.symbol)
-        .join(Asset, PortfolioPosition.asset_id == Asset.id)
-        .where(PortfolioPosition.status == "closed")
-        .order_by(PortfolioPosition.closed_at.desc())
-        .offset(offset)
-        .limit(limit)
+    transactions = [
+        {
+            "tx_type": r.tx_type,
+            "value_usd": float(r.value_usd),
+            "executed_at": r.executed_at,
+        }
+        for r in rows
+    ]
+
+    points = build_equity_curve(transactions, float(portfolio.initial_capital))
+    last = points[-1]
+    max_dd = min(p.drawdown_pct for p in points)
+
+    serialized = [
+        {
+            "timestamp": p.timestamp.isoformat(),
+            "equity": p.equity,
+            "cash": p.cash,
+            "positions_value": p.positions_value,
+            "drawdown_pct": p.drawdown_pct,
+            "trade_number": p.trade_number,
+        }
+        for p in points
+    ]
+
+    return EquityCurveOut(
+        points=serialized,
+        total_points=len(serialized),
+        current_equity=last.equity,
+        max_drawdown_pct=round(max_dd, 6),
     )
-    pos_result = await db.execute(pos_q)
-    rows = pos_result.all()
-
-    positions = []
-    position_ids = []
-    for row in rows:
-        pos = row.PortfolioPosition
-        pos.symbol = row.symbol  # type: ignore[attr-defined]
-        positions.append(pos)
-        position_ids.append(pos.id)
-
-    # Fetch related transactions
-    transactions_by_position: dict[str, list] = {}
-    if position_ids:
-        tx_q = (
-            select(PortfolioTransaction)
-            .where(PortfolioTransaction.position_id.in_(position_ids))
-            .order_by(PortfolioTransaction.executed_at)
-        )
-        tx_result = await db.execute(tx_q)
-        for tx in tx_result.scalars().all():
-            key = str(tx.position_id)
-            transactions_by_position.setdefault(key, []).append(tx)
-
-    entries = format_journal(positions, transactions_by_position)
-    return JournalResponse(entries=entries, total=total)
 
 
 @router.post("/positions/{position_id}/close")
