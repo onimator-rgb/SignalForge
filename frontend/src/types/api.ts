@@ -261,6 +261,19 @@ export interface PortfolioTransaction {
   executed_at: string
 }
 
+export interface EntryDecision {
+  id: string
+  symbol: string
+  asset_class: string
+  status: 'allowed' | 'blocked' | 'pending' | 'expired'
+  stage: string
+  reason_codes: string[] | null
+  reason_text: string | null
+  regime: string | null
+  profile: string | null
+  created_at: string
+}
+
 export interface PortfolioSummary {
   stats: PortfolioStats
   open_positions: PortfolioPosition[]
