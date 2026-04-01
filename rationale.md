@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0013`
+# Rationale for `marketpulse-task-2026-04-01-0015`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0013-implementation
+**branch:** task/marketpulse-task-2026-04-01-0015-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,97 +9,43 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0013 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0015 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** get_dca_state returns default state when exit_context is None or has no DCA data
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** The anomaly type dropdown includes 'Squeeze release' as a filter option with value 'squeeze_release'
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** should_dca returns True when price drops below threshold for current level
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Squeeze anomaly rows show momentum percentage, BB width, and KC width in the details column
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** should_dca returns False when max levels reached
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Squeeze anomaly type text is rendered in purple (text-purple-400)
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** calculate_dca_buy returns None when available cash is insufficient
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** vue-tsc --noEmit passes with no type errors
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** calculate_dca_buy uses level multiplier to scale position size
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** apply_dca_to_position correctly calculates weighted average entry price
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** evaluate_portfolio returns dca_count in summary dict
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** _check_dca iterates open positions and triggers DCA when conditions met
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** DCA buy creates a PortfolioTransaction with tx_type='dca_buy'
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Cash is deducted from portfolio after DCA buy
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Slippage is applied to DCA buy price
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Cash reserve (MIN_CASH_RESERVE_PCT) is respected
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** All tests pass
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** At least 10 test cases covering happy path and edge cases
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Weighted average calculation verified with known values
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** DCA level boundaries tested (0, max-1, max)
-- **Status:** `partial`
-- **Evidence:** Some checks failed
-
-- **Criteria:** Insufficient cash scenario tested
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** Existing anomaly type rendering (price_spike, volume_spike, rsi_extreme) is unchanged
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/dca.py`
-- `backend/app/portfolio/service.py`
-- `backend/tests/test_dca.py`
+- `frontend/src/views/AnomaliesView.vue`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -c "from app.portfolio.dca import get_dca_state, should_dca, calculate_dca_buy, apply_dca_to_position; print('OK')"` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/dca.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/service.py --ignore-missing-imports` — FAILED
-  - `cd backend && uv run python -m pytest tests/test_dca.py -q` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/dca.py --ignore-missing-imports` — passed
+  - `cd frontend && npx vue-tsc --noEmit` — passed
 
 ---
 
@@ -137,7 +83,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0013 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0013): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0015): implementation
 
 ---
 

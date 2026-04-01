@@ -120,6 +120,7 @@ function fmtTime(iso: string): string {
         <option value="price_crash">Price crash</option>
         <option value="volume_spike">Volume spike</option>
         <option value="rsi_extreme">RSI extreme</option>
+        <option value="squeeze_release">Squeeze release</option>
       </select>
 
       <select
@@ -169,13 +170,16 @@ function fmtTime(iso: string): string {
                   {{ a.asset_symbol }}
                 </RouterLink>
               </td>
-              <td class="px-4 py-3 text-gray-300">{{ a.anomaly_type.replace(/_/g, ' ') }}</td>
+              <td class="px-4 py-3" :class="a.anomaly_type === 'squeeze_release' ? 'text-purple-400' : 'text-gray-300'">{{ a.anomaly_type.replace(/_/g, ' ') }}</td>
               <td class="px-4 py-3 text-right tabular-nums text-gray-300">{{ (a.score * 100).toFixed(0) }}%</td>
               <td class="px-4 py-3 text-xs text-gray-500 max-w-48 truncate">
                 <template v-if="a.details.z_score">z={{ (a.details.z_score as number).toFixed(2) }}</template>
                 <template v-if="a.details.rsi"> RSI={{ (a.details.rsi as number).toFixed(1) }}</template>
                 <template v-if="a.details.pct_change"> chg={{ ((a.details.pct_change as number) * 100).toFixed(2) }}%</template>
                 <template v-if="a.details.ratio_vs_avg"> vol={{ (a.details.ratio_vs_avg as number).toFixed(1) }}x</template>
+                <template v-if="a.details.momentum"> mom={{ ((a.details.momentum as number) * 100).toFixed(2) }}%</template>
+                <template v-if="a.details.bb_width"> BB={{ (a.details.bb_width as number).toFixed(4) }}</template>
+                <template v-if="a.details.kc_width"> KC={{ (a.details.kc_width as number).toFixed(4) }}</template>
               </td>
               <td class="px-4 py-3 text-right text-xs text-gray-400">{{ fmtTime(a.detected_at) }}</td>
               <td class="px-4 py-3 text-center">
