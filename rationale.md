@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0003`
+# Rationale for `marketpulse-task-2026-04-01-0007`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0003-implementation
+**branch:** task/marketpulse-task-2026-04-01-0007-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,71 +9,49 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0003 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** calc_mfi returns None when fewer than period+1 bars provided
+- **Criteria:** _check_asset_cooldown queries the most recent closed position for the asset and reads its realized_pnl_usd
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** calc_mfi returns a float in range [0, 100] for valid input
+- **Criteria:** After a losing close (realized_pnl_usd < 0), re-entry is blocked for 48 hours
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** calc_mfi returns value > 50 for a strong uptrend with rising prices and volume
+- **Criteria:** After a profitable close (realized_pnl_usd >= 0), re-entry is blocked for 12 hours
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** calc_mfi returns value < 50 for a strong downtrend with falling prices and volume
+- **Criteria:** If no prior closed position exists for the asset, entry is allowed
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** calc_mfi handles edge case where all negative flows are zero (returns 100.0)
+- **Criteria:** ProtectionEvent is logged with correct expires_at reflecting the variable cooldown
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Function is registered in calculators __init__.py and importable
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** IndicatorSnapshot schema includes mfi_14: float | None field
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** get_indicators calls calc_mfi with highs, lows, closes, volumes, period=14
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** mfi_14 value is populated in the returned IndicatorSnapshot
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** mypy passes on both schemas.py and service.py
+- **Criteria:** All tests pass and mypy reports no errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/indicators/calculators/__init__.py`
-- `backend/app/indicators/calculators/mfi.py`
-- `backend/app/indicators/schemas.py`
-- `backend/app/indicators/service.py`
-- `backend/tests/test_mfi.py`
+- `backend/app/portfolio/protections.py`
+- `backend/tests/test_buy_cooldown.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_mfi.py -q` — passed
-  - `cd backend && uv run python -m mypy app/indicators/calculators/mfi.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/indicators/schemas.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m pytest tests/test_mfi.py -q` — passed
+  - `cd backend && uv run python -m pytest tests/test_buy_cooldown.py -q` — passed
+  - `cd backend && uv run python -m mypy app/portfolio/protections.py --ignore-missing-imports` — passed
 
 ---
 
@@ -111,7 +89,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0003 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0003): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0007): implementation
 
 ---
 
