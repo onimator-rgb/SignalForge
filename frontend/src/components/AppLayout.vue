@@ -19,6 +19,7 @@ const navItems = [
   { to: '/strategy', label: 'Strategia', icon: '🎯', badge: false },
   { to: '/watchlists', label: 'Watchlisty', icon: '📋', badge: false },
   { to: '/reports', label: 'Raporty AI', icon: '📄', badge: false },
+  { to: '/ingestion', label: 'Data Sync', icon: '🔄', badge: false },
 ]
 
 function isActive(path: string): boolean {

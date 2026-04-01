@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0017`
+# Rationale for `marketpulse-task-2026-04-01-0019`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0017-implementation
+**branch:** task/marketpulse-task-2026-04-01-0019-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,49 +9,61 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0017 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0019 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** StrategyView.vue exists and compiles without TypeScript errors
+- **Criteria:** All 5 ingestion/diagnostics interfaces exported from api.ts
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** View fetches /api/v1/strategy/summary on mount and displays all sections
+- **Criteria:** Route /ingestion is registered in router and lazy-loads IngestionView
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Market regime is color-coded (green/yellow/red)
+- **Criteria:** vue-tsc passes with no errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** All 15 profile parameters are displayed in the active profile section
+- **Criteria:** IngestionView.vue renders 4 sections: header, sync table, jobs table, error log
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** All 3 profiles are shown in a comparison table with active column highlighted
+- **Criteria:** Trigger button sends POST to /api/v1/ingestion/trigger and shows feedback
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Effective settings show regime adjustments with deltas
+- **Criteria:** Sync freshness table color-codes stale vs fresh assets
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Loading spinner and error handling are present
+- **Criteria:** Job history shows status badges with correct colors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Route /strategy exists and lazy-loads StrategyView
+- **Criteria:** Error log displays recent errors with severity coloring
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Navigation includes a Strategy link visible alongside other nav items
+- **Criteria:** Auto-refresh every 30 seconds
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** TypeScript compilation passes
+- **Criteria:** vue-tsc passes with no errors
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** Navigation menu includes Ingestion link
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** Clicking the link navigates to /ingestion route
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** vue-tsc passes with no errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
@@ -60,13 +72,15 @@ Automated implementation for task marketpulse-task-2026-04-01-0017 via coder_wor
 ## 3) Files changed (and rationale per file)
 - `frontend/src/components/AppLayout.vue`
 - `frontend/src/router/index.ts`
-- `frontend/src/views/StrategyView.vue`
+- `frontend/src/types/api.ts`
+- `frontend/src/views/IngestionView.vue`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
+  - `cd frontend && npx vue-tsc --noEmit` — passed
   - `cd frontend && npx vue-tsc --noEmit` — passed
   - `cd frontend && npx vue-tsc --noEmit` — passed
 
@@ -106,7 +120,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0017 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0017): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0019): implementation
 
 ---
 
