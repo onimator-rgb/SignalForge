@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0021`
+# Rationale for `marketpulse-task-2026-04-01-0023`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0021-implementation
+**branch:** task/marketpulse-task-2026-04-01-0023-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,41 +9,13 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0021 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0023 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** GET /api/v1/assets/{id}/indicators/history returns JSON with rsi_14, macd_histogram, adx_14 arrays
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** Each array contains up to 24 float|null values representing the most recent rolling indicator values
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** bar_times array has matching timestamps for each data point
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** Returns 404 for nonexistent asset or no bars
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** Tests pass with synthetic data verifying list lengths, value ranges, and None padding
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** AssetDetailView shows CSS-bar sparklines for RSI, MACD histogram, and ADX
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** Sparklines use existing dark theme colors (green/red for MACD, blue for RSI, purple for ADX)
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** Sparklines handle null values gracefully (skip them)
+- **Criteria:** EntryDecision interface exists in api.ts with all 10 fields
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
@@ -51,29 +23,42 @@ Automated implementation for task marketpulse-task-2026-04-01-0021 via coder_wor
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** No external charting library added
+- **Criteria:** Entry decisions section shows a filterable table instead of compact badges
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** Filter tabs (All/Allowed/Blocked/Pending) switch the displayed decisions
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** Each row shows: time, symbol, status badge, stage, reason codes, regime, profile
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** Clicking a row expands to show full reason_text
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** Status badges use correct color coding (green/red/yellow/gray)
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** vue-tsc passes with no errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/indicators/router.py`
-- `backend/app/indicators/schemas.py`
-- `backend/app/indicators/service.py`
-- `backend/tests/test_indicator_history.py`
 - `frontend/src/types/api.ts`
-- `frontend/src/views/AssetDetailView.vue`
+- `frontend/src/views/PortfolioView.vue`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_indicator_history.py -q` — passed
-  - `cd backend && uv run python -m mypy app/indicators/service.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/indicators/router.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/indicators/schemas.py --ignore-missing-imports` — passed
+  - `cd frontend && npx vue-tsc --noEmit` — passed
   - `cd frontend && npx vue-tsc --noEmit` — passed
 
 ---
@@ -112,7 +97,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0021 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0021): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0023): implementation
 
 ---
 

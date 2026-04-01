@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
-import { fetchPortfolio, triggerEvaluation, fetchProtectionHistory } from '../api/portfolio'
+import { fetchPortfolio, triggerEvaluation } from '../api/portfolio'
 import { fetchWatchlists, addAssetToWatchlist } from '../api/watchlists'
-import type { Watchlist, ProtectionEvent } from '../types/api'
+import type { Watchlist, EntryDecision } from '../types/api'
 import { fmtPrice, fmtTime, timeAgo } from '../utils/format'
 import FreshnessBadge from '../components/FreshnessBadge.vue'
 import LastRefreshHint from '../components/LastRefreshHint.vue'
@@ -23,8 +23,10 @@ const evaluating = ref(false)
 const closingId = ref<string | null>(null)
 const expandedId = ref<string | null>(null)
 const protections = ref<any[]>([])
-const entryDecisions = ref<any[]>([])
-const protectionHistory = ref<ProtectionEvent[]>([])
+const entryDecisions = ref<EntryDecision[]>([])
+const entryFilter = ref<string>('all')
+const expandedDecisionId = ref<string | null>(null)
+const loadingMoreDecisions = ref(false)
 
 async function load() {
   loading.value = true
@@ -37,12 +39,10 @@ async function load() {
       protections.value = pRes.data.active || []
     } catch { protections.value = [] }
     try {
-      const dRes = await api.get('/portfolio/entry-decisions?limit=10')
+      const statusParam = entryFilter.value !== 'all' ? `&status=${entryFilter.value}` : ''
+      const dRes = await api.get(`/portfolio/entry-decisions?limit=20${statusParam}`)
       entryDecisions.value = Array.isArray(dRes.data) ? dRes.data : []
     } catch { entryDecisions.value = [] }
-    try {
-      protectionHistory.value = await fetchProtectionHistory(20)
-    } catch { protectionHistory.value = [] }
   } catch (e: any) {
     error.value = e.response?.data?.detail || e.message
   } finally {
@@ -125,22 +125,6 @@ const badgeColors: Record<string, string> = {
   expiring_soon: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30',
 }
 
-const protectionTypeColors: Record<string, string> = {
-  asset_cooldown: 'bg-orange-500/10 text-orange-400 border-orange-500/30',
-  stoploss_guard: 'bg-red-500/10 text-red-400 border-red-500/30',
-  consecutive_sl_guard: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30',
-  entry_frequency_cap: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
-  class_exposure_cap: 'bg-purple-500/10 text-purple-400 border-purple-500/30',
-}
-
-const protectionTypeLabels: Record<string, string> = {
-  asset_cooldown: 'Cooldown',
-  stoploss_guard: 'SL Guard',
-  consecutive_sl_guard: 'Consecutive SL',
-  entry_frequency_cap: 'Freq Cap',
-  class_exposure_cap: 'Class Cap',
-}
-
 const reasonLabels: Record<string, string> = {
   stop_hit: 'Stop Loss',
   trailing_stop_hit: 'Trailing Stop',
@@ -150,6 +134,42 @@ const reasonLabels: Record<string, string> = {
   max_hold: 'Max Hold',
   manual: 'Manual Close',
   signal_invalid: 'Signal Invalid',
+}
+
+const decisionStatusColors: Record<string, string> = {
+  allowed: 'text-green-400 bg-green-500/10',
+  blocked: 'text-red-400 bg-red-500/10',
+  pending: 'text-yellow-400 bg-yellow-500/10',
+  expired: 'text-gray-400 bg-gray-500/10',
+}
+
+const entryFilterTabs = ['all', 'allowed', 'blocked', 'pending'] as const
+
+async function changeEntryFilter(f: string) {
+  entryFilter.value = f
+  expandedDecisionId.value = null
+  try {
+    const statusParam = f !== 'all' ? `&status=${f}` : ''
+    const dRes = await api.get(`/portfolio/entry-decisions?limit=20${statusParam}`)
+    entryDecisions.value = Array.isArray(dRes.data) ? dRes.data : []
+  } catch { entryDecisions.value = [] }
+}
+
+async function loadMoreDecisions() {
+  loadingMoreDecisions.value = true
+  try {
+    const offset = entryDecisions.value.length
+    const statusParam = entryFilter.value !== 'all' ? `&status=${entryFilter.value}` : ''
+    const dRes = await api.get(`/portfolio/entry-decisions?limit=20&offset=${offset}${statusParam}`)
+    const more = Array.isArray(dRes.data) ? dRes.data : []
+    entryDecisions.value.push(...more)
+  } catch { /* silent */ } finally {
+    loadingMoreDecisions.value = false
+  }
+}
+
+function toggleDecision(id: string) {
+  expandedDecisionId.value = expandedDecisionId.value === id ? null : id
 }
 </script>
 
@@ -204,20 +224,73 @@ const reasonLabels: Record<string, string> = {
       </div>
 
       <!-- Entry Decisions -->
-      <div v-if="entryDecisions.length > 0" class="mb-5">
-        <h2 class="font-semibold text-sm mb-2">Recent Entry Decisions</h2>
-        <div class="flex gap-2 flex-wrap">
-          <div
-            v-for="d in entryDecisions.slice(0, 8)" :key="d.id"
-            class="px-2 py-1 rounded text-xs border"
-            :class="d.status === 'allowed'
-              ? 'bg-green-500/10 border-green-500/30 text-green-400'
-              : 'bg-red-500/10 border-red-500/30 text-red-400'"
-          >
-            <span class="font-medium">{{ d.symbol }}</span>
-            <span class="ml-1 opacity-70">{{ d.status === 'allowed' ? 'passed' : (d.reason_codes || []).join(', ') || d.stage }}</span>
-          </div>
+      <div class="mb-5">
+        <div class="flex items-center gap-3 mb-2">
+          <h2 class="font-semibold text-sm">Entry Decisions</h2>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-700 text-gray-300">{{ entryDecisions.length }}</span>
         </div>
+
+        <!-- Filter tabs -->
+        <div class="flex gap-1 mb-3">
+          <button
+            v-for="tab in entryFilterTabs" :key="tab"
+            class="px-3 py-1 text-xs rounded-full capitalize transition-colors"
+            :class="entryFilter === tab ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'"
+            @click="changeEntryFilter(tab)"
+          >{{ tab }}</button>
+        </div>
+
+        <div v-if="entryDecisions.length === 0" class="bg-gray-900 border border-gray-800 rounded-lg p-4 text-center text-sm text-gray-500">
+          No entry decisions{{ entryFilter !== 'all' ? ` with status "${entryFilter}"` : '' }}.
+        </div>
+
+        <div v-else class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="text-gray-500 border-b border-gray-800">
+                <th class="px-3 py-2 text-left">Time</th>
+                <th class="px-3 py-2 text-left">Symbol</th>
+                <th class="px-3 py-2 text-left">Status</th>
+                <th class="px-3 py-2 text-left">Stage</th>
+                <th class="px-3 py-2 text-left">Reasons</th>
+                <th class="px-3 py-2 text-left">Regime</th>
+                <th class="px-3 py-2 text-left">Profile</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template v-for="d in entryDecisions" :key="d.id">
+                <tr
+                  class="border-b border-gray-800/30 cursor-pointer hover:bg-gray-800/30"
+                  @click="toggleDecision(d.id)"
+                >
+                  <td class="px-3 py-1.5 text-gray-400 tabular-nums">{{ timeAgo(d.created_at) }}</td>
+                  <td class="px-3 py-1.5">
+                    <RouterLink :to="`/assets/${d.symbol}`" class="text-white hover:text-blue-400 font-medium" @click.stop>{{ d.symbol }}</RouterLink>
+                  </td>
+                  <td class="px-3 py-1.5">
+                    <span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium" :class="decisionStatusColors[d.status] || 'text-gray-400 bg-gray-500/10'">{{ d.status }}</span>
+                  </td>
+                  <td class="px-3 py-1.5 text-gray-400">{{ d.stage }}</td>
+                  <td class="px-3 py-1.5 text-gray-400">{{ (d.reason_codes || []).join(', ') || '—' }}</td>
+                  <td class="px-3 py-1.5 text-gray-400">{{ d.regime || '—' }}</td>
+                  <td class="px-3 py-1.5 text-gray-400">{{ d.profile || '—' }}</td>
+                </tr>
+                <tr v-if="expandedDecisionId === d.id && d.reason_text" class="border-b border-gray-800/30">
+                  <td colspan="7" class="px-4 py-2 bg-gray-950/50 text-gray-300 text-xs">
+                    {{ d.reason_text }}
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+
+        <button
+          v-if="entryDecisions.length >= 20"
+          class="mt-2 px-4 py-1.5 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg disabled:opacity-50"
+          :disabled="loadingMoreDecisions"
+          @click="loadMoreDecisions"
+        >{{ loadingMoreDecisions ? 'Loading...' : 'Load more' }}</button>
       </div>
 
       <!-- Active Protections -->
@@ -232,52 +305,6 @@ const reasonLabels: Record<string, string> = {
             <span class="text-orange-300/60 ml-1">{{ p.reason }}</span>
             <span v-if="p.expires_at" class="text-gray-500 ml-1">expires {{ p.expires_at.split('T')[1]?.slice(0,5) || '' }}</span>
           </div>
-        </div>
-      </div>
-
-      <!-- Protection History -->
-      <div class="mb-5">
-        <h2 class="font-semibold text-sm mb-2">Protection History</h2>
-        <div v-if="protectionHistory.length === 0" class="bg-gray-800 border border-gray-700 rounded-lg p-4 text-center text-sm text-gray-500">
-          No protection events recorded
-        </div>
-        <div v-else class="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
-          <table class="w-full text-xs">
-            <thead>
-              <tr class="text-gray-500 border-b border-gray-700">
-                <th class="px-3 py-2 text-left">Time</th>
-                <th class="px-3 py-2 text-left">Type</th>
-                <th class="px-3 py-2 text-left">Asset</th>
-                <th class="px-3 py-2 text-left">Reason</th>
-                <th class="px-3 py-2 text-center">Status</th>
-                <th class="px-3 py-2 text-right">Expires</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="ev in protectionHistory" :key="ev.id" class="border-b border-gray-700/30">
-                <td class="px-3 py-1.5 text-gray-400 tabular-nums">{{ timeAgo(ev.triggered_at) }}</td>
-                <td class="px-3 py-1.5">
-                  <span
-                    class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium border"
-                    :class="protectionTypeColors[ev.protection_type] || 'bg-gray-500/10 text-gray-400 border-gray-500/30'"
-                  >{{ protectionTypeLabels[ev.protection_type] || ev.protection_type.replace(/_/g, ' ') }}</span>
-                </td>
-                <td class="px-3 py-1.5 text-gray-300">{{ ev.asset_symbol || 'Global' }}</td>
-                <td class="px-3 py-1.5 text-gray-400 max-w-[200px] truncate" :title="ev.reason">{{ ev.reason }}</td>
-                <td class="px-3 py-1.5 text-center">
-                  <span
-                    class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium border"
-                    :class="ev.status === 'active'
-                      ? 'bg-red-500/10 text-red-400 border-red-500/30'
-                      : 'bg-green-500/10 text-green-400 border-green-500/30'"
-                  >{{ ev.status }}</span>
-                </td>
-                <td class="px-3 py-1.5 text-right text-gray-500 tabular-nums">
-                  {{ ev.expires_at ? timeAgo(ev.expires_at) : '—' }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
         </div>
       </div>
 
