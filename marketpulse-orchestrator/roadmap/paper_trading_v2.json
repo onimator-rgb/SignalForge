@@ -1,0 +1,234 @@
+{
+  "source": "Paper Trading Enhancement Plan v2",
+  "created_at": "2026-04-01",
+  "goal": "Enhance paper trading to better simulate real market conditions, support learning, and improve buy/sell decisions. DEMO ONLY — no real brokers.",
+  "tiers": {
+    "10": {
+      "label": "Risk Metrics & Analytics",
+      "features": [
+        {
+          "id": "pt2_max_drawdown",
+          "name": "Maximum Drawdown (MDD) calculation",
+          "description": "Calculate maximum drawdown from portfolio equity curve. Track peak equity, current drawdown, and worst historical drawdown. Store in portfolio summary. MDD = (peak - trough) / peak. Update after every portfolio evaluation cycle.",
+          "scope": "backend/app/portfolio/ — add MDD tracking to portfolio evaluation, expose via API",
+          "files_hint": ["backend/app/portfolio/risk_metrics.py", "backend/tests/test_mdd.py"],
+          "complexity": "small",
+          "depends_on": [],
+          "marketpulse_has": "basic risk_metrics endpoint exists but no MDD"
+        },
+        {
+          "id": "pt2_sharpe_ratio",
+          "name": "Sharpe Ratio calculation",
+          "description": "Calculate annualized Sharpe ratio from portfolio daily returns. Sharpe = (mean_return - risk_free_rate) / std_return * sqrt(252). Use portfolio transaction history to derive daily returns. Risk-free rate = 0.04 (configurable).",
+          "scope": "backend/app/portfolio/risk_metrics.py — add sharpe calculation from closed positions",
+          "files_hint": ["backend/app/portfolio/risk_metrics.py", "backend/tests/test_sharpe.py"],
+          "complexity": "small",
+          "depends_on": [],
+          "marketpulse_has": "no Sharpe ratio"
+        },
+        {
+          "id": "pt2_profit_factor",
+          "name": "Profit Factor & Win Rate metrics",
+          "description": "Profit Factor = gross_profit / gross_loss. Win Rate = winning_trades / total_trades. Calculate from closed PortfolioPositions. Also add avg_win, avg_loss, largest_win, largest_loss, avg_hold_time.",
+          "scope": "backend/app/portfolio/risk_metrics.py",
+          "files_hint": ["backend/app/portfolio/risk_metrics.py", "backend/tests/test_profit_factor.py"],
+          "complexity": "small",
+          "depends_on": [],
+          "marketpulse_has": "no profit factor or detailed win stats"
+        },
+        {
+          "id": "pt2_risk_dashboard_fe",
+          "name": "Risk Metrics Dashboard in Frontend",
+          "description": "Add risk metrics section to PortfolioView.vue showing MDD, Sharpe, Profit Factor, Win Rate, avg win/loss, best/worst trade. Use existing /portfolio/risk-metrics endpoint. Color-coded: green for good, red for bad.",
+          "scope": "frontend/src/views/PortfolioView.vue — add risk metrics panel",
+          "files_hint": ["frontend/src/views/PortfolioView.vue", "frontend/src/types/api.ts"],
+          "complexity": "medium",
+          "depends_on": ["pt2_max_drawdown", "pt2_sharpe_ratio", "pt2_profit_factor"]
+        }
+      ]
+    },
+    "11": {
+      "label": "Backtesting Engine",
+      "features": [
+        {
+          "id": "pt2_backtest_core",
+          "name": "Backtest engine core — simulate strategy on historical data",
+          "description": "Create backend/app/backtest/engine.py with a BacktestEngine class that: (1) loads historical price_bars for a given asset+interval+date range, (2) iterates bar-by-bar simulating the recommendation scoring + portfolio entry/exit logic, (3) tracks simulated positions, equity curve, and trades. Pure Python, no DB writes. Returns BacktestResult dataclass with: trades list, equity_curve, total_return, max_drawdown, sharpe_ratio, win_rate.",
+          "scope": "backend/app/backtest/engine.py — new module with pure simulation logic",
+          "files_hint": ["backend/app/backtest/__init__.py", "backend/app/backtest/engine.py", "backend/tests/test_backtest_engine.py"],
+          "complexity": "large",
+          "depends_on": [],
+          "marketpulse_has": "no backtesting"
+        },
+        {
+          "id": "pt2_backtest_api",
+          "name": "Backtest API endpoint",
+          "description": "Add POST /api/v1/backtest/run endpoint that accepts: asset_id, interval, start_date, end_date, strategy_profile. Calls BacktestEngine, returns results as JSON. Rate-limit to 1 concurrent backtest. Add GET /api/v1/backtest/results for saved results.",
+          "scope": "backend/app/backtest/router.py + schemas",
+          "files_hint": ["backend/app/backtest/router.py", "backend/app/backtest/schemas.py", "backend/tests/test_backtest_api.py"],
+          "complexity": "medium",
+          "depends_on": ["pt2_backtest_core"]
+        },
+        {
+          "id": "pt2_backtest_fe",
+          "name": "Backtest View in Frontend",
+          "description": "New BacktestView.vue — form to select asset, date range, profile. Shows results: equity curve (CSS bars), trade list, metrics (return, MDD, Sharpe, win rate). Add to router and nav.",
+          "scope": "frontend/src/views/BacktestView.vue + router + nav",
+          "files_hint": ["frontend/src/views/BacktestView.vue", "frontend/src/router/index.ts", "frontend/src/components/AppLayout.vue"],
+          "complexity": "medium",
+          "depends_on": ["pt2_backtest_api"]
+        }
+      ]
+    },
+    "12": {
+      "label": "Dynamic Entry/Exit Strategies",
+      "features": [
+        {
+          "id": "pt2_dca_engine",
+          "name": "DCA Engine — Dollar Cost Averaging for losing positions",
+          "description": "When open position drops X% from entry, buy additional tranche to lower average entry. Config per profile: max_tranches (2-3), tranche_size_pct (40-50% of original), price_drop_trigger (-5%), min_interval_hours (6-8). Store DCA state in exit_context JSONB. Update entry_price to weighted average after each DCA buy. No DB migrations needed.",
+          "scope": "backend/app/portfolio/dca.py — pure DCA logic functions",
+          "files_hint": ["backend/app/portfolio/dca.py", "backend/tests/test_dca.py"],
+          "complexity": "medium",
+          "depends_on": [],
+          "marketpulse_has": "no DCA"
+        },
+        {
+          "id": "pt2_position_scaling",
+          "name": "Position Scaling Up — add to winning positions",
+          "description": "When position is profitable by X% AND recommendation still active, allow adding a scale-up tranche. Max 1 scale-up per position. Tranche = 50% of original size. Updates quantity and average entry. Requires strong signal confirmation (score > 70).",
+          "scope": "backend/app/portfolio/scaling.py — scale-up logic",
+          "files_hint": ["backend/app/portfolio/scaling.py", "backend/tests/test_scaling.py"],
+          "complexity": "medium",
+          "depends_on": [],
+          "marketpulse_has": "no position scaling"
+        },
+        {
+          "id": "pt2_regime_auto_switch",
+          "name": "Automatic regime-based strategy switching (enhanced)",
+          "description": "Enhance existing auto_switch: when regime changes (detected via ADX + price trend + anomaly ratio), automatically apply the new profile's parameters to ALL new evaluations. Log profile switches as events. Add STRATEGY_AUTO_SWITCH=true to config. Frontend shows switch history.",
+          "scope": "backend/app/strategy/service.py — enhance auto_select_profile to actually apply",
+          "files_hint": ["backend/app/strategy/service.py", "backend/tests/test_regime_switch.py"],
+          "complexity": "medium",
+          "depends_on": [],
+          "marketpulse_has": "auto_switch exists but only recommends, does not apply"
+        }
+      ]
+    },
+    "13": {
+      "label": "Multi-Timeframe Analysis",
+      "features": [
+        {
+          "id": "pt2_mtf_indicator_calc",
+          "name": "Multi-timeframe indicator calculation",
+          "description": "Extend get_indicators() to accept multiple intervals (e.g. ['5m','1h','4h','1d']). For each interval, compute RSI, MACD, ADX. Return dict keyed by interval. Requires ingesting data at multiple intervals — reuse existing ingestion with interval param.",
+          "scope": "backend/app/indicators/service.py — add get_multi_timeframe_indicators()",
+          "files_hint": ["backend/app/indicators/service.py", "backend/tests/test_mtf_indicators.py"],
+          "complexity": "medium",
+          "depends_on": [],
+          "marketpulse_has": "single interval only (1h)"
+        },
+        {
+          "id": "pt2_mtf_signal_confluence",
+          "name": "Multi-timeframe signal confluence scoring",
+          "description": "Create confluence score: if RSI oversold on BOTH 1h and 4h = strong buy signal. If only 1h = weak. Add mtf_confluence_score to recommendation scoring with weight 0.15. Signals align across timeframes = higher confidence.",
+          "scope": "backend/app/recommendations/scoring.py — add mtf signal",
+          "files_hint": ["backend/app/recommendations/scoring.py", "backend/tests/test_mtf_scoring.py"],
+          "complexity": "medium",
+          "depends_on": ["pt2_mtf_indicator_calc"]
+        },
+        {
+          "id": "pt2_mtf_frontend",
+          "name": "Multi-timeframe indicator tabs in Asset Detail",
+          "description": "Add timeframe selector tabs (5m, 1h, 4h, 1d) in AssetDetailView.vue. Each tab shows indicators for that interval. Highlight confluence (all green = aligned bullish, all red = aligned bearish).",
+          "scope": "frontend/src/views/AssetDetailView.vue",
+          "files_hint": ["frontend/src/views/AssetDetailView.vue", "frontend/src/types/api.ts"],
+          "complexity": "medium",
+          "depends_on": ["pt2_mtf_indicator_calc"]
+        }
+      ]
+    },
+    "14": {
+      "label": "Safety Mechanisms",
+      "features": [
+        {
+          "id": "pt2_daily_drawdown_limit",
+          "name": "Daily drawdown circuit breaker",
+          "description": "Track daily portfolio drawdown. If equity drops more than X% from day's opening equity (default 5%), halt ALL new entries for remainder of day. Log as protection event. Resume next trading day. Configurable via DAILY_DRAWDOWN_LIMIT_PCT.",
+          "scope": "backend/app/portfolio/protections.py — add daily drawdown guard",
+          "files_hint": ["backend/app/portfolio/protections.py", "backend/tests/test_daily_drawdown.py"],
+          "complexity": "medium",
+          "depends_on": [],
+          "marketpulse_has": "consecutive SL protection exists but no daily drawdown limit"
+        },
+        {
+          "id": "pt2_circuit_breaker",
+          "name": "Market-wide circuit breaker",
+          "description": "If >60% of monitored assets drop >3% in 1 hour, activate circuit breaker: close all open positions and halt trading for 2 hours. Detect via anomaly ratio and top mover data. Log as critical protection event.",
+          "scope": "backend/app/portfolio/protections.py — add market circuit breaker",
+          "files_hint": ["backend/app/portfolio/protections.py", "backend/tests/test_circuit_breaker.py"],
+          "complexity": "medium",
+          "depends_on": [],
+          "marketpulse_has": "no circuit breaker"
+        },
+        {
+          "id": "pt2_safety_dashboard_fe",
+          "name": "Safety status in Dashboard",
+          "description": "Show active protections, circuit breaker status, daily drawdown gauge (green/yellow/red), and consecutive SL count in DashboardView. Pull from /portfolio/protections and /portfolio/risk-metrics.",
+          "scope": "frontend/src/views/DashboardView.vue",
+          "files_hint": ["frontend/src/views/DashboardView.vue"],
+          "complexity": "small",
+          "depends_on": ["pt2_daily_drawdown_limit"]
+        }
+      ]
+    },
+    "15": {
+      "label": "Decision Logic & History",
+      "features": [
+        {
+          "id": "pt2_rich_entry_decisions",
+          "name": "Rich entry/exit decision logging",
+          "description": "Enhance portfolio entry/exit logging: for each decision, store full signal breakdown (RSI value, MACD state, ADX strength, StochRSI, score components), trailing params used, regime at time, protections checked. Store in entry_decisions table or JSONB column.",
+          "scope": "backend/app/portfolio/service.py — enhance decision logging",
+          "files_hint": ["backend/app/portfolio/service.py", "backend/tests/test_rich_decisions.py"],
+          "complexity": "medium",
+          "depends_on": [],
+          "marketpulse_has": "basic decision logging exists but lacks signal detail"
+        },
+        {
+          "id": "pt2_decision_analysis_fe",
+          "name": "Decision Analysis view in Frontend",
+          "description": "Expand Portfolio entry-decisions section: show each decision with signal breakdown bars (visual), indicator values at time of decision, protection checks passed/failed, trailing config used. Filterable by asset, date, decision type.",
+          "scope": "frontend/src/views/PortfolioView.vue — expand entry decisions section",
+          "files_hint": ["frontend/src/views/PortfolioView.vue", "frontend/src/types/api.ts"],
+          "complexity": "medium",
+          "depends_on": ["pt2_rich_entry_decisions"]
+        }
+      ]
+    },
+    "16": {
+      "label": "Sentiment Overlay (Optional)",
+      "features": [
+        {
+          "id": "pt2_rss_sentiment",
+          "name": "RSS news feed + basic sentiment classifier",
+          "description": "Fetch headlines from public crypto/stock RSS feeds (CoinDesk, Yahoo Finance RSS). Simple keyword-based sentiment: positive words (+1), negative words (-1), neutral (0). Aggregate per-asset sentiment score. Store as signal. No external AI API needed — pure keyword matching.",
+          "scope": "backend/app/sentiment/ — new module with RSS fetcher + classifier",
+          "files_hint": ["backend/app/sentiment/fetcher.py", "backend/app/sentiment/classifier.py", "backend/tests/test_sentiment.py"],
+          "complexity": "medium",
+          "depends_on": [],
+          "marketpulse_has": "no sentiment analysis"
+        },
+        {
+          "id": "pt2_sentiment_scoring",
+          "name": "Integrate sentiment into recommendation scoring",
+          "description": "Add sentiment_score as 10th signal in recommendation scoring with weight 0.08. Positive sentiment boosts buy signals, negative boosts avoid. Only applied when sentiment data is available (graceful degradation).",
+          "scope": "backend/app/recommendations/scoring.py",
+          "files_hint": ["backend/app/recommendations/scoring.py", "backend/tests/test_sentiment_scoring.py"],
+          "complexity": "small",
+          "depends_on": ["pt2_rss_sentiment"]
+        }
+      ]
+    }
+  }
+}

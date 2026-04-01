@@ -21,7 +21,7 @@ logger = logging.getLogger("marketpulse.orchestrator")
 
 ORCHESTRATOR_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = ORCHESTRATOR_ROOT.parent
-ROADMAP_PATH = ORCHESTRATOR_ROOT / "roadmap" / "profittrailer_features.json"
+ROADMAP_DIR = ORCHESTRATOR_ROOT / "roadmap"
 BRAIN_PROMPT_PATH = ORCHESTRATOR_ROOT / "prompts" / "orchestrator_brain.md"
 TASK_STORE = ORCHESTRATOR_ROOT / "task_store"
 LOG_DIR = REPO_ROOT / "logs"
@@ -66,7 +66,6 @@ class Orchestrator:
         self.max_minutes = max_minutes
         self.max_retries = max_retries
         self.dry_run = dry_run
-        self.tiers = tiers or ["1", "2", "3", "4", "5"]
 
         self.session_id = f"session-{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}"
         self._t_start = time.monotonic()
@@ -81,14 +80,31 @@ class Orchestrator:
         self.roadmap = self._load_roadmap()
         self.brain_prompt = self._load_brain_prompt()
 
+        # Auto-detect tiers from roadmap if not specified
+        self.tiers = tiers or sorted(self.roadmap.get("tiers", {}).keys(), key=lambda x: int(x) if x.isdigit() else 999)
+
         logger.info(f"Orchestrator initialized: session={self.session_id}, "
                      f"max_minutes={max_minutes}, tiers={self.tiers}, dry_run={dry_run}")
 
     # ── Helpers ───────────────────────────────────────
 
     def _load_roadmap(self) -> dict:
-        with open(ROADMAP_PATH, encoding="utf-8") as f:
-            return json.load(f)
+        """Load and merge all roadmap JSON files from roadmap/ directory."""
+        merged: dict = {"tiers": {}}
+        for path in sorted(ROADMAP_DIR.glob("*.json")):
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+            for tier_key, tier_data in data.get("tiers", {}).items():
+                if tier_key in merged["tiers"]:
+                    # Merge features into existing tier
+                    existing_ids = {f["id"] for f in merged["tiers"][tier_key].get("features", [])}
+                    for f in tier_data.get("features", []):
+                        if f["id"] not in existing_ids:
+                            merged["tiers"][tier_key]["features"].append(f)
+                else:
+                    merged["tiers"][tier_key] = tier_data
+            logger.info(f"Loaded roadmap: {path.name} ({len(data.get('tiers', {}))} tiers)")
+        return merged
 
     def _load_brain_prompt(self) -> str:
         with open(BRAIN_PROMPT_PATH, encoding="utf-8") as f:

@@ -45,7 +45,7 @@ def main():
                         help="Which tiers to implement (default: all). Can repeat: --tier 1 --tier 2")
     args = parser.parse_args()
 
-    tiers = args.tiers or ["1", "2", "3", "4", "5"]
+    tiers = args.tiers  # None = auto-detect all tiers from roadmap
 
     # Verify claude CLI
     print("=" * 60, flush=True)
