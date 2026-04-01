@@ -27,6 +27,26 @@ const entryDecisions = ref<EntryDecision[]>([])
 const riskMetrics = ref<RiskMetrics | null>(null)
 const riskLoading = ref(false)
 const decisionsExpanded = ref(false)
+const showProtections = ref(false)
+
+function protectionColor(type: string): string {
+  switch (type) {
+    case 'stoploss_guard':
+    case 'consecutive_sl_guard':
+      return 'text-red-400 bg-red-500/10 border-red-500/30'
+    case 'asset_cooldown':
+      return 'text-orange-400 bg-orange-500/10 border-orange-500/30'
+    case 'entry_frequency_cap':
+    case 'daily_drawdown':
+      return 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30'
+    case 'class_exposure_cap':
+      return 'text-blue-400 bg-blue-500/10 border-blue-500/30'
+    case 'market_circuit_breaker':
+      return 'text-purple-400 bg-purple-500/10 border-purple-500/30'
+    default:
+      return 'text-gray-400 bg-gray-500/10 border-gray-500/30'
+  }
+}
 
 async function load() {
   loading.value = true
@@ -417,17 +437,37 @@ const reasonLabels: Record<string, string> = {
         </div>
       </div>
 
-      <!-- Active Protections -->
-      <div v-if="protections.length > 0" class="mb-5">
-        <h2 class="font-semibold text-sm mb-2 text-orange-400">Active Protections ({{ protections.length }})</h2>
-        <div class="flex gap-2 flex-wrap">
+      <!-- Protection Events Timeline -->
+      <div class="mb-5">
+        <div
+          class="flex items-center gap-2 cursor-pointer select-none"
+          @click="showProtections = !showProtections"
+        >
+          <svg
+            class="w-4 h-4 text-gray-400 transition-transform duration-200"
+            :class="{ 'rotate-90': showProtections }"
+            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+          ><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+          <h2 class="font-semibold text-sm text-gray-300">Protection Events</h2>
+          <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-700 text-gray-300">{{ protections.length }}</span>
+        </div>
+        <div v-if="showProtections" class="mt-2 space-y-1.5 pl-2 border-l-2 border-gray-800">
+          <div v-if="protections.length === 0" class="text-xs text-gray-500 py-2 pl-3">
+            No protection events
+          </div>
           <div
-            v-for="p in protections" :key="p.id"
-            class="px-3 py-1.5 bg-orange-500/10 border border-orange-500/30 rounded-lg text-xs text-orange-400"
+            v-for="p in protections.slice(0, 20)" :key="p.id"
+            class="flex items-start gap-2 pl-3 py-1.5 rounded-r-lg border-l-4"
+            :class="protectionColor(p.type)"
           >
-            <span class="font-medium">{{ p.type.replace(/_/g, ' ') }}</span>
-            <span class="text-orange-300/60 ml-1">{{ p.reason }}</span>
-            <span v-if="p.expires_at" class="text-gray-500 ml-1">expires {{ p.expires_at.split('T')[1]?.slice(0,5) || '' }}</span>
+            <div class="flex-1 min-w-0">
+              <span class="text-xs font-medium capitalize">{{ p.type.replace(/_/g, ' ') }}</span>
+              <p class="text-[11px] text-gray-400 truncate">{{ p.reason }}</p>
+            </div>
+            <div class="text-[10px] text-gray-500 whitespace-nowrap text-right shrink-0">
+              <div>{{ p.triggered_at?.split('T')[1]?.slice(0,5) || '' }}</div>
+              <div v-if="p.expires_at">expires {{ p.expires_at.split('T')[1]?.slice(0,5) || '' }}</div>
+            </div>
           </div>
         </div>
       </div>

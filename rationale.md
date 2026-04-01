@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0001`
+# Rationale for `marketpulse-task-2026-04-01-0003`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0001-implementation
+**branch:** task/marketpulse-task-2026-04-01-0003-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,63 +9,47 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0001 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0003 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** score_sentiment() returns SignalScore with correct weight from WEIGHTS['sentiment']
+- **Criteria:** Protection events section is visible in PortfolioView (even when empty, showing 'No protection events')
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** sentiment_score=None defaults to 0.0 (neutral, no impact on composite)
+- **Criteria:** Section is collapsed by default, expands on click
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** All WEIGHTS values sum to 1.0 (Â±0.001)
+- **Criteria:** Each protection event shows type, reason, and timestamps
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** compute_recommendation() accepts optional sentiment_score parameter
+- **Criteria:** Events are color-coded by protection type (red/orange/yellow/blue/purple)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** compute_recommendation() backward compatible â€” works without sentiment_score arg
+- **Criteria:** vue-tsc --noEmit passes with no errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** SCORING_VERSION is 'v4'
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** Positive sentiment increases composite score, negative decreases it
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** All 9 tests pass
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** mypy passes with no errors
+- **Criteria:** Existing portfolio functionality is not broken
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/recommendations/scoring.py`
-- `backend/tests/test_mtf_scoring.py`
-- `backend/tests/test_sentiment_scoring.py`
-- `backend/tests/test_stochrsi.py`
+- `frontend/src/views/PortfolioView.vue`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_sentiment_scoring.py -q` — passed
-  - `cd backend && uv run python -m mypy app/recommendations/scoring.py --ignore-missing-imports` — passed
+  - `cd frontend && npx vue-tsc --noEmit` — passed
 
 ---
 
@@ -103,7 +87,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0001 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0001): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0003): implementation
 
 ---
 
