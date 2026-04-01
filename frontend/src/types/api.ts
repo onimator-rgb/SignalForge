@@ -261,6 +261,17 @@ export interface PortfolioTransaction {
   executed_at: string
 }
 
+export interface ProtectionEvent {
+  id: string
+  protection_type: string
+  status: string
+  asset_symbol: string | null
+  asset_class: string | null
+  reason: string
+  triggered_at: string
+  expires_at: string | null
+}
+
 export interface PortfolioSummary {
   stats: PortfolioStats
   open_positions: PortfolioPosition[]

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
-import { fetchPortfolio, triggerEvaluation } from '../api/portfolio'
+import { fetchPortfolio, triggerEvaluation, fetchProtectionHistory } from '../api/portfolio'
 import { fetchWatchlists, addAssetToWatchlist } from '../api/watchlists'
-import type { Watchlist } from '../types/api'
+import type { Watchlist, ProtectionEvent } from '../types/api'
 import { fmtPrice, fmtTime, timeAgo } from '../utils/format'
 import FreshnessBadge from '../components/FreshnessBadge.vue'
 import LastRefreshHint from '../components/LastRefreshHint.vue'
@@ -24,6 +24,7 @@ const closingId = ref<string | null>(null)
 const expandedId = ref<string | null>(null)
 const protections = ref<any[]>([])
 const entryDecisions = ref<any[]>([])
+const protectionHistory = ref<ProtectionEvent[]>([])
 
 async function load() {
   loading.value = true
@@ -39,6 +40,9 @@ async function load() {
       const dRes = await api.get('/portfolio/entry-decisions?limit=10')
       entryDecisions.value = Array.isArray(dRes.data) ? dRes.data : []
     } catch { entryDecisions.value = [] }
+    try {
+      protectionHistory.value = await fetchProtectionHistory(20)
+    } catch { protectionHistory.value = [] }
   } catch (e: any) {
     error.value = e.response?.data?.detail || e.message
   } finally {
@@ -119,6 +123,22 @@ const badgeColors: Record<string, string> = {
   near_stop: 'text-red-300 bg-red-500/10 border-red-500/30',
   near_target: 'text-green-300 bg-green-500/10 border-green-500/30',
   expiring_soon: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30',
+}
+
+const protectionTypeColors: Record<string, string> = {
+  asset_cooldown: 'bg-orange-500/10 text-orange-400 border-orange-500/30',
+  stoploss_guard: 'bg-red-500/10 text-red-400 border-red-500/30',
+  consecutive_sl_guard: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30',
+  entry_frequency_cap: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
+  class_exposure_cap: 'bg-purple-500/10 text-purple-400 border-purple-500/30',
+}
+
+const protectionTypeLabels: Record<string, string> = {
+  asset_cooldown: 'Cooldown',
+  stoploss_guard: 'SL Guard',
+  consecutive_sl_guard: 'Consecutive SL',
+  entry_frequency_cap: 'Freq Cap',
+  class_exposure_cap: 'Class Cap',
 }
 
 const reasonLabels: Record<string, string> = {
@@ -212,6 +232,52 @@ const reasonLabels: Record<string, string> = {
             <span class="text-orange-300/60 ml-1">{{ p.reason }}</span>
             <span v-if="p.expires_at" class="text-gray-500 ml-1">expires {{ p.expires_at.split('T')[1]?.slice(0,5) || '' }}</span>
           </div>
+        </div>
+      </div>
+
+      <!-- Protection History -->
+      <div class="mb-5">
+        <h2 class="font-semibold text-sm mb-2">Protection History</h2>
+        <div v-if="protectionHistory.length === 0" class="bg-gray-800 border border-gray-700 rounded-lg p-4 text-center text-sm text-gray-500">
+          No protection events recorded
+        </div>
+        <div v-else class="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="text-gray-500 border-b border-gray-700">
+                <th class="px-3 py-2 text-left">Time</th>
+                <th class="px-3 py-2 text-left">Type</th>
+                <th class="px-3 py-2 text-left">Asset</th>
+                <th class="px-3 py-2 text-left">Reason</th>
+                <th class="px-3 py-2 text-center">Status</th>
+                <th class="px-3 py-2 text-right">Expires</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="ev in protectionHistory" :key="ev.id" class="border-b border-gray-700/30">
+                <td class="px-3 py-1.5 text-gray-400 tabular-nums">{{ timeAgo(ev.triggered_at) }}</td>
+                <td class="px-3 py-1.5">
+                  <span
+                    class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium border"
+                    :class="protectionTypeColors[ev.protection_type] || 'bg-gray-500/10 text-gray-400 border-gray-500/30'"
+                  >{{ protectionTypeLabels[ev.protection_type] || ev.protection_type.replace(/_/g, ' ') }}</span>
+                </td>
+                <td class="px-3 py-1.5 text-gray-300">{{ ev.asset_symbol || 'Global' }}</td>
+                <td class="px-3 py-1.5 text-gray-400 max-w-[200px] truncate" :title="ev.reason">{{ ev.reason }}</td>
+                <td class="px-3 py-1.5 text-center">
+                  <span
+                    class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium border"
+                    :class="ev.status === 'active'
+                      ? 'bg-red-500/10 text-red-400 border-red-500/30'
+                      : 'bg-green-500/10 text-green-400 border-green-500/30'"
+                  >{{ ev.status }}</span>
+                </td>
+                <td class="px-3 py-1.5 text-right text-gray-500 tabular-nums">
+                  {{ ev.expires_at ? timeAgo(ev.expires_at) : '—' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
