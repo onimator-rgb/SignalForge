@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0003`
+# Rationale for `marketpulse-task-2026-04-01-0005`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0003-implementation
+**branch:** task/marketpulse-task-2026-04-01-0005-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,41 +9,33 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0003 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0005 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** frontend/src/views/BacktestView.vue exists with <script setup lang="ts"> and uses Composition API
+- **Criteria:** PerformanceView.vue imports and calls fetchRiskMetrics()
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** frontend/src/api/backtest.ts exports runBacktest() that POSTs to /backtest/run
+- **Criteria:** Risk metrics section displays Sharpe, MDD, Profit Factor, Win Rate cards
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Asset dropdown populates from /assets API on mount
+- **Criteria:** Sortino, avg hold hours, avg win/loss %, best/worst trade shown
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Form has asset select, lookback days input, profile select (balanced/aggressive/conservative), and Run button
+- **Criteria:** Close reason breakdown displayed as colored pills
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Results section shows metrics grid: total_return_pct, max_drawdown_pct, sharpe_ratio, win_rate, profit_factor, total_trades
+- **Criteria:** Null/empty state handled gracefully with placeholder text
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Trade table displays entry_price, exit_price, pnl_pct (color-coded green/red), exit_reason
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** Route /backtest added to router/index.ts
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** Nav item 'Backtest' added to AppLayout.vue navItems array
+- **Criteria:** All values use tabular-nums and appropriate color coding (green=good, red=bad, yellow=caution)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
@@ -51,17 +43,15 @@ Automated implementation for task marketpulse-task-2026-04-01-0003 via coder_wor
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Dark theme styling consistent with existing views (bg-gray-800 cards, bg-gray-900 page, text-gray-300)
+- **Criteria:** Risk metrics fetch failure does not break the rest of the page
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `frontend/src/api/backtest.ts`
-- `frontend/src/components/AppLayout.vue`
-- `frontend/src/router/index.ts`
-- `frontend/src/views/BacktestView.vue`
+- `frontend/src/api/portfolio.ts`
+- `frontend/src/views/PerformanceView.vue`
 - `rationale.md`
 
 ---
@@ -106,7 +96,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0003 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0003): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0005): implementation
 
 ---
 
