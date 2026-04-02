@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-02-0027`
+# Rationale for `marketpulse-task-2026-04-02-0029`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-02-0027-implementation
+**branch:** task/marketpulse-task-2026-04-02-0029-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,51 +9,57 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-02-0027 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-02-0029 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** GET /api/v1/ai/portfolio-report returns 200 with JSON containing 'report' key
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** 5 static articles defined covering indicators, strategies, and risk categories
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** GET /api/v1/ai/strategy-suggestions/{strategy_id} returns 200 with JSON containing 'suggestions' key
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** get_articles() returns all 5, get_articles(category='risk') returns 2
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** Router is registered in main.py and app starts without import errors
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** get_article_by_slug returns correct article or None for unknown slug
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** All tests pass with mocked/empty DB state
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** GET /api/v1/academy/articles returns list items without body field
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
-- **Criteria:** mypy passes with no errors on router.py
-- **Status:** `partial`
-- **Evidence:** Some checks failed
+- **Criteria:** GET /api/v1/academy/articles/{slug} returns full article with body
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** GET /api/v1/academy/articles/nonexistent returns 404
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** All tests pass, mypy clean
+- **Status:** `pass`
+- **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/ai_assistant/__init__.py`
-- `backend/app/ai_assistant/portfolio_report.py`
-- `backend/app/ai_assistant/router.py`
-- `backend/app/ai_assistant/strategy_advisor.py`
+- `backend/app/academy/__init__.py`
+- `backend/app/academy/content.py`
+- `backend/app/academy/router.py`
 - `backend/app/main.py`
-- `backend/tests/test_ai_api.py`
-- `backend/tests/test_ai_report.py`
-- `backend/tests/test_strategy_advisor.py`
+- `backend/tests/test_academy.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_ai_api.py -q` — passed
-  - `cd backend && uv run python -m mypy app/ai_assistant/router.py --ignore-missing-imports` — FAILED
+  - `cd backend && uv run python -m pytest tests/test_academy.py -q` — passed
+  - `cd backend && uv run python -m mypy app/academy/content.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m mypy app/academy/router.py --ignore-missing-imports` — passed
 
 ---
 
@@ -91,7 +97,7 @@ Automated implementation for task marketpulse-task-2026-04-02-0027 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-02-0027): implementation
+- `N/A` — feat(marketpulse-task-2026-04-02-0029): implementation
 
 ---
 
