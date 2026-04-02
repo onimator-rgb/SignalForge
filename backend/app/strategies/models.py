@@ -77,7 +77,6 @@ class Strategy(BaseModel):
     profile_name: str = "balanced"
     is_preset: bool = False
     is_public: bool = False
-    copy_count: int = 0
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     @computed_field  # type: ignore[prop-decorator]

@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-02-0039`
+# Rationale for `marketpulse-task-2026-04-02-0041`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-02-0039-implementation
+**branch:** task/marketpulse-task-2026-04-02-0041-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,33 +9,37 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-02-0039 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-02-0041 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** POST /api/v1/marketplace/{id}/copy returns 200 with a new Strategy that has a different id, name='Copy of <original>', is_public=False
+- **Criteria:** GET /api/v1/marketplace/ranking returns 200 with list of RankedStrategy objects
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Original strategy's copy_count increments by 1 on each copy
+- **Criteria:** Only public strategies appear in ranking
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Returns 404 when strategy_id does not exist
+- **Criteria:** Default sort is by sharpe_ratio descending
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Returns 400 when strategy is not public
+- **Criteria:** sort_by query param supports sharpe_ratio, total_return_pct, copy_count
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Copied strategy has identical rules to the original
+- **Criteria:** limit query param caps the result list (default 20, max 100)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** All existing marketplace tests still pass
+- **Criteria:** Metrics are deterministic â€” same strategy id always produces same metrics
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** All tests pass, mypy clean
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
@@ -47,18 +51,15 @@ Automated implementation for task marketpulse-task-2026-04-02-0039 via coder_wor
 - `backend/app/strategies/marketplace.py`
 - `backend/app/strategies/models.py`
 - `backend/app/strategies/router.py`
-- `backend/tests/test_marketplace.py`
-- `backend/tests/test_marketplace_copy.py`
+- `backend/tests/test_marketplace_ranking.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_marketplace_copy.py -q` — passed
-  - `cd backend && uv run python -m pytest tests/test_marketplace.py -q` — passed
+  - `cd backend && uv run python -m pytest tests/test_marketplace_ranking.py -q` — passed
   - `cd backend && uv run python -m mypy app/strategies/marketplace.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/strategies/models.py --ignore-missing-imports` — passed
 
 ---
 
@@ -96,7 +97,7 @@ Automated implementation for task marketpulse-task-2026-04-02-0039 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-02-0039): implementation
+- `N/A` — feat(marketpulse-task-2026-04-02-0041): implementation
 
 ---
 
