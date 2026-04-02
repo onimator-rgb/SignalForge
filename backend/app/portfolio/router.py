@@ -151,6 +151,56 @@ async def equity_curve(db: AsyncSession = Depends(get_db)):
     )
 
 
+@router.get("/journal/export/csv")
+async def export_journal_csv(db: AsyncSession = Depends(get_db)):
+    """Download closed trade history as CSV."""
+    from fastapi.responses import Response
+    from sqlalchemy import select
+    from app.assets.models import Asset
+    from app.portfolio.models import PortfolioPosition, PortfolioTransaction
+    from app.portfolio.journal import format_journal_entry, format_journal
+    from app.portfolio.export import format_journal_csv as _fmt_csv
+
+    q = (
+        select(PortfolioPosition, Asset.symbol)
+        .join(Asset, PortfolioPosition.asset_id == Asset.id)
+        .where(PortfolioPosition.status == "closed")
+        .order_by(PortfolioPosition.closed_at.desc())
+    )
+    result = await db.execute(q)
+    rows = result.all()
+
+    positions = []
+    for row in rows:
+        pos = row.PortfolioPosition
+        pos.symbol = row.symbol  # type: ignore[attr-defined]
+        positions.append(pos)
+
+    # Fetch transactions grouped by position_id
+    position_ids = [pos.id for pos in positions]
+    transactions_by_position: dict[str, list] = {str(pid): [] for pid in position_ids}
+    if position_ids:
+        tx_q = (
+            select(PortfolioTransaction)
+            .where(PortfolioTransaction.position_id.in_(position_ids))
+            .order_by(PortfolioTransaction.executed_at.asc())
+        )
+        tx_result = await db.execute(tx_q)
+        for tx in tx_result.scalars().all():
+            key = str(tx.position_id)
+            if key in transactions_by_position:
+                transactions_by_position[key].append(tx)
+
+    entries = format_journal(positions, transactions_by_position)
+    csv_str = _fmt_csv(entries)
+
+    return Response(
+        content=csv_str,
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="trade_journal.csv"'},
+    )
+
+
 @router.post("/positions/{position_id}/close")
 async def close_position(position_id: UUID, db: AsyncSession = Depends(get_db)):
     """Manually close a demo position at current market price."""
