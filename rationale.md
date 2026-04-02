@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-02-0031`
+# Rationale for `marketpulse-task-2026-04-02-0033`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-02-0031-implementation
+**branch:** task/marketpulse-task-2026-04-02-0033-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,33 +9,33 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-02-0031 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-02-0033 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** AcademyView.vue renders a grid of article cards fetched from /api/v1/academy/articles
+- **Criteria:** PresetBotsView.vue exists and uses <script setup lang="ts"> with Composition API
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Category filter buttons (all, indicators, strategies, risk) filter displayed articles
+- **Criteria:** On mount, fetches presets from GET /api/v1/strategies/presets and displays as cards
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Clicking an article card shows the full article body with formatted headings
+- **Criteria:** Clicking a preset card shows a parameter form with number inputs and default values
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** A back button returns from article detail to the grid view
+- **Criteria:** Submitting the form calls POST /api/v1/strategies/from-preset and displays generated rules
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Route /academy is registered in the router
+- **Criteria:** Route /preset-bots is registered in router/index.ts
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Sidebar navigation includes Akademia link with ðŸ“š icon
+- **Criteria:** Nav item 'Boty' with robot icon appears in AppLayout sidebar
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
@@ -43,7 +43,11 @@ Automated implementation for task marketpulse-task-2026-04-02-0031 via coder_wor
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Dark theme styling matches existing views (bg-gray-900, border-gray-800, etc.)
+- **Criteria:** Dark theme consistent with existing views (bg-gray-900, bg-gray-800, text-gray-300)
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** Loading and error states handled with LoadingSpinner and ErrorBox components
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
@@ -52,7 +56,7 @@ Automated implementation for task marketpulse-task-2026-04-02-0031 via coder_wor
 ## 3) Files changed (and rationale per file)
 - `frontend/src/components/AppLayout.vue`
 - `frontend/src/router/index.ts`
-- `frontend/src/views/AcademyView.vue`
+- `frontend/src/views/PresetBotsView.vue`
 - `rationale.md`
 
 ---
@@ -97,7 +101,7 @@ Automated implementation for task marketpulse-task-2026-04-02-0031 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-02-0031): implementation
+- `N/A` — feat(marketpulse-task-2026-04-02-0033): implementation
 
 ---
 
