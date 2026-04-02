@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-02-0045`
+# Rationale for `marketpulse-task-2026-04-02-0047`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-02-0045-implementation
+**branch:** task/marketpulse-task-2026-04-02-0047-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,68 +9,69 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-02-0045 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-02-0047 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** simulate_strategy_trades() returns a list of Trade objects from app.backtest.engine
+- **Criteria:** StrategyBuilderView.vue exists and exports a valid Vue SFC with <script setup lang="ts">
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** A bar with evaluate_rules signal='buy' while not in position opens a long trade
+- **Criteria:** Route /strategy-builder is registered in router/index.ts
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** A bar with evaluate_rules signal='sell' while in position closes the trade with exit_reason='signal'
+- **Criteria:** Nav entry for Strategy Builder appears in AppLayout.vue navItems
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Stop-loss exit triggers when price drops below stop_loss_pct from entry
+- **Criteria:** Form includes inputs for name, description, profile_name, and a dynamic rules list
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Take-profit exit triggers when price rises above take_profit_pct from entry
+- **Criteria:** Each rule card has indicator, operator, value, value_upper (conditional), action, weight, description fields
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Max-hold exit triggers after max_hold_bars bars in position
+- **Criteria:** Add Rule button appends a new blank rule, remove button deletes a rule
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Last bar forces exit with reason 'end_of_data' if still in position
+- **Criteria:** Save button is disabled when name is empty or no rules exist
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** backtest_strategy() returns a BacktestResult with correct metrics
+- **Criteria:** Save calls POST /api/v1/strategies/ with correct payload shape
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Empty bars list returns empty trades list
+- **Criteria:** Existing strategies are listed from GET /api/v1/strategies/ on mount
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** All tests pass and mypy reports no errors
+- **Criteria:** Delete button calls DELETE /api/v1/strategies/{id} and refreshes list
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** vue-tsc --noEmit passes with no type errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/strategies/__init__.py`
-- `backend/app/strategies/backtester.py`
-- `backend/app/strategies/evaluator.py`
-- `backend/app/strategies/models.py`
-- `backend/tests/test_strategy_backtester.py`
+- `frontend/src/components/AppLayout.vue`
+- `frontend/src/router/index.ts`
+- `frontend/src/views/StrategyBuilderView.vue`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_strategy_backtester.py -q` — passed
-  - `cd backend && uv run python -m mypy app/strategies/backtester.py --ignore-missing-imports` — passed
+  - `cd frontend && npx vue-tsc --noEmit` — passed
 
 ---
 
@@ -108,7 +109,7 @@ Automated implementation for task marketpulse-task-2026-04-02-0045 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-02-0045): implementation
+- `N/A` — feat(marketpulse-task-2026-04-02-0047): implementation
 
 ---
 
