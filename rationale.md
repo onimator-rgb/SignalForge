@@ -1,85 +1,74 @@
-# Rationale for `marketpulse-task-2026-04-01-0007`
+# Rationale for `marketpulse-task-2026-04-02-0057`
 
-**author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0007-implementation
-**commit_sha:** 
-**date:** 2026-04-01
-**model_calls:** 1
+**author:** coder-agent (MarketPulse Coder)
+**branch:** task/marketpulse-task-2026-04-02-0057-implementation
+**commit_sha:**
+**date:** 2026-04-02
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_worker.py with model integration.
+Implement a pure-logic strategy comparison module that ranks multiple BacktestResult objects by Sharpe ratio and identifies the best strategy per metric.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** DCAConfig dataclass is frozen with sensible defaults
+- **Criteria:** compare_strategies({}) returns ComparisonSummary with empty rows
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `pytest tests/test_strategy_comparison.py::test_empty_input — passed`
 
-- **Criteria:** DCAConfig post-init validates lengths match max_levels and tranche_pcts sum to ~1.0
+- **Criteria:** compare_strategies with 3 BacktestResult objects returns rows sorted by sharpe_ratio descending with correct ranks 1-3
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `pytest tests/test_strategy_comparison.py::test_multiple_strategies — passed`
 
-- **Criteria:** should_dca returns True only when drop exceeds the threshold for the current level
+- **Criteria:** best_return, best_sharpe, lowest_drawdown, best_win_rate each correctly identify the top strategy for that metric
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `pytest tests/test_strategy_comparison.py::test_best_per_metric — passed`
 
-- **Criteria:** should_dca returns False when all DCA levels are exhausted
+- **Criteria:** All 5+ tests pass via pytest
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `5 passed in 0.06s`
 
-- **Criteria:** compute_dca_order returns correct tranche USD amount
+- **Criteria:** mypy reports no errors
 - **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** compute_dca_order raises ValueError when levels exhausted
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** compute_new_avg_price returns correct weighted average
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** All tests pass, mypy passes with no errors
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** `Success: no issues found in 1 source file`
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/dca.py`
-- `backend/tests/test_dca.py`
-- `rationale.md`
+- `backend/app/strategies/comparison.py` — new module with ComparisonRow, ComparisonSummary models and compare_strategies() function (~75 LOC)
+- `backend/tests/test_strategy_comparison.py` — 5 unit tests covering empty input, single strategy, multiple strategies, best-per-metric, and negative returns (~100 LOC)
+- `backend/app/strategies/__init__.py` — empty init to make strategies a proper package
+- `rationale.md` — this file
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_dca.py -q` � passed
-  - `cd backend && uv run python -m mypy app/portfolio/dca.py --ignore-missing-imports` � passed
+  - `cd backend && uv run python -m pytest tests/test_strategy_comparison.py -q` — 5 passed
+  - `cd backend && uv run python -m mypy app/strategies/comparison.py --ignore-missing-imports` — Success: no issues found
 
 ---
 
 ## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
+- Synthetic BacktestResult fixtures created via helper function in tests
+- Covers positive returns, negative returns, tied metrics, single-strategy edge case
 
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code � **Severity:** medium � **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+- **Risk:** Dependency on BacktestResult dataclass — **Severity:** low — **Mitigation:** BacktestResult is frozen dataclass, stable API
 
 ---
 
 ## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
+- New files only, backward compatible. No API changes, no DB changes.
 
 ---
 
 ## 8) Performance considerations
-- No performance impact expected.
+- No performance impact expected. Pure in-memory sorting of small collections.
 
 ---
 
@@ -87,17 +76,18 @@ Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_wor
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
-- API key logged: `no` (only presence check)
+- API key logged: `no`
 
 ---
 
 ## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
+1. API endpoint for exposing comparison results (noted as future task).
+2. Frontend view for comparison table (noted as future task).
 
 ---
 
 ## 11) Short changelog
-- `N/A` � feat(marketpulse-task-2026-04-01-0007): implementation
+- `N/A` — feat(marketpulse-task-2026-04-02-0057): strategy performance comparison module
 
 ---
 
