@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0015`
+# Rationale for `marketpulse-task-2026-04-02-0017`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0015-implementation
+**branch:** task/marketpulse-task-2026-04-02-0017-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,71 +9,56 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0015 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-02-0017 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** POST /api/v1/strategies with valid rules returns 201 with strategy id
+- **Criteria:** filter_rules_by_signal returns only rules matching the given action type
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** POST /api/v1/strategies with empty rules returns 422
+- **Criteria:** map_signal_to_action returns hold with score 0 when no rules match
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** POST /api/v1/strategies with invalid rule schema returns 422
+- **Criteria:** map_signal_to_action returns correct action and weighted score when rules match
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** GET /api/v1/strategies returns list of all strategies with count
+- **Criteria:** Score is capped at 1.0 even with high weights
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** GET /api/v1/strategies/{id} returns strategy or 404
+- **Criteria:** MappedAction includes signal_source, symbol, and confidence from input
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** DELETE /api/v1/strategies/{id} returns 204 or 404
+- **Criteria:** All 8+ tests pass
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Existing /presets and /from-preset endpoints remain functional
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** All 9 tests pass
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** mypy passes on router.py and schemas.py
+- **Criteria:** mypy reports no errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
+- `backend/app/signals/__init__.py`
+- `backend/app/signals/mapper.py`
 - `backend/app/strategies/__init__.py`
 - `backend/app/strategies/models.py`
-- `backend/app/strategies/presets/__init__.py`
-- `backend/app/strategies/presets/btd.py`
-- `backend/app/strategies/presets/dca_bot.py`
-- `backend/app/strategies/presets/grid.py`
-- `backend/app/strategies/router.py`
-- `backend/app/strategies/schemas.py`
-- `backend/tests/test_presets_api.py`
-- `backend/tests/test_strategy_crud.py`
-- `backend/tests/test_strategy_rules.py`
+- `backend/tests/test_signal_mapper.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_strategy_crud.py -q` — passed
-  - `cd backend && uv run python -m mypy app/strategies/router.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/strategies/schemas.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_signal_mapper.py -q` — passed
+  - `cd backend && uv run python -m mypy app/signals/mapper.py --ignore-missing-imports` — passed
 
 ---
 
@@ -111,7 +96,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0015 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0015): implementation
+- `N/A` — feat(marketpulse-task-2026-04-02-0017): implementation
 
 ---
 

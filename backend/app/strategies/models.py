@@ -1,25 +1,31 @@
-"""Pydantic models for strategy rules and conditions."""
+"""Strategy domain models used by the signal mapper and future strategy engine."""
 
 from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class StrategyCondition(BaseModel):
-    """A single condition comparing an indicator value against a threshold."""
+    """A single condition that must be met for a rule to fire."""
 
-    indicator_name: str
-    operator: Literal["gt", "gte", "lt", "lte", "eq", "between"]
-    value: float
-    value_upper: float | None = None
+    indicator: str = ""
+    operator: Literal["gt", "lt", "eq", "gte", "lte"] = "gt"
+    value: float = 0.0
+
+
+class StrategyAction(BaseModel):
+    """The action a strategy rule recommends."""
+
+    action: Literal["buy", "sell", "hold"] = "hold"
+    weight: float = Field(default=1.0, ge=0.0)
 
 
 class StrategyRule(BaseModel):
-    """A rule that fires when all its conditions are met."""
+    """A single rule mapping conditions to an action."""
 
-    conditions: list[StrategyCondition]
-    action: Literal["buy", "sell", "hold"]
-    weight: float = 1.0
+    name: str = ""
     description: str = ""
+    conditions: list[StrategyCondition] = Field(default_factory=list)
+    action: StrategyAction = Field(default_factory=StrategyAction)
