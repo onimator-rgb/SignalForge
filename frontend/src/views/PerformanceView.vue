@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { fetchPerformance, type PerformanceMetrics } from '../api/performance'
 import { fetchPortfolio, fetchRiskMetrics } from '../api/portfolio'
 import type { PortfolioSummary, RiskMetrics } from '../types/api'
@@ -74,6 +74,72 @@ const typeLabels: Record<string, string> = {
   neutral: 'NEUTRAL',
   avoid: 'AVOID',
 }
+
+const positionAllocations = computed(() => {
+  if (!portfolio.value || portfolio.value.open_positions.length === 0) return []
+  const equity = portfolio.value.stats.equity
+  if (equity <= 0) return []
+  return portfolio.value.open_positions
+    .map((p) => ({
+      symbol: p.asset_symbol ?? 'Unknown',
+      asset_class: p.asset_class ?? 'other',
+      value: p.current_value_usd ?? 0,
+      pct: ((p.current_value_usd ?? 0) / equity) * 100,
+    }))
+    .sort((a, b) => b.pct - a.pct)
+})
+
+const assetClassExposure = computed(() => {
+  if (!portfolio.value || portfolio.value.open_positions.length === 0) return []
+  const equity = portfolio.value.stats.equity
+  if (equity <= 0) return []
+  const groups: Record<string, number> = {}
+  for (const p of portfolio.value.open_positions) {
+    const cls = p.asset_class ?? 'other'
+    groups[cls] = (groups[cls] ?? 0) + (p.current_value_usd ?? 0)
+  }
+  return Object.entries(groups)
+    .map(([cls, value]) => ({ cls, value, pct: (value / equity) * 100 }))
+    .sort((a, b) => b.pct - a.pct)
+})
+
+const assetClassColor: Record<string, string> = {
+  crypto: 'bg-purple-500',
+  stock: 'bg-blue-500',
+}
+
+function getAssetClassColor(cls: string): string {
+  return assetClassColor[cls] ?? 'bg-gray-500'
+}
+
+const concentrationWarnings = computed(() => {
+  const warnings: { type: 'warning' | 'info'; message: string }[] = []
+  if (!portfolio.value || portfolio.value.open_positions.length === 0) return warnings
+
+  if (portfolio.value.open_positions.length === 1) {
+    warnings.push({ type: 'info', message: 'Low diversification \u2014 single position' })
+  }
+
+  for (const alloc of positionAllocations.value) {
+    if (alloc.pct > 40) {
+      warnings.push({
+        type: 'warning',
+        message: `High concentration: ${alloc.symbol} at ${alloc.pct.toFixed(1)}%`,
+      })
+    }
+  }
+
+  for (const exp of assetClassExposure.value) {
+    if (exp.pct > 60) {
+      warnings.push({
+        type: 'warning',
+        message: `Asset class concentration: ${exp.cls} at ${exp.pct.toFixed(1)}%`,
+      })
+    }
+  }
+
+  return warnings
+})
 </script>
 
 <template>
@@ -314,6 +380,72 @@ const typeLabels: Record<string, string> = {
             >
               {{ reason }}: {{ count }}
             </span>
+          </div>
+        </template>
+      </div>
+
+      <!-- Risk Allocation section -->
+      <div v-if="portfolio" class="mb-6">
+        <h2 class="text-lg font-semibold text-gray-100 mb-3">Risk Allocation</h2>
+
+        <div v-if="portfolio.open_positions.length === 0" class="bg-gray-800 rounded-xl p-6 text-center text-gray-500 text-sm">
+          No open positions &mdash; allocation data unavailable
+        </div>
+
+        <template v-else>
+          <!-- Concentration Warnings -->
+          <div v-if="concentrationWarnings.length > 0" class="flex flex-wrap gap-2 mb-4">
+            <span
+              v-for="(w, i) in concentrationWarnings"
+              :key="i"
+              class="px-3 py-1.5 rounded-lg text-xs font-medium border"
+              :class="w.type === 'warning'
+                ? 'bg-yellow-900/50 text-yellow-300 border-yellow-700'
+                : 'bg-blue-900/50 text-blue-300 border-blue-700'"
+            >
+              {{ w.message }}
+            </span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <!-- Position Size Distribution -->
+            <div class="bg-gray-800 rounded-xl p-6">
+              <h3 class="text-sm font-semibold text-gray-300 mb-4">Position Size Distribution</h3>
+              <div class="space-y-3">
+                <div v-for="alloc in positionAllocations" :key="alloc.symbol">
+                  <div class="flex justify-between text-xs mb-1">
+                    <span class="text-gray-200 font-medium">{{ alloc.symbol }}</span>
+                    <span class="text-gray-400 tabular-nums">${{ alloc.value.toFixed(2) }} &middot; {{ alloc.pct.toFixed(1) }}%</span>
+                  </div>
+                  <div class="h-2 bg-gray-700 rounded-full overflow-hidden">
+                    <div
+                      class="h-full bg-blue-500 rounded-full transition-all"
+                      :style="{ width: Math.min(alloc.pct, 100) + '%' }"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Asset Class Exposure -->
+            <div class="bg-gray-800 rounded-xl p-6">
+              <h3 class="text-sm font-semibold text-gray-300 mb-4">Asset Class Exposure</h3>
+              <div class="space-y-3">
+                <div v-for="exp in assetClassExposure" :key="exp.cls">
+                  <div class="flex justify-between text-xs mb-1">
+                    <span class="text-gray-200 font-medium capitalize">{{ exp.cls }}</span>
+                    <span class="text-gray-400 tabular-nums">${{ exp.value.toFixed(2) }} &middot; {{ exp.pct.toFixed(1) }}%</span>
+                  </div>
+                  <div class="h-2 bg-gray-700 rounded-full overflow-hidden">
+                    <div
+                      class="h-full rounded-full transition-all"
+                      :class="getAssetClassColor(exp.cls)"
+                      :style="{ width: Math.min(exp.pct, 100) + '%' }"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </template>
       </div>

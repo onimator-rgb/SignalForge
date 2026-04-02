@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-02-0059`
+# Rationale for `marketpulse-task-2026-04-02-0061`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-02-0059-implementation
+**branch:** task/marketpulse-task-2026-04-02-0061-implementation
 **commit_sha:** 
 **date:** 2026-04-02
 **model_calls:** 1
@@ -9,62 +9,59 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-02-0059 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-02-0061 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** DivergenceDetector extends BaseDetector with name property returning 'divergence'
+- **Criteria:** PerformanceView has a 'Risk Allocation' section visible below Risk Metrics
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** detect() returns AnomalyCandidate with anomaly_type='divergence' for bullish divergence (price lower low + RSI higher low)
+- **Criteria:** Position size distribution shows horizontal bars with symbol, value, and percentage for each open position
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** detect() returns AnomalyCandidate with direction='bearish' for bearish divergence (price higher high + RSI lower high)
+- **Criteria:** Asset class exposure groups positions by asset_class with aggregate percentages
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** detect() returns None when no divergence is present
+- **Criteria:** Concentration warning appears when single position > 40% of equity
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** detect() returns None when fewer than 40 bars are provided
+- **Criteria:** Concentration warning appears when single asset class > 60% of equity
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Score is between 0.6 and 0.9 and severity is computed via score_to_severity()
+- **Criteria:** Empty state shown when no open positions exist
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** DivergenceDetector is registered in the DETECTORS list in service.py
+- **Criteria:** vue-tsc --noEmit passes with no errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** All tests pass with pytest
+- **Criteria:** Dark theme styling matches existing PerformanceView cards (bg-gray-800, text-gray-100, etc.)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** mypy reports no errors
+- **Criteria:** Numbers use tabular-nums class
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/anomalies/detectors/divergence.py`
-- `backend/app/anomalies/service.py`
-- `backend/tests/test_divergence_detector.py`
+- `frontend/src/views/PerformanceView.vue`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_divergence_detector.py -q` — passed
-  - `cd backend && uv run python -m mypy app/anomalies/detectors/divergence.py --ignore-missing-imports` — passed
+  - `cd frontend && npx vue-tsc --noEmit` — passed
 
 ---
 
@@ -102,7 +99,7 @@ Automated implementation for task marketpulse-task-2026-04-02-0059 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-02-0059): implementation
+- `N/A` — feat(marketpulse-task-2026-04-02-0061): implementation
 
 ---
 
