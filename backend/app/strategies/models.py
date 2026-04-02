@@ -76,6 +76,7 @@ class Strategy(BaseModel):
     rules: list[StrategyRule] = Field(min_length=1)
     profile_name: str = "balanced"
     is_preset: bool = False
+    is_public: bool = False
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     @computed_field  # type: ignore[prop-decorator]

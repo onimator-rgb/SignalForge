@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-02-0035`
+# Rationale for `marketpulse-task-2026-04-02-0037`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-02-0035-implementation
+**branch:** task/marketpulse-task-2026-04-02-0037-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,33 +9,33 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-02-0035 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-02-0037 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** POST /api/v1/strategies/ creates a strategy and returns it with an id
+- **Criteria:** Strategy model has is_public: bool = False field
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** GET /api/v1/strategies/ returns a list of all stored strategies
+- **Criteria:** POST /api/v1/strategies/{id}/publish sets is_public=True and returns 200
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** GET /api/v1/strategies/{id} returns a single strategy or 404
+- **Criteria:** POST /api/v1/strategies/{id}/unpublish sets is_public=False and returns 200
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** DELETE /api/v1/strategies/{id} removes the strategy or returns 404
+- **Criteria:** GET /api/v1/marketplace returns only strategies with is_public=True
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** models.py contains Strategy, StrategyRule, StrategyCondition, StrategyAction, StrategyStore classes
+- **Criteria:** 404 returned for publish/unpublish of non-existent strategy
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** All tests pass, mypy clean
+- **Criteria:** All tests pass, mypy passes
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
@@ -44,18 +44,18 @@ Automated implementation for task marketpulse-task-2026-04-02-0035 via coder_wor
 ## 3) Files changed (and rationale per file)
 - `backend/app/main.py`
 - `backend/app/strategies/__init__.py`
+- `backend/app/strategies/marketplace.py`
 - `backend/app/strategies/models.py`
 - `backend/app/strategies/router.py`
-- `backend/tests/test_strategy_crud.py`
+- `backend/tests/test_marketplace.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_strategy_crud.py -q` — passed
-  - `cd backend && uv run python -m mypy app/strategies/models.py --ignore-missing-imports` — passed
-  - `cd backend && uv run python -m mypy app/strategies/router.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_marketplace.py -q` — passed
+  - `cd backend && uv run python -m mypy app/strategies/marketplace.py --ignore-missing-imports` — passed
 
 ---
 
@@ -93,7 +93,7 @@ Automated implementation for task marketpulse-task-2026-04-02-0035 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-02-0035): implementation
+- `N/A` — feat(marketpulse-task-2026-04-02-0037): implementation
 
 ---
 
