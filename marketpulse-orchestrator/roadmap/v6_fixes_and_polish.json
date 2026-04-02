@@ -1,0 +1,106 @@
+{
+  "source": "v6 — Fix all failing tests, polish, prepare for live demo",
+  "created_at": "2026-04-02",
+  "tiers": {
+    "50": {
+      "label": "Fix Failing Tests",
+      "features": [
+        {
+          "id": "v6_fix_evaluator_tests",
+          "name": "Fix 5 failing strategy evaluator edge case tests",
+          "description": "Fix tests in backend/tests/test_strategy_evaluator.py: TestCheckCondition::test_between_missing_upper, TestEvaluateRulesEdgeCases::test_hold_action_contributes_zero, TestEvaluateRulesWeighting::test_score_clamped_to_positive_one, test_score_clamped_to_negative_one, TestEvaluateRulesMultiCondition::test_rule_with_missing_condition_skipped. Issues: StrategyRule model uses conditions=[] (list) + action='buy' (string) + weight=1.0. Fix test helpers to match.",
+          "scope": "backend/tests/test_strategy_evaluator.py",
+          "files_hint": ["backend/tests/test_strategy_evaluator.py"],
+          "complexity": "small",
+          "depends_on": []
+        },
+        {
+          "id": "v6_fix_consecutive_sl_test",
+          "name": "Fix consecutive SL test — mock daily_drawdown_guard properly",
+          "description": "Fix tests/test_consecutive_sl.py::TestConsecutiveSlAllowsWhenBrokenByProfit::test_broken_streak_allows. Issue: check_protections calls _daily_drawdown_guard which queries DB, but mock doesn't support it. Fix by patching _daily_drawdown_guard in the test.",
+          "scope": "backend/tests/test_consecutive_sl.py",
+          "files_hint": ["backend/tests/test_consecutive_sl.py"],
+          "complexity": "small",
+          "depends_on": []
+        },
+        {
+          "id": "v6_rewrite_strategy_crud_tests",
+          "name": "Rewrite strategy CRUD API tests for new model",
+          "description": "Create backend/tests/test_strategy_crud.py with tests for POST/GET/DELETE /api/v1/strategies. Use new model: StrategyRule(conditions=[StrategyCondition(indicator='rsi', operator='gt', value=70)], action='sell', weight=1.0). Test create, list, get by id, delete, validation errors.",
+          "scope": "backend/tests/test_strategy_crud.py",
+          "files_hint": ["backend/tests/test_strategy_crud.py"],
+          "complexity": "small",
+          "depends_on": []
+        },
+        {
+          "id": "v6_rewrite_marketplace_tests",
+          "name": "Rewrite marketplace tests for new model",
+          "description": "Create backend/tests/test_marketplace.py with tests for publish, copy, ranking endpoints. Use new StrategyRule model format. Test: publish makes strategy public, copy creates private clone, ranking sorts by Sharpe.",
+          "scope": "backend/tests/test_marketplace.py",
+          "files_hint": ["backend/tests/test_marketplace.py"],
+          "complexity": "small",
+          "depends_on": ["v6_rewrite_strategy_crud_tests"]
+        },
+        {
+          "id": "v6_rewrite_optimizer_tests",
+          "name": "Rewrite optimizer tests for correct field names",
+          "description": "Create backend/tests/test_optimizer.py. ParamRange uses field_name= (not name=). OptimizationResult has sharpe_ratio directly (not .backtest.sharpe_ratio). Test: single param optimization, two params, empty ranges, too many combinations limit.",
+          "scope": "backend/tests/test_optimizer.py",
+          "files_hint": ["backend/tests/test_optimizer.py"],
+          "complexity": "small",
+          "depends_on": []
+        },
+        {
+          "id": "v6_rewrite_presets_api_tests",
+          "name": "Rewrite preset bots API tests",
+          "description": "Create backend/tests/test_presets_api.py. Test GET /api/v1/strategies/presets lists available bot types, POST /api/v1/strategies/from-preset creates strategy from preset params. Use new model format.",
+          "scope": "backend/tests/test_presets_api.py",
+          "files_hint": ["backend/tests/test_presets_api.py"],
+          "complexity": "small",
+          "depends_on": ["v6_rewrite_strategy_crud_tests"]
+        }
+      ]
+    },
+    "51": {
+      "label": "Integration Verification",
+      "features": [
+        {
+          "id": "v6_verify_backend_startup",
+          "name": "Verify backend starts without import errors",
+          "description": "Create backend/tests/test_app_startup.py that imports app.main:app and verifies all routers are registered, all endpoints respond. Test: health returns ok, /docs loads, strategy/marketplace/academy/signals/ai routers present.",
+          "scope": "backend/tests/test_app_startup.py",
+          "files_hint": ["backend/tests/test_app_startup.py"],
+          "complexity": "small",
+          "depends_on": []
+        },
+        {
+          "id": "v6_verify_indicators_complete",
+          "name": "Verify all 15+ indicators calculate without error",
+          "description": "Create backend/tests/test_indicators_integration.py that tests get_indicators() with synthetic price bars. Verify RSI, MACD, Bollinger, ADX, StochRSI, VWAP, OBV, MFI, CCI, PSAR, Keltner, Squeeze all return values or None (no crashes). Tests with 60 bars of random walk data.",
+          "scope": "backend/tests/test_indicators_integration.py",
+          "files_hint": ["backend/tests/test_indicators_integration.py"],
+          "complexity": "small",
+          "depends_on": []
+        },
+        {
+          "id": "v6_verify_portfolio_cycle",
+          "name": "Verify full portfolio evaluation cycle works",
+          "description": "Create backend/tests/test_portfolio_cycle.py that tests the evaluate flow: entries, exits, trailing updates, protection checks, DCA, scaling. Use mocked DB with realistic positions. Verify no crashes and correct state transitions.",
+          "scope": "backend/tests/test_portfolio_cycle.py",
+          "files_hint": ["backend/tests/test_portfolio_cycle.py"],
+          "complexity": "medium",
+          "depends_on": []
+        },
+        {
+          "id": "v6_frontend_typecheck",
+          "name": "Verify frontend TypeScript compiles without errors",
+          "description": "Create a test script that runs 'cd frontend && npx vue-tsc --noEmit' and verifies exit code 0. Fix any type errors found in new views (StrategyBuilderView, MarketplaceView, AcademyView, PresetBotsView).",
+          "scope": "frontend/src/",
+          "files_hint": ["frontend/src/types/api.ts", "frontend/src/views/StrategyBuilderView.vue"],
+          "complexity": "small",
+          "depends_on": []
+        }
+      ]
+    }
+  }
+}
