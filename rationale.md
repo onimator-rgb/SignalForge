@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0005`
+# Rationale for `marketpulse-task-2026-04-01-0007`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0005-implementation
+**branch:** task/marketpulse-task-2026-04-01-0007-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,33 +9,37 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0005 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** generate_grid_rules() returns list of dicts with buy rules below midpoint and sell rules above
+- **Criteria:** generate_btd_rules(5.0, 2.0, 10.0) returns 3 rules: dip buy, recovery buy, take profit sell
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Grid levels are evenly spaced between lower_price and upper_price
+- **Criteria:** generate_btd_rules(5.0, 0, 10.0) returns 2 rules (no recovery confirmation)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Each rule dict contains conditions, action, weight, description, and amount keys
+- **Criteria:** All rules follow the same dict structure as grid.py (conditions, action, weight, description, amount)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** ValueError raised for invalid inputs (bad prices, num_grids < 2, zero amount)
+- **Criteria:** ValueError raised for invalid inputs (dip_pct <= 0, dip_pct >= 100, take_profit_pct <= 0)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** All tests pass (pytest exit code 0)
+- **Criteria:** Rules are sorted by weight ascending
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** mypy reports no errors
+- **Criteria:** All 10 tests pass
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** mypy passes with no errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
@@ -43,16 +47,15 @@ Automated implementation for task marketpulse-task-2026-04-01-0005 via coder_wor
 
 ## 3) Files changed (and rationale per file)
 - `backend/app/strategies/presets/__init__.py`
-- `backend/app/strategies/presets/grid.py`
-- `backend/tests/test_bot_grid.py`
-- `rationale.md`
+- `backend/app/strategies/presets/btd.py`
+- `backend/tests/test_bot_btd.py`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_bot_grid.py -q` — passed
-  - `cd backend && uv run python -m mypy app/strategies/presets/grid.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_bot_btd.py -q` — passed
+  - `cd backend && uv run python -m mypy app/strategies/presets/btd.py --ignore-missing-imports` — passed
 
 ---
 
@@ -90,7 +93,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0005 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0005): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0007): implementation
 
 ---
 
