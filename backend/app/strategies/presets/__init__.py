@@ -1,5 +1,5 @@
 """Strategy preset generators."""
 
-from .btd import generate_btd_rules
+from .dca_bot import generate_dca_rules
 
-__all__ = ["generate_btd_rules"]
+__all__ = ["generate_dca_rules"]
