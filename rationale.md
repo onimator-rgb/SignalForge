@@ -1,59 +1,62 @@
-# Rationale for `marketpulse-task-2026-04-02-0049`
+# Rationale for `marketpulse-task-2026-04-02-0051`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-02-0049-implementation
+**branch:** task/marketpulse-task-2026-04-02-0051-implementation
 **commit_sha:** 
-**date:** 2026-04-01
+**date:** 2026-04-02
 **model_calls:** 1
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-02-0049 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-02-0051 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** DashboardView contains a collapsible AI Assistant panel with purple-themed header
+- **Criteria:** SRLevel dataclass has price, level_type, touch_count, and strength fields
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Panel is collapsed by default and toggles on click
+- **Criteria:** find_support_resistance() correctly identifies local minima as support and local maxima as resistance
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Panel shows portfolio insights derived from overview data
+- **Criteria:** Nearby levels within cluster_pct are merged with averaged prices and summed touch counts
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Panel shows at least 2 contextual strategy tips based on dashboard state
+- **Criteria:** Returns empty list when insufficient data (< 2*window+1 bars)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Panel includes Market Summary AI generation button that calls existing genSummary()
+- **Criteria:** Output is sorted by touch_count descending and limited to max_levels
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** vue-tsc --noEmit passes with no errors
+- **Criteria:** All pytest tests pass
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Dark theme styling consistent with existing dashboard sections
+- **Criteria:** mypy reports no errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `frontend/src/views/DashboardView.vue`
+- `backend/app/indicators/calculators/__init__.py`
+- `backend/app/indicators/calculators/support_resistance.py`
+- `backend/tests/test_support_resistance.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd frontend && npx vue-tsc --noEmit` — passed
+  - `cd backend && uv run python -m pytest tests/test_support_resistance.py -q` — passed
+  - `cd backend && uv run python -m mypy app/indicators/calculators/support_resistance.py --ignore-missing-imports` — passed
 
 ---
 
@@ -91,7 +94,7 @@ Automated implementation for task marketpulse-task-2026-04-02-0049 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-02-0049): implementation
+- `N/A` — feat(marketpulse-task-2026-04-02-0051): implementation
 
 ---
 
