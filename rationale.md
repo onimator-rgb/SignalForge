@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-02-0055`
+# Rationale for `marketpulse-task-2026-04-02-0057`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-02-0055-implementation
+**branch:** task/marketpulse-task-2026-04-02-0057-implementation
 **commit_sha:** 
 **date:** 2026-04-02
 **model_calls:** 1
@@ -9,54 +9,46 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-02-0055 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-02-0057 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** format_journal_csv([]) returns a string with exactly one header row and no data rows
+- **Criteria:** compare_strategies({}) returns ComparisonSummary with empty rows
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** format_journal_csv with 3 sample entries returns 4 lines (1 header + 3 data)
+- **Criteria:** compare_strategies with 3 BacktestResult objects returns rows sorted by sharpe_ratio descending with correct ranks 1-3
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** CSV header contains all 12 expected columns: symbol, entry_price, exit_price, quantity, entry_value_usd, exit_value_usd, realized_pnl_usd, realized_pnl_pct, close_reason, opened_at, closed_at, hold_duration_hours
+- **Criteria:** best_return, best_sharpe, lowest_drawdown, best_win_rate each correctly identify the top strategy for that metric
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** None values in journal entries produce empty strings in CSV output
+- **Criteria:** All 5+ tests pass via pytest
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** CSV output can be parsed back by csv.reader without errors
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** All tests pass: cd backend && uv run python -m pytest tests/test_portfolio_export.py -q
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** mypy passes: cd backend && uv run python -m mypy app/portfolio/export.py --ignore-missing-imports
+- **Criteria:** mypy reports no errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/export.py`
-- `backend/app/portfolio/router.py`
-- `backend/tests/test_portfolio_export.py`
+- `backend/app/strategies/__init__.py`
+- `backend/app/strategies/comparison.py`
+- `backend/tests/test_strategy_comparison.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_portfolio_export.py -q` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/export.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_strategy_comparison.py -q` — passed
+  - `cd backend && uv run python -m mypy app/strategies/comparison.py --ignore-missing-imports` — passed
 
 ---
 
@@ -94,7 +86,7 @@ Automated implementation for task marketpulse-task-2026-04-02-0055 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-02-0055): implementation
+- `N/A` — feat(marketpulse-task-2026-04-02-0057): implementation
 
 ---
 
