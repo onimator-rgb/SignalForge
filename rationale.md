@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0011`
+# Rationale for `marketpulse-task-2026-04-01-0013`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0011-implementation
+**branch:** task/marketpulse-task-2026-04-01-0013-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,55 +9,59 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0011 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0013 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** GET /api/v1/strategies/presets returns 200 with a JSON list of 3 preset descriptors (grid, dca, btd)
+- **Criteria:** POST /api/v1/signals/webhook with valid payload returns 201 with id and status='accepted'
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Each preset descriptor includes preset_type, display_name, description, and params array with name/type/description
+- **Criteria:** POST with missing required field returns 422
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** POST /api/v1/strategies/from-preset with {preset_type: 'dca', params: {interval_hours: 4, amount_per_buy: 50, max_buys: 10}} returns 200 with generated rules
+- **Criteria:** POST with invalid action (not buy/sell) returns 422
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** POST /api/v1/strategies/from-preset with unknown preset_type returns 422
+- **Criteria:** POST with confidence outside 0.0-1.0 returns 422
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** POST /api/v1/strategies/from-preset with invalid params (e.g. negative values) returns 422 with descriptive error
+- **Criteria:** GET /api/v1/signals/ returns list of stored signals newest-first
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** All tests pass, mypy clean
+- **Criteria:** GET supports limit query parameter defaulting to 50
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** Buffer is capped at 1000 entries, oldest evicted first
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** mypy passes with no errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/strategies/__init__.py`
-- `backend/app/strategies/presets/__init__.py`
-- `backend/app/strategies/presets/btd.py`
-- `backend/app/strategies/presets/dca_bot.py`
-- `backend/app/strategies/presets/grid.py`
-- `backend/app/strategies/router.py`
-- `backend/app/strategies/schemas.py`
-- `backend/tests/test_presets_api.py`
+- `backend/app/main.py`
+- `backend/app/signals/__init__.py`
+- `backend/app/signals/webhook.py`
+- `backend/tests/test_webhook.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_presets_api.py -q` — passed
-  - `cd backend && uv run python -m mypy app/strategies/router.py app/strategies/schemas.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_webhook.py -q` — passed
+  - `cd backend && uv run python -m mypy app/signals/webhook.py --ignore-missing-imports` — passed
 
 ---
 
@@ -95,7 +99,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0011 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0011): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0013): implementation
 
 ---
 

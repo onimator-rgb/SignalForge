@@ -25,6 +25,7 @@ from app.portfolio.router import router as portfolio_router
 from app.live.router import router as live_router
 from app.strategy.router import router as strategy_router
 from app.backtest.router import router as backtest_router
+from app.signals.webhook import router as signals_router
 
 
 @asynccontextmanager
@@ -126,6 +127,7 @@ def create_app() -> FastAPI:
     app.include_router(live_router)
     app.include_router(strategy_router)
     app.include_router(backtest_router)
+    app.include_router(signals_router)
 
     return app
 
