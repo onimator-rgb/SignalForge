@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-02-0041`
+# Rationale for `marketpulse-task-2026-04-02-0043`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-02-0041-implementation
+**branch:** task/marketpulse-task-2026-04-02-0043-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,57 +9,61 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-02-0041 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-02-0043 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** GET /api/v1/marketplace/ranking returns 200 with list of RankedStrategy objects
+- **Criteria:** MarketplaceView.vue exists and compiles without vue-tsc errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Only public strategies appear in ranking
+- **Criteria:** View fetches from /api/v1/strategies/marketplace/ranking on mount
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Default sort is by sharpe_ratio descending
+- **Criteria:** Each strategy card displays rank, name, description, style tag, and Sharpe ratio
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** sort_by query param supports sharpe_ratio, total_return_pct, copy_count
+- **Criteria:** Copy button calls POST /api/v1/strategies/marketplace/{id}/copy and shows feedback
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** limit query param caps the result list (default 20, max 100)
+- **Criteria:** Sort toggle allows switching between Sharpe and name ordering
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Metrics are deterministic â€” same strategy id always produces same metrics
+- **Criteria:** Route /marketplace is registered and navigable
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** All tests pass, mypy clean
+- **Criteria:** Nav link appears in AppLayout sidebar/header
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** Dark theme with TailwindCSS v4 classes consistent with existing views
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** Numbers use tabular-nums class, color-coded green/yellow/red
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/main.py`
-- `backend/app/strategies/__init__.py`
-- `backend/app/strategies/marketplace.py`
-- `backend/app/strategies/models.py`
-- `backend/app/strategies/router.py`
-- `backend/tests/test_marketplace_ranking.py`
+- `frontend/src/components/AppLayout.vue`
+- `frontend/src/router/index.ts`
+- `frontend/src/views/MarketplaceView.vue`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_marketplace_ranking.py -q` — passed
-  - `cd backend && uv run python -m mypy app/strategies/marketplace.py --ignore-missing-imports` — passed
+  - `cd frontend && npx vue-tsc --noEmit` — passed
 
 ---
 
@@ -97,7 +101,7 @@ Automated implementation for task marketpulse-task-2026-04-02-0041 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-02-0041): implementation
+- `N/A` — feat(marketpulse-task-2026-04-02-0043): implementation
 
 ---
 
