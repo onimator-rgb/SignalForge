@@ -1,85 +1,82 @@
-# Rationale for `marketpulse-task-2026-04-01-0007`
+# Rationale for `marketpulse-task-2026-04-02-0051`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0007-implementation
-**commit_sha:** 
-**date:** 2026-04-01
-**model_calls:** 1
+**branch:** task/marketpulse-task-2026-04-02-0051-implementation
+**date:** 2026-04-02
 
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_worker.py with model integration.
+Support & Resistance Level Calculator using local minima/maxima detection with proximity clustering.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** DCAConfig dataclass is frozen with sensible defaults
+- **Criteria:** SRLevel dataclass has price, level_type, touch_count, and strength fields
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Frozen dataclass defined with all four fields; immutability test passes
 
-- **Criteria:** DCAConfig post-init validates lengths match max_levels and tranche_pcts sum to ~1.0
+- **Criteria:** find_support_resistance() correctly identifies local minima as support and local maxima as resistance
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_finds_support_level and test_finds_resistance_level pass with oscillating data
 
-- **Criteria:** should_dca returns True only when drop exceeds the threshold for the current level
+- **Criteria:** Nearby levels within cluster_pct are merged with averaged prices and summed touch counts
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_nearby_minima_merge confirms two minima at 99.5/100.5 merge into one cluster
 
-- **Criteria:** should_dca returns False when all DCA levels are exhausted
+- **Criteria:** Returns empty list when insufficient data (< 2*window+1 bars)
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_empty_series and test_fewer_bars_than_required both return []
 
-- **Criteria:** compute_dca_order returns correct tranche USD amount
+- **Criteria:** Output is sorted by touch_count descending and limited to max_levels
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** test_sorted_by_touch_count_descending and test_max_levels_limits_output pass
 
-- **Criteria:** compute_dca_order raises ValueError when levels exhausted
+- **Criteria:** All pytest tests pass
 - **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** 14 passed in 0.49s
 
-- **Criteria:** compute_new_avg_price returns correct weighted average
+- **Criteria:** mypy reports no errors
 - **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** All tests pass, mypy passes with no errors
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Evidence:** Success: no issues found in 1 source file
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/portfolio/dca.py`
-- `backend/tests/test_dca.py`
-- `rationale.md`
+- `backend/app/indicators/calculators/support_resistance.py` â€” new calculator module
+- `backend/tests/test_support_resistance.py` â€” comprehensive test suite (14 tests)
+- `backend/app/indicators/calculators/__init__.py` â€” export SRLevel and find_support_resistance
+- `rationale.md` â€” this file
 
 ---
 
 ## 4) Tests run & results
-- **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_dca.py -q` — passed
-  - `cd backend && uv run python -m mypy app/portfolio/dca.py --ignore-missing-imports` — passed
+- `cd backend && uv run python -m pytest tests/test_support_resistance.py -q` â†’ 14 passed
+- `cd backend && uv run python -m mypy app/indicators/calculators/support_resistance.py --ignore-missing-imports` â†’ Success
 
 ---
 
 ## 5) Data & sample evidence
-- Synthetic fixtures used from tests/fixtures/
+- Synthetic oscillating price data with clear support (~100) and resistance (~120)
+- Synthetic data with nearby minima at 99.5 and 100.5 for clustering tests
 
 ---
 
 ## 6) Risk assessment & mitigations
-- **Risk:** LLM-generated code — **Severity:** medium — **Mitigation:** dry-run validation before commit, forbidden_paths block, validator.py post-check
+- **Risk:** Low integration risk â€” pure logic module, same pandas patterns as existing calculators
+- **Mitigation:** Comprehensive test coverage including edge cases
 
 ---
 
 ## 7) Backwards compatibility / migration notes
-- New files only, backward compatible.
+- New files only, fully backward compatible. __init__.py extended with new exports.
 
 ---
 
 ## 8) Performance considerations
-- No performance impact expected.
+- O(n*window) for extrema detection, O(kÂ²) for clustering where k = number of candidates.
+- Suitable for typical OHLC datasets (hundreds to low thousands of bars).
 
 ---
 
@@ -87,17 +84,18 @@ Automated implementation for task marketpulse-task-2026-04-01-0007 via coder_wor
 - forbidden paths touched: `no`
 - external/broker sdk usage: `no`
 - secrets touched: `no`
-- API key logged: `no` (only presence check)
+- API key logged: `no`
 
 ---
 
 ## 10) Open questions & follow-ups
-1. Review LLM-generated implementation for edge cases.
+1. Future task: add API endpoint to expose support/resistance via indicator service router.
+2. Future task: integrate with frontend chart overlay visualization.
 
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0007): implementation
+- feat(marketpulse-task-2026-04-02-0051): support & resistance calculator with clustering
 
 ---
 
