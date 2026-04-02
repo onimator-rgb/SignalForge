@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-02-0043`
+# Rationale for `marketpulse-task-2026-04-02-0045`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-02-0043-implementation
+**branch:** task/marketpulse-task-2026-04-02-0045-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,61 +9,68 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-02-0043 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-02-0045 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** MarketplaceView.vue exists and compiles without vue-tsc errors
+- **Criteria:** simulate_strategy_trades() returns a list of Trade objects from app.backtest.engine
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** View fetches from /api/v1/strategies/marketplace/ranking on mount
+- **Criteria:** A bar with evaluate_rules signal='buy' while not in position opens a long trade
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Each strategy card displays rank, name, description, style tag, and Sharpe ratio
+- **Criteria:** A bar with evaluate_rules signal='sell' while in position closes the trade with exit_reason='signal'
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Copy button calls POST /api/v1/strategies/marketplace/{id}/copy and shows feedback
+- **Criteria:** Stop-loss exit triggers when price drops below stop_loss_pct from entry
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Sort toggle allows switching between Sharpe and name ordering
+- **Criteria:** Take-profit exit triggers when price rises above take_profit_pct from entry
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Route /marketplace is registered and navigable
+- **Criteria:** Max-hold exit triggers after max_hold_bars bars in position
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Nav link appears in AppLayout sidebar/header
+- **Criteria:** Last bar forces exit with reason 'end_of_data' if still in position
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Dark theme with TailwindCSS v4 classes consistent with existing views
+- **Criteria:** backtest_strategy() returns a BacktestResult with correct metrics
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Numbers use tabular-nums class, color-coded green/yellow/red
+- **Criteria:** Empty bars list returns empty trades list
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** All tests pass and mypy reports no errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `frontend/src/components/AppLayout.vue`
-- `frontend/src/router/index.ts`
-- `frontend/src/views/MarketplaceView.vue`
+- `backend/app/strategies/__init__.py`
+- `backend/app/strategies/backtester.py`
+- `backend/app/strategies/evaluator.py`
+- `backend/app/strategies/models.py`
+- `backend/tests/test_strategy_backtester.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd frontend && npx vue-tsc --noEmit` — passed
+  - `cd backend && uv run python -m pytest tests/test_strategy_backtester.py -q` — passed
+  - `cd backend && uv run python -m mypy app/strategies/backtester.py --ignore-missing-imports` — passed
 
 ---
 
@@ -101,7 +108,7 @@ Automated implementation for task marketpulse-task-2026-04-02-0043 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-02-0043): implementation
+- `N/A` — feat(marketpulse-task-2026-04-02-0045): implementation
 
 ---
 

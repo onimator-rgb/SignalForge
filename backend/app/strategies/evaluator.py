@@ -24,10 +24,7 @@ class EvaluationResult(BaseModel):
 
 
 def extract_indicator_value(indicator_name: str, indicators: dict) -> float | None:
-    """Map an indicator name to a value from the indicators dict.
-
-    Returns None if the key is missing or the value is None.
-    """
+    """Map an indicator name to a value from the indicators dict."""
     try:
         if indicator_name == "rsi":
             val = indicators.get("rsi_14")
@@ -70,11 +67,7 @@ def extract_indicator_value(indicator_name: str, indicators: dict) -> float | No
 
 
 def check_condition(condition: StrategyCondition, indicators: dict) -> bool | None:
-    """Check a single condition against indicator data.
-
-    Returns True/False for the comparison, or None if the indicator value
-    is unavailable.
-    """
+    """Check a single condition against indicator data."""
     value = extract_indicator_value(condition.indicator_name, indicators)
     if value is None:
         return None
@@ -105,13 +98,7 @@ def evaluate_rules(
     rules: list[StrategyRule],
     indicators: dict,
 ) -> EvaluationResult:
-    """Evaluate a list of strategy rules against indicator data.
-
-    For each rule whose conditions all pass, accumulate a weighted score:
-    buy → +1 * weight, sell → -1 * weight, hold → 0.
-
-    Returns an EvaluationResult with the composite signal, score, and metadata.
-    """
+    """Evaluate a list of strategy rules against indicator data."""
     total_score = 0.0
     matched_rules: list[str] = []
     skipped = 0
@@ -140,9 +127,7 @@ def evaluate_rules(
                 total_score += 1.0 * rule.weight
             elif rule.action == "sell":
                 total_score += -1.0 * rule.weight
-            # hold contributes 0
 
-    # Clamp score to [-1.0, 1.0]
     clamped_score = max(-1.0, min(1.0, total_score))
 
     if clamped_score > 0:
