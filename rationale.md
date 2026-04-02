@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0009`
+# Rationale for `marketpulse-task-2026-04-01-0011`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0009-implementation
+**branch:** task/marketpulse-task-2026-04-01-0011-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,49 +9,33 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0009 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0011 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** generate_dca_rules(24, 50.0, 10) returns exactly 2 rules (1 buy + 1 hold)
+- **Criteria:** GET /api/v1/strategies/presets returns 200 with a JSON list of 3 preset descriptors (grid, dca, btd)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** generate_dca_rules(24, 50.0, 10, 5.0) returns exactly 3 rules (2 buy + 1 hold)
+- **Criteria:** Each preset descriptor includes preset_type, display_name, description, and params array with name/type/description
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Bonus buy rule has double the amount_per_buy
+- **Criteria:** POST /api/v1/strategies/from-preset with {preset_type: 'dca', params: {interval_hours: 4, amount_per_buy: 50, max_buys: 10}} returns 200 with generated rules
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Max buys guard has action='hold' and highest weight
+- **Criteria:** POST /api/v1/strategies/from-preset with unknown preset_type returns 422
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** All rules have keys: conditions, action, weight, description, amount
+- **Criteria:** POST /api/v1/strategies/from-preset with invalid params (e.g. negative values) returns 422 with descriptive error
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Rules sorted by weight ascending
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** ValueError raised for invalid params (interval_hours<=0, amount<=0, max_buys<1, bonus_pct<0 or >=100)
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** generate_dca_rules is re-exported from presets __init__.py
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** All tests pass with pytest
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** mypy passes with no errors
+- **Criteria:** All tests pass, mypy clean
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
@@ -60,16 +44,20 @@ Automated implementation for task marketpulse-task-2026-04-01-0009 via coder_wor
 ## 3) Files changed (and rationale per file)
 - `backend/app/strategies/__init__.py`
 - `backend/app/strategies/presets/__init__.py`
+- `backend/app/strategies/presets/btd.py`
 - `backend/app/strategies/presets/dca_bot.py`
-- `backend/tests/test_bot_dca.py`
+- `backend/app/strategies/presets/grid.py`
+- `backend/app/strategies/router.py`
+- `backend/app/strategies/schemas.py`
+- `backend/tests/test_presets_api.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_bot_dca.py -q` — passed
-  - `cd backend && uv run python -m mypy app/strategies/presets/dca_bot.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_presets_api.py -q` — passed
+  - `cd backend && uv run python -m mypy app/strategies/router.py app/strategies/schemas.py --ignore-missing-imports` — passed
 
 ---
 
@@ -107,7 +95,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0009 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0009): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0011): implementation
 
 ---
 
