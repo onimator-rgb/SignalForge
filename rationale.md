@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-02-0033`
+# Rationale for `marketpulse-task-2026-04-02-0035`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-02-0033-implementation
+**branch:** task/marketpulse-task-2026-04-02-0035-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,61 +9,53 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-02-0033 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-02-0035 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** PresetBotsView.vue exists and uses <script setup lang="ts"> with Composition API
+- **Criteria:** POST /api/v1/strategies/ creates a strategy and returns it with an id
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** On mount, fetches presets from GET /api/v1/strategies/presets and displays as cards
+- **Criteria:** GET /api/v1/strategies/ returns a list of all stored strategies
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Clicking a preset card shows a parameter form with number inputs and default values
+- **Criteria:** GET /api/v1/strategies/{id} returns a single strategy or 404
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Submitting the form calls POST /api/v1/strategies/from-preset and displays generated rules
+- **Criteria:** DELETE /api/v1/strategies/{id} removes the strategy or returns 404
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Route /preset-bots is registered in router/index.ts
+- **Criteria:** models.py contains Strategy, StrategyRule, StrategyCondition, StrategyAction, StrategyStore classes
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Nav item 'Boty' with robot icon appears in AppLayout sidebar
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** vue-tsc --noEmit passes with no type errors
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** Dark theme consistent with existing views (bg-gray-900, bg-gray-800, text-gray-300)
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** Loading and error states handled with LoadingSpinner and ErrorBox components
+- **Criteria:** All tests pass, mypy clean
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `frontend/src/components/AppLayout.vue`
-- `frontend/src/router/index.ts`
-- `frontend/src/views/PresetBotsView.vue`
+- `backend/app/main.py`
+- `backend/app/strategies/__init__.py`
+- `backend/app/strategies/models.py`
+- `backend/app/strategies/router.py`
+- `backend/tests/test_strategy_crud.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd frontend && npx vue-tsc --noEmit` — passed
+  - `cd backend && uv run python -m pytest tests/test_strategy_crud.py -q` — passed
+  - `cd backend && uv run python -m mypy app/strategies/models.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m mypy app/strategies/router.py --ignore-missing-imports` — passed
 
 ---
 
@@ -101,7 +93,7 @@ Automated implementation for task marketpulse-task-2026-04-02-0033 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-02-0033): implementation
+- `N/A` — feat(marketpulse-task-2026-04-02-0035): implementation
 
 ---
 
