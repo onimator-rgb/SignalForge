@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-02-0057`
+# Rationale for `marketpulse-task-2026-04-02-0059`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-02-0057-implementation
+**branch:** task/marketpulse-task-2026-04-02-0059-implementation
 **commit_sha:** 
 **date:** 2026-04-02
 **model_calls:** 1
@@ -9,25 +9,41 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-02-0057 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-02-0059 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** compare_strategies({}) returns ComparisonSummary with empty rows
+- **Criteria:** DivergenceDetector extends BaseDetector with name property returning 'divergence'
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** compare_strategies with 3 BacktestResult objects returns rows sorted by sharpe_ratio descending with correct ranks 1-3
+- **Criteria:** detect() returns AnomalyCandidate with anomaly_type='divergence' for bullish divergence (price lower low + RSI higher low)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** best_return, best_sharpe, lowest_drawdown, best_win_rate each correctly identify the top strategy for that metric
+- **Criteria:** detect() returns AnomalyCandidate with direction='bearish' for bearish divergence (price higher high + RSI lower high)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** All 5+ tests pass via pytest
+- **Criteria:** detect() returns None when no divergence is present
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** detect() returns None when fewer than 40 bars are provided
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** Score is between 0.6 and 0.9 and severity is computed via score_to_severity()
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** DivergenceDetector is registered in the DETECTORS list in service.py
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** All tests pass with pytest
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
@@ -38,17 +54,17 @@ Automated implementation for task marketpulse-task-2026-04-02-0057 via coder_wor
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/strategies/__init__.py`
-- `backend/app/strategies/comparison.py`
-- `backend/tests/test_strategy_comparison.py`
+- `backend/app/anomalies/detectors/divergence.py`
+- `backend/app/anomalies/service.py`
+- `backend/tests/test_divergence_detector.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_strategy_comparison.py -q` — passed
-  - `cd backend && uv run python -m mypy app/strategies/comparison.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_divergence_detector.py -q` — passed
+  - `cd backend && uv run python -m mypy app/anomalies/detectors/divergence.py --ignore-missing-imports` — passed
 
 ---
 
@@ -86,7 +102,7 @@ Automated implementation for task marketpulse-task-2026-04-02-0057 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-02-0057): implementation
+- `N/A` — feat(marketpulse-task-2026-04-02-0059): implementation
 
 ---
 

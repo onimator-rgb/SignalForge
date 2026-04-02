@@ -10,6 +10,7 @@ from app.anomalies.detectors.base import AnomalyCandidate, BaseDetector
 from app.anomalies.detectors.price_spike import PriceSpikeDetector
 from app.anomalies.detectors.volume_spike import VolumeSpikeDetector
 from app.anomalies.detectors.rsi_extreme import RSIExtremeDetector
+from app.anomalies.detectors.divergence import DivergenceDetector
 from app.anomalies.detectors.squeeze import SqueezeDetector
 from app.anomalies.models import AnomalyEvent
 from app.indicators.calculators.rsi import calc_rsi
@@ -27,6 +28,7 @@ DETECTORS: list[BaseDetector] = [
     VolumeSpikeDetector(),
     RSIExtremeDetector(),
     SqueezeDetector(),
+    DivergenceDetector(),
 ]
 
 
