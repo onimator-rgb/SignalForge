@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-02-0017`
+# Rationale for `marketpulse-task-2026-04-02-0019`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-02-0017-implementation
+**branch:** task/marketpulse-task-2026-04-02-0019-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,56 +9,50 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-02-0017 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-02-0019 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** filter_rules_by_signal returns only rules matching the given action type
+- **Criteria:** suggest_improvements() accepts list[StrategyRule] and BacktestResult, returns list[str]
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** map_signal_to_action returns hold with score 0 when no rules match
+- **Criteria:** Returns actionable suggestions based on backtest metric thresholds (win_rate, drawdown, Sharpe, profit_factor)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** map_signal_to_action returns correct action and weighted score when rules match
+- **Criteria:** Analyzes rule structure (missing sell rules, all-same-action, empty rules)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Score is capped at 1.0 even with high weights
+- **Criteria:** Returns at most 5 suggestions, prioritized by severity
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** MappedAction includes signal_source, symbol, and confidence from input
+- **Criteria:** All tests pass with pytest
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** All 8+ tests pass
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** mypy reports no errors
+- **Criteria:** mypy passes with no errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/signals/__init__.py`
-- `backend/app/signals/mapper.py`
-- `backend/app/strategies/__init__.py`
-- `backend/app/strategies/models.py`
-- `backend/tests/test_signal_mapper.py`
+- `backend/app/ai_assistant/__init__.py`
+- `backend/app/ai_assistant/strategy_advisor.py`
+- `backend/tests/test_strategy_advisor.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_signal_mapper.py -q` — passed
-  - `cd backend && uv run python -m mypy app/signals/mapper.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_strategy_advisor.py -q` — passed
+  - `cd backend && uv run python -m mypy app/ai_assistant/strategy_advisor.py --ignore-missing-imports` — passed
 
 ---
 
@@ -96,7 +90,7 @@ Automated implementation for task marketpulse-task-2026-04-02-0017 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-02-0017): implementation
+- `N/A` — feat(marketpulse-task-2026-04-02-0019): implementation
 
 ---
 
