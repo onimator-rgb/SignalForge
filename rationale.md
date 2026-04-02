@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-02-0019`
+# Rationale for `marketpulse-task-2026-04-02-0021`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-02-0019-implementation
+**branch:** task/marketpulse-task-2026-04-02-0021-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,29 +9,33 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-02-0019 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-02-0021 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** suggest_improvements() accepts list[StrategyRule] and BacktestResult, returns list[str]
+- **Criteria:** optimize_params() returns list[OptimizationResult] sorted by Sharpe ratio descending
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Returns actionable suggestions based on backtest metric thresholds (win_rate, drawdown, Sharpe, profit_factor)
+- **Criteria:** Grid search correctly iterates all combinations using itertools.product
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Analyzes rule structure (missing sell rules, all-same-action, empty rules)
+- **Criteria:** Each result contains the modified StrategyProfile with overridden parameter values
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Returns at most 5 suggestions, prioritized by severity
+- **Criteria:** ValueError raised for invalid param names, too few prices, or >10000 combinations
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** All tests pass with pytest
+- **Criteria:** Empty param_ranges returns single result with unmodified base profile
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** All 7 tests pass
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
@@ -42,17 +46,16 @@ Automated implementation for task marketpulse-task-2026-04-02-0019 via coder_wor
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/ai_assistant/__init__.py`
-- `backend/app/ai_assistant/strategy_advisor.py`
-- `backend/tests/test_strategy_advisor.py`
+- `backend/app/strategies/optimizer.py`
+- `backend/tests/test_optimizer.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_strategy_advisor.py -q` — passed
-  - `cd backend && uv run python -m mypy app/ai_assistant/strategy_advisor.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_optimizer.py -q` — passed
+  - `cd backend && uv run python -m mypy app/strategies/optimizer.py --ignore-missing-imports` — passed
 
 ---
 
@@ -90,7 +93,7 @@ Automated implementation for task marketpulse-task-2026-04-02-0019 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-02-0019): implementation
+- `N/A` — feat(marketpulse-task-2026-04-02-0021): implementation
 
 ---
 
