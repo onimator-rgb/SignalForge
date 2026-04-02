@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-02-0025`
+# Rationale for `marketpulse-task-2026-04-02-0027`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-02-0025-implementation
+**branch:** task/marketpulse-task-2026-04-02-0027-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,62 +9,51 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-02-0025 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-02-0027 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** generate_portfolio_report() returns a non-empty string with all 5 section headers: PORTFOLIO SUMMARY, OPEN POSITIONS, RISK ASSESSMENT, RECENT ACTIVITY, REGIME COMMENTARY
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** GET /api/v1/ai/portfolio-report returns 200 with JSON containing 'report' key
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** All numeric values formatted to 2 decimal places in the output
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** GET /api/v1/ai/strategy-suggestions/{strategy_id} returns 200 with JSON containing 'suggestions' key
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Empty positions list produces 'No open positions' in output without error
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** Router is registered in main.py and app starts without import errors
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Each of the 3 regime values (bullish/bearish/neutral) produces distinct commentary
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** All tests pass with mocked/empty DB state
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
-- **Criteria:** Sharpe ratio interpretation varies by value range (excellent >2, good >1, poor <0, N/A when None)
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** Max drawdown >25% triggers 'critical' language, >15% triggers 'warning'
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** Recent trades section shows at most 5 trades
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** Zero initial_capital does not cause ZeroDivisionError
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** All tests pass, mypy passes with no errors
-- **Status:** `pass`
-- **Evidence:** All required checks passed
+- **Criteria:** mypy passes with no errors on router.py
+- **Status:** `partial`
+- **Evidence:** Some checks failed
 
 ---
 
 ## 3) Files changed (and rationale per file)
 - `backend/app/ai_assistant/__init__.py`
 - `backend/app/ai_assistant/portfolio_report.py`
+- `backend/app/ai_assistant/router.py`
+- `backend/app/ai_assistant/strategy_advisor.py`
+- `backend/app/main.py`
+- `backend/tests/test_ai_api.py`
 - `backend/tests/test_ai_report.py`
+- `backend/tests/test_strategy_advisor.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_ai_report.py -q` — passed
-  - `cd backend && uv run python -m mypy app/ai_assistant/portfolio_report.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_ai_api.py -q` — passed
+  - `cd backend && uv run python -m mypy app/ai_assistant/router.py --ignore-missing-imports` — FAILED
 
 ---
 
@@ -102,7 +91,7 @@ Automated implementation for task marketpulse-task-2026-04-02-0025 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-02-0025): implementation
+- `N/A` — feat(marketpulse-task-2026-04-02-0027): implementation
 
 ---
 
