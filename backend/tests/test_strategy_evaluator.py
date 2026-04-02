@@ -40,7 +40,7 @@ def _rule(
     return StrategyRule(
         conditions=[
             StrategyCondition(
-                indicator_name=indicator,
+                indicator=indicator,
                 operator=operator,  # type: ignore[arg-type]
                 value=value,
                 value_upper=value_upper,
@@ -120,73 +120,73 @@ class TestExtractIndicatorValue:
 
 class TestCheckCondition:
     def test_gt_true(self) -> None:
-        cond = StrategyCondition(indicator_name="rsi", operator="gt", value=30.0)
+        cond = StrategyCondition(indicator="rsi", operator="gt", value=30.0)
         assert check_condition(cond, _indicators(rsi_14=50.0)) is True
 
     def test_gt_false(self) -> None:
-        cond = StrategyCondition(indicator_name="rsi", operator="gt", value=70.0)
+        cond = StrategyCondition(indicator="rsi", operator="gt", value=70.0)
         assert check_condition(cond, _indicators(rsi_14=50.0)) is False
 
     def test_gt_equal(self) -> None:
-        cond = StrategyCondition(indicator_name="rsi", operator="gt", value=50.0)
+        cond = StrategyCondition(indicator="rsi", operator="gt", value=50.0)
         assert check_condition(cond, _indicators(rsi_14=50.0)) is False
 
     def test_gte_true(self) -> None:
-        cond = StrategyCondition(indicator_name="rsi", operator="gte", value=50.0)
+        cond = StrategyCondition(indicator="rsi", operator="gte", value=50.0)
         assert check_condition(cond, _indicators(rsi_14=50.0)) is True
 
     def test_lt_true(self) -> None:
-        cond = StrategyCondition(indicator_name="rsi", operator="lt", value=70.0)
+        cond = StrategyCondition(indicator="rsi", operator="lt", value=70.0)
         assert check_condition(cond, _indicators(rsi_14=50.0)) is True
 
     def test_lte_true(self) -> None:
-        cond = StrategyCondition(indicator_name="rsi", operator="lte", value=50.0)
+        cond = StrategyCondition(indicator="rsi", operator="lte", value=50.0)
         assert check_condition(cond, _indicators(rsi_14=50.0)) is True
 
     def test_eq_exact(self) -> None:
-        cond = StrategyCondition(indicator_name="rsi", operator="eq", value=50.0)
+        cond = StrategyCondition(indicator="rsi", operator="eq", value=50.0)
         assert check_condition(cond, _indicators(rsi_14=50.0)) is True
 
     def test_eq_within_tolerance(self) -> None:
-        cond = StrategyCondition(indicator_name="rsi", operator="eq", value=50.0)
+        cond = StrategyCondition(indicator="rsi", operator="eq", value=50.0)
         assert check_condition(cond, _indicators(rsi_14=50.0 + 1e-10)) is True
 
     def test_eq_outside_tolerance(self) -> None:
-        cond = StrategyCondition(indicator_name="rsi", operator="eq", value=50.0)
+        cond = StrategyCondition(indicator="rsi", operator="eq", value=50.0)
         assert check_condition(cond, _indicators(rsi_14=50.1)) is False
 
     def test_between_inside(self) -> None:
         cond = StrategyCondition(
-            indicator_name="rsi", operator="between", value=30.0, value_upper=70.0
+            indicator="rsi", operator="between", value=30.0, value_upper=70.0
         )
         assert check_condition(cond, _indicators(rsi_14=50.0)) is True
 
     def test_between_at_lower_bound(self) -> None:
         cond = StrategyCondition(
-            indicator_name="rsi", operator="between", value=50.0, value_upper=70.0
+            indicator="rsi", operator="between", value=50.0, value_upper=70.0
         )
         assert check_condition(cond, _indicators(rsi_14=50.0)) is True
 
     def test_between_at_upper_bound(self) -> None:
         cond = StrategyCondition(
-            indicator_name="rsi", operator="between", value=30.0, value_upper=50.0
+            indicator="rsi", operator="between", value=30.0, value_upper=50.0
         )
         assert check_condition(cond, _indicators(rsi_14=50.0)) is True
 
     def test_between_outside(self) -> None:
         cond = StrategyCondition(
-            indicator_name="rsi", operator="between", value=60.0, value_upper=70.0
+            indicator="rsi", operator="between", value=60.0, value_upper=70.0
         )
         assert check_condition(cond, _indicators(rsi_14=50.0)) is False
 
     def test_between_missing_upper(self) -> None:
         cond = StrategyCondition(
-            indicator_name="rsi", operator="between", value=30.0
+            indicator="rsi", operator="between", value=30.0
         )
         assert check_condition(cond, _indicators(rsi_14=50.0)) is None
 
     def test_missing_indicator(self) -> None:
-        cond = StrategyCondition(indicator_name="rsi", operator="gt", value=30.0)
+        cond = StrategyCondition(indicator="rsi", operator="gt", value=30.0)
         assert check_condition(cond, {}) is None
 
 
@@ -344,8 +344,8 @@ class TestEvaluateRulesMultiCondition:
     def test_rule_with_multiple_conditions_all_met(self) -> None:
         rule = StrategyRule(
             conditions=[
-                StrategyCondition(indicator_name="rsi", operator="lt", value=30.0),
-                StrategyCondition(indicator_name="macd_histogram", operator="gt", value=0.0),
+                StrategyCondition(indicator="rsi", operator="lt", value=30.0),
+                StrategyCondition(indicator="macd_histogram", operator="gt", value=0.0),
             ],
             action="buy",
             weight=1.0,
@@ -360,8 +360,8 @@ class TestEvaluateRulesMultiCondition:
     def test_rule_with_multiple_conditions_one_fails(self) -> None:
         rule = StrategyRule(
             conditions=[
-                StrategyCondition(indicator_name="rsi", operator="lt", value=30.0),
-                StrategyCondition(indicator_name="macd_histogram", operator="gt", value=0.0),
+                StrategyCondition(indicator="rsi", operator="lt", value=30.0),
+                StrategyCondition(indicator="macd_histogram", operator="gt", value=0.0),
             ],
             action="buy",
             weight=1.0,
@@ -376,8 +376,8 @@ class TestEvaluateRulesMultiCondition:
     def test_rule_with_missing_condition_skipped(self) -> None:
         rule = StrategyRule(
             conditions=[
-                StrategyCondition(indicator_name="rsi", operator="lt", value=30.0),
-                StrategyCondition(indicator_name="unknown_indicator", operator="gt", value=0.0),
+                StrategyCondition(indicator="rsi", operator="lt", value=30.0),
+                StrategyCondition(indicator="unknown_indicator", operator="gt", value=0.0),
             ],
             action="buy",
             weight=1.0,

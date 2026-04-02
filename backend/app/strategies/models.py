@@ -55,10 +55,11 @@ class StrategyAction(BaseModel):
 
 
 class StrategyRule(BaseModel):
-    """One condition→action pair."""
+    """One or more conditions → action with weight."""
 
-    condition: StrategyCondition
-    action: StrategyAction
+    conditions: list[StrategyCondition] = Field(min_length=1)
+    action: ActionType = "buy"
+    weight: float = Field(default=1.0, ge=0, le=2)
     description: str = ""
 
 
@@ -82,7 +83,7 @@ class Strategy(BaseModel):
     @property
     def signal_actions(self) -> set[ActionType]:
         """Unique action types present in *rules*."""
-        return {r.action.action for r in self.rules}
+        return {r.action for r in self.rules}
 
 
 # ---------------------------------------------------------------------------

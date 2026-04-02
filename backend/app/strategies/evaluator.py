@@ -68,7 +68,8 @@ def extract_indicator_value(indicator_name: str, indicators: dict) -> float | No
 
 def check_condition(condition: StrategyCondition, indicators: dict) -> bool | None:
     """Check a single condition against indicator data."""
-    value = extract_indicator_value(condition.indicator_name, indicators)
+    ind_name = condition.indicator if isinstance(condition.indicator, str) else str(condition.indicator)
+    value = extract_indicator_value(ind_name, indicators)
     if value is None:
         return None
 

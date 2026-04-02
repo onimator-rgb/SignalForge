@@ -10,7 +10,7 @@ from app.strategies.models import StrategyCondition, StrategyRule
 def _buy_rule(indicator: str = "rsi", op: str = "lt", value: float = 30.0) -> StrategyRule:
     """Helper: create a buy rule."""
     return StrategyRule(
-        conditions=[StrategyCondition(indicator_name=indicator, operator=op, value=value)],
+        conditions=[StrategyCondition(indicator=indicator, operator=op, value=value)],
         action="buy",
         description="test buy",
     )
@@ -19,7 +19,7 @@ def _buy_rule(indicator: str = "rsi", op: str = "lt", value: float = 30.0) -> St
 def _sell_rule(indicator: str = "rsi", op: str = "gt", value: float = 70.0) -> StrategyRule:
     """Helper: create a sell rule."""
     return StrategyRule(
-        conditions=[StrategyCondition(indicator_name=indicator, operator=op, value=value)],
+        conditions=[StrategyCondition(indicator=indicator, operator=op, value=value)],
         action="sell",
         description="test sell",
     )
