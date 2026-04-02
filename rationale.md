@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-02-0023`
+# Rationale for `marketpulse-task-2026-04-02-0025`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-02-0023-implementation
+**branch:** task/marketpulse-task-2026-04-02-0025-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,56 +9,62 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-02-0023 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-02-0025 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** POST /api/v1/strategies/optimize with valid payload returns 200 and JSON with results list
+- **Criteria:** generate_portfolio_report() returns a non-empty string with all 5 section headers: PORTFOLIO SUMMARY, OPEN POSITIONS, RISK ASSESSMENT, RECENT ACTIVITY, REGIME COMMENTARY
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Each result contains sharpe_ratio, total_return_pct, max_drawdown_pct, win_rate, profit_factor, total_trades, and params dict
+- **Criteria:** All numeric values formatted to 2 decimal places in the output
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Invalid profile_name returns 422
+- **Criteria:** Empty positions list produces 'No open positions' in output without error
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Unknown StrategyProfile field in param_ranges returns 400
+- **Criteria:** Each of the 3 regime values (bullish/bearish/neutral) produces distinct commentary
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Fewer than 10 prices returns 400
+- **Criteria:** Sharpe ratio interpretation varies by value range (excellent >2, good >1, poor <0, N/A when None)
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Empty param_ranges returns single result for base profile
+- **Criteria:** Max drawdown >25% triggers 'critical' language, >15% triggers 'warning'
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** All 6+ tests pass, mypy clean
+- **Criteria:** Recent trades section shows at most 5 trades
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** Zero initial_capital does not cause ZeroDivisionError
+- **Status:** `pass`
+- **Evidence:** All required checks passed
+
+- **Criteria:** All tests pass, mypy passes with no errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `backend/app/main.py`
-- `backend/app/strategies/__init__.py`
-- `backend/app/strategies/optimizer.py`
-- `backend/app/strategies/router.py`
-- `backend/tests/test_optimizer_api.py`
+- `backend/app/ai_assistant/__init__.py`
+- `backend/app/ai_assistant/portfolio_report.py`
+- `backend/tests/test_ai_report.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_optimizer_api.py -q` — passed
-  - `cd backend && uv run python -m mypy app/strategies/router.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_ai_report.py -q` — passed
+  - `cd backend && uv run python -m mypy app/ai_assistant/portfolio_report.py --ignore-missing-imports` — passed
 
 ---
 
@@ -96,7 +102,7 @@ Automated implementation for task marketpulse-task-2026-04-02-0023 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-02-0023): implementation
+- `N/A` — feat(marketpulse-task-2026-04-02-0025): implementation
 
 ---
 

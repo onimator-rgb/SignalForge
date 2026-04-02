@@ -1,3 +1,15 @@
-from .strategy_advisor import StrategyRule, suggest_improvements
+"""AI assistant module — pure-logic advisory and reporting functions."""
 
-__all__ = ["StrategyRule", "suggest_improvements"]
+from app.ai_assistant.portfolio_report import (
+    PositionSummary,
+    RiskSnapshot,
+    TradeSummary,
+    generate_portfolio_report,
+)
+
+__all__ = [
+    "PositionSummary",
+    "RiskSnapshot",
+    "TradeSummary",
+    "generate_portfolio_report",
+]
