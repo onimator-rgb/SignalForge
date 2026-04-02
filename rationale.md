@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-01-0001`
+# Rationale for `marketpulse-task-2026-04-01-0003`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-01-0001-implementation
+**branch:** task/marketpulse-task-2026-04-01-0003-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,49 +9,37 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-01-0001 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-01-0003 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** StrategyCondition validates indicator names against allowed literals
+- **Criteria:** evaluate_rules() returns EvaluationResult with correct signal based on weighted rule scores
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** StrategyCondition with operator='between' requires value_upper
+- **Criteria:** All 5 indicator types (rsi, macd_histogram, bollinger_pct_b, price_change_pct, volume_change_pct) are extractable from indicator dict
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** StrategyAction constrains action to buy/sell/hold with weight 0-2
+- **Criteria:** All 6 operators (gt, gte, lt, lte, eq, between) work correctly
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Strategy requires at least 1 rule (min_length=1)
+- **Criteria:** Missing indicator data causes rule skip, not error
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Strategy.signal_actions returns set of unique action types from rules
+- **Criteria:** Score is clamped to [-1.0, 1.0]
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** StrategyStore.add stores and returns strategy with its id
+- **Criteria:** matched_rules contains descriptions of fired rules
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** StrategyStore.get returns None for unknown id
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** StrategyStore.delete returns True if found, False otherwise
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** All 11 tests pass
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** mypy reports no errors
+- **Criteria:** All tests pass, mypy clean
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
@@ -59,16 +47,17 @@ Automated implementation for task marketpulse-task-2026-04-01-0001 via coder_wor
 
 ## 3) Files changed (and rationale per file)
 - `backend/app/strategies/__init__.py`
+- `backend/app/strategies/evaluator.py`
 - `backend/app/strategies/models.py`
-- `backend/tests/test_strategy_rules.py`
+- `backend/tests/test_strategy_evaluator.py`
 - `rationale.md`
 
 ---
 
 ## 4) Tests run & results
 - **Commands run:**
-  - `cd backend && uv run python -m pytest tests/test_strategy_rules.py -q` — passed
-  - `cd backend && uv run python -m mypy app/strategies/models.py --ignore-missing-imports` — passed
+  - `cd backend && uv run python -m pytest tests/test_strategy_evaluator.py -q` — passed
+  - `cd backend && uv run python -m mypy app/strategies/evaluator.py --ignore-missing-imports` — passed
 
 ---
 
@@ -106,7 +95,7 @@ Automated implementation for task marketpulse-task-2026-04-01-0001 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-01-0001): implementation
+- `N/A` — feat(marketpulse-task-2026-04-01-0003): implementation
 
 ---
 
