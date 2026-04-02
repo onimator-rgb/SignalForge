@@ -1,7 +1,7 @@
-# Rationale for `marketpulse-task-2026-04-02-0047`
+# Rationale for `marketpulse-task-2026-04-02-0049`
 
 **author:** coder-worker (MarketPulse Coder)
-**branch:** task/marketpulse-task-2026-04-02-0047-implementation
+**branch:** task/marketpulse-task-2026-04-02-0049-implementation
 **commit_sha:** 
 **date:** 2026-04-01
 **model_calls:** 1
@@ -9,62 +9,44 @@
 ---
 
 ## 1) One-line summary
-Automated implementation for task marketpulse-task-2026-04-02-0047 via coder_worker.py with model integration.
+Automated implementation for task marketpulse-task-2026-04-02-0049 via coder_worker.py with model integration.
 
 ---
 
 ## 2) Mapping to acceptance criteria
 
-- **Criteria:** StrategyBuilderView.vue exists and exports a valid Vue SFC with <script setup lang="ts">
+- **Criteria:** DashboardView contains a collapsible AI Assistant panel with purple-themed header
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Route /strategy-builder is registered in router/index.ts
+- **Criteria:** Panel is collapsed by default and toggles on click
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Nav entry for Strategy Builder appears in AppLayout.vue navItems
+- **Criteria:** Panel shows portfolio insights derived from overview data
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Form includes inputs for name, description, profile_name, and a dynamic rules list
+- **Criteria:** Panel shows at least 2 contextual strategy tips based on dashboard state
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Each rule card has indicator, operator, value, value_upper (conditional), action, weight, description fields
+- **Criteria:** Panel includes Market Summary AI generation button that calls existing genSummary()
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Add Rule button appends a new blank rule, remove button deletes a rule
+- **Criteria:** vue-tsc --noEmit passes with no errors
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
-- **Criteria:** Save button is disabled when name is empty or no rules exist
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** Save calls POST /api/v1/strategies/ with correct payload shape
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** Existing strategies are listed from GET /api/v1/strategies/ on mount
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** Delete button calls DELETE /api/v1/strategies/{id} and refreshes list
-- **Status:** `pass`
-- **Evidence:** All required checks passed
-
-- **Criteria:** vue-tsc --noEmit passes with no type errors
+- **Criteria:** Dark theme styling consistent with existing dashboard sections
 - **Status:** `pass`
 - **Evidence:** All required checks passed
 
 ---
 
 ## 3) Files changed (and rationale per file)
-- `frontend/src/components/AppLayout.vue`
-- `frontend/src/router/index.ts`
-- `frontend/src/views/StrategyBuilderView.vue`
+- `frontend/src/views/DashboardView.vue`
 - `rationale.md`
 
 ---
@@ -109,7 +91,7 @@ Automated implementation for task marketpulse-task-2026-04-02-0047 via coder_wor
 ---
 
 ## 11) Short changelog
-- `N/A` — feat(marketpulse-task-2026-04-02-0047): implementation
+- `N/A` — feat(marketpulse-task-2026-04-02-0049): implementation
 
 ---
 
