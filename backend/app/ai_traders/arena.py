@@ -33,7 +33,7 @@ from .registry import get_all_traders
 log = get_logger(__name__)
 
 # Arena constants
-INITIAL_CAPITAL = 1000.00
+INITIAL_CAPITAL = 10_000.00
 MIN_TRADE_VALUE_USD = 10.00
 
 

@@ -10,6 +10,7 @@ let badgeTimer: ReturnType<typeof setInterval>
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: '📊', badge: false },
+  { to: '/arena', label: 'AI Arena', icon: '🏟️', badge: false, highlight: true },
   { to: '/assets', label: 'Aktywa', icon: '💰', badge: false },
   { to: '/anomalies', label: 'Anomalie', icon: '⚠️', badge: false },
   { to: '/alerts', label: 'Alerty', icon: '🔔', badge: true },
@@ -51,9 +52,9 @@ onUnmounted(() => clearInterval(badgeTimer))
     <aside class="w-56 bg-gray-900 border-r border-gray-800 flex flex-col shrink-0">
       <div class="p-4 border-b border-gray-800">
         <RouterLink to="/" class="text-lg font-bold text-white tracking-tight">
-          MarketPulse<span class="text-blue-400">AI</span>
+          Signal<span class="text-blue-400">Forge</span>
         </RouterLink>
-        <div class="text-xs text-gray-500 mt-0.5">Market Intelligence Platform</div>
+        <div class="text-xs text-gray-500 mt-0.5">AI Trading Arena</div>
       </div>
 
       <nav class="flex-1 p-3 space-y-1">
@@ -62,9 +63,12 @@ onUnmounted(() => clearInterval(badgeTimer))
           :key="item.to"
           :to="item.to"
           class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors"
-          :class="isActive(item.to)
-            ? 'bg-gray-800 text-white'
-            : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'"
+          :class="[
+            isActive(item.to)
+              ? 'bg-gray-800 text-white'
+              : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50',
+            item.highlight && !isActive(item.to) ? 'border border-blue-500/30 text-blue-400 hover:text-blue-300' : ''
+          ]"
         >
           <span>{{ item.icon }}</span>
           <span>{{ item.label }}</span>

@@ -19,6 +19,10 @@ const router = createRouter({
     { path: '/reports/:id', name: 'report-detail', component: () => import('../views/ReportDetailView.vue') },
     { path: '/ingestion', name: 'ingestion', component: () => import('../views/IngestionView.vue') },
     { path: '/marketplace', name: 'Marketplace', component: () => import('../views/MarketplaceView.vue') },
+    { path: '/arena', name: 'arena', component: () => import('../views/ArenaView.vue') },
+    { path: '/arena/:slug', name: 'trader-detail', component: () => import('../views/TraderDetailView.vue') },
+    { path: '/academy', name: 'academy', component: () => import('../views/AcademyView.vue') },
+    { path: '/bots', name: 'bots', component: () => import('../views/PresetBotsView.vue') },
   ],
 })
 
