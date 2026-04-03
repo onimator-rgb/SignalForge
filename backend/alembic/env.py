@@ -22,6 +22,8 @@ from app.anomalies.models import AnomalyEvent  # noqa: F401
 from app.ingestion.models import IngestionJob, ProviderSyncState  # noqa: F401
 from app.reports.models import AnalysisReport  # noqa: F401
 from app.alerts.models import AlertRule, AlertEvent  # noqa: F401
+from app.llm.cost_tracker import LLMUsageLog  # noqa: F401
+from app.ai_traders.models import AITrader, AITraderDecision, AITraderSnapshot  # noqa: F401
 
 config = context.config
 

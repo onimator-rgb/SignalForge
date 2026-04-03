@@ -37,10 +37,24 @@ class Settings(BaseSettings):
     ANOMALY_RSI_UPPER: float = 80.0
     ANOMALY_RSI_LOWER: float = 20.0
 
-    # LLM
+    # LLM — Multi-provider
     LLM_PROVIDER: str = "local"
     ANTHROPIC_API_KEY: str = ""
     LLM_MODEL: str = ""
+    GEMINI_API_KEY: str = ""
+    GROQ_API_KEY: str = ""
+    MISTRAL_API_KEY: str = ""
+    OPENROUTER_API_KEY: str = ""
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    CEREBRAS_API_KEY: str = ""
+    SAMBANOVA_API_KEY: str = ""
+    LLM_COST_TRACKING: bool = True
+    LLM_MONTHLY_BUDGET_USD: float = 20.0
+
+    # News aggregation
+    FINNHUB_API_KEY: str = ""
+    MARKETAUX_API_KEY: str = ""
+    ALPHAVANTAGE_API_KEY: str = ""
 
     # Strategy
     STRATEGY_PROFILE: str = "balanced"

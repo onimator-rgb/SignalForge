@@ -509,6 +509,31 @@ RESPOND WITH ONLY A JSON OBJECT matching the schema from your system instruction
 
     # ── Dispatch to Coder ─────────────────────────────
 
+    @staticmethod
+    def _extract_json_object(text: str) -> dict | None:
+        """Extract the first valid top-level JSON object from *text*.
+
+        Walks character-by-character tracking brace depth so that logging
+        lines containing stray ``{`` characters are safely skipped.
+        """
+        i = 0
+        while i < len(text):
+            if text[i] == "{":
+                depth = 0
+                for j in range(i, len(text)):
+                    if text[j] == "{":
+                        depth += 1
+                    elif text[j] == "}":
+                        depth -= 1
+                    if depth == 0:
+                        try:
+                            return json.loads(text[i : j + 1])
+                        except json.JSONDecodeError:
+                            break  # this '{' was not the start of valid JSON
+                # Skip past this '{' and keep looking
+            i += 1
+        return None
+
     def dispatch_to_coder(self, task_spec_path: str) -> dict:
         """Run coder_worker.py with --use-max."""
         coder_script = str(ORCHESTRATOR_ROOT / "workers" / "coder_worker.py")
@@ -531,15 +556,24 @@ RESPOND WITH ONLY A JSON OBJECT matching the schema from your system instruction
                 encoding="utf-8", errors="replace",
             )
             stdout = result.stdout
-            # Extract JSON from output
-            if "{" in stdout:
-                marker = "--- Worker Report ---"
-                json_end = stdout.index(marker) if marker in stdout else len(stdout)
-                json_start = stdout.index("{")
-                return json.loads(stdout[json_start:json_end].strip())
+
+            # Use marker to isolate JSON portion (before human-readable report)
+            marker = "--- Worker Report ---"
+            json_region = stdout[:stdout.index(marker)] if marker in stdout else stdout
+
+            parsed = self._extract_json_object(json_region)
+            if parsed is not None:
+                return parsed
+
+            # Fallback: try the full stdout in case marker split was wrong
+            parsed = self._extract_json_object(stdout)
+            if parsed is not None:
+                return parsed
+
+            logger.error(f"No valid JSON in coder output ({len(stdout)} chars): {stdout[:500]}")
             return {"error": f"No JSON in coder output: {stdout[:300]}", "next_recommended_step": "revise"}
         except subprocess.TimeoutExpired:
-            return {"error": "Coder timed out (600s)", "next_recommended_step": "revise"}
+            return {"error": "Coder timed out (1200s)", "next_recommended_step": "revise"}
         except Exception as e:
             return {"error": str(e)[:500], "next_recommended_step": "revise"}
 
@@ -562,14 +596,58 @@ RESPOND WITH ONLY A JSON OBJECT matching the schema from your system instruction
                 encoding="utf-8", errors="replace",
             )
             stdout = result.stdout
-            if "{" in stdout:
-                marker = "\n---"
-                json_start = stdout.index("{")
-                json_end = stdout.index(marker, json_start) if marker in stdout[json_start:] else len(stdout)
-                return json.loads(stdout[json_start:json_end].strip())
+
+            # Isolate region before human-readable summary
+            marker = "\n---"
+            json_region = stdout[:stdout.index(marker)] if marker in stdout else stdout
+
+            parsed = self._extract_json_object(json_region)
+            if parsed is not None:
+                return parsed
+
+            parsed = self._extract_json_object(stdout)
+            if parsed is not None:
+                return parsed
+
+            logger.error(f"No valid JSON in validator output: {stdout[:500]}")
             return {"error": f"No JSON: {stdout[:300]}", "verdict": "revise"}
         except Exception as e:
             return {"error": str(e)[:500], "verdict": "revise"}
+
+    # ── UI/UX Agent dispatch ────────────────────────────
+
+    def dispatch_to_uiux(self, repo_url: str = "https://github.com/onimator-rgb/SignalForge") -> dict:
+        """Run uiux_worker.py to analyze a frontend repo."""
+        uiux_script = str(ORCHESTRATOR_ROOT / "workers" / "uiux_worker.py")
+        cmd = [
+            PYTHON, uiux_script,
+            "--repo", repo_url,
+            "--use-max",
+        ]
+
+        logger.info("Dispatching to UI/UX Agent (repo: %s)...", repo_url)
+        try:
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=900,
+                encoding="utf-8", errors="replace",
+            )
+            stdout = result.stdout
+
+            marker = "\n---"
+            json_region = stdout[:stdout.index(marker)] if marker in stdout else stdout
+
+            parsed = self._extract_json_object(json_region)
+            if parsed is not None:
+                return parsed
+
+            parsed = self._extract_json_object(stdout)
+            if parsed is not None:
+                return parsed
+
+            logger.error("No valid JSON in uiux output: %s", stdout[:500])
+            return {"error": f"No JSON: {stdout[:300]}", "status": "error"}
+        except Exception as e:
+            return {"error": str(e)[:500], "status": "error"}
 
     # ── Process feedback ──────────────────────────────
 
@@ -656,9 +734,16 @@ RESPOND WITH ONLY A JSON OBJECT matching the schema from your system instruction
                              f"Tests: {coder_result.get('tests', {}).get('summary', '?')}")
 
                 if coder_result.get("error") and not coder_result.get("files_changed"):
-                    logger.warning(f"  Coder error: {coder_result['error'][:200]}")
+                    error_msg = coder_result.get("error", "")
+                    logger.warning(f"  Coder error: {error_msg[:200]}")
                     task_result["validator_verdict"] = "error"
-                    task_result["failure_reason"] = coder_result.get("error", "")[:200]
+                    task_result["failure_reason"] = error_msg[:200]
+
+                    # Don't retry fatal errors (auth, forbidden paths)
+                    next_step = coder_result.get("next_recommended_step", "revise")
+                    if next_step == "ask_human":
+                        logger.info(f"  [{_ts()}] Fatal error (ask_human) — skipping retries")
+                        break
                     continue
 
                 # Dispatch to Validator

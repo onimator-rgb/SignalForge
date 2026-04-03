@@ -171,6 +171,9 @@ class TestConsecutiveSlAllowsWhenBrokenByProfit:
             "app.portfolio.protections._check_entry_frequency",
             new_callable=AsyncMock, return_value=(False, None),
         ), patch(
+            "app.portfolio.protections._check_volume_filter",
+            new_callable=AsyncMock, return_value=(False, None),
+        ), patch(
             "app.portfolio.protections._daily_drawdown_guard",
             new_callable=AsyncMock, return_value=(True, None, None),
         ):

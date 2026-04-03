@@ -180,10 +180,11 @@ class TestCheckCondition:
         assert check_condition(cond, _indicators(rsi_14=50.0)) is False
 
     def test_between_missing_upper(self) -> None:
-        cond = StrategyCondition(
-            indicator="rsi", operator="between", value=30.0
-        )
-        assert check_condition(cond, _indicators(rsi_14=50.0)) is None
+        # operator='between' requires value_upper — Pydantic rejects without it
+        with pytest.raises(Exception):
+            StrategyCondition(
+                indicator="rsi", operator="between", value=30.0
+            )
 
     def test_missing_indicator(self) -> None:
         cond = StrategyCondition(indicator="rsi", operator="gt", value=30.0)
@@ -282,7 +283,7 @@ class TestEvaluateRulesEdgeCases:
         assert result.matched_rules == []
 
     def test_hold_action_contributes_zero(self) -> None:
-        rules = [_rule("rsi", "gt", 30.0, action="hold", weight=5.0, description="Neutral")]
+        rules = [_rule("rsi", "gt", 30.0, action="hold", weight=2.0, description="Neutral")]
         result = evaluate_rules(rules, _indicators(rsi_14=50.0))
         assert result.signal == "hold"
         assert result.score == 0.0
@@ -315,16 +316,16 @@ class TestEvaluateRulesWeighting:
 
     def test_score_clamped_to_positive_one(self) -> None:
         rules = [
-            _rule("rsi", "lt", 30.0, action="buy", weight=5.0, description="Heavy buy"),
-            _rule("price_change_pct", "gt", 0.0, action="buy", weight=5.0, description="Price up"),
+            _rule("rsi", "lt", 30.0, action="buy", weight=2.0, description="Heavy buy"),
+            _rule("price_change_pct", "gt", 0.0, action="buy", weight=2.0, description="Price up"),
         ]
         result = evaluate_rules(rules, _indicators(rsi_14=25.0))
         assert result.score == 1.0
 
     def test_score_clamped_to_negative_one(self) -> None:
         rules = [
-            _rule("rsi", "gt", 70.0, action="sell", weight=5.0, description="Heavy sell 1"),
-            _rule("price_change_pct", "lt", 2.0, action="sell", weight=5.0, description="Heavy sell 2"),
+            _rule("rsi", "gt", 70.0, action="sell", weight=2.0, description="Heavy sell 1"),
+            _rule("price_change_pct", "lt", 2.0, action="sell", weight=2.0, description="Heavy sell 2"),
         ]
         result = evaluate_rules(rules, _indicators(rsi_14=80.0))
         assert result.score == -1.0
@@ -374,10 +375,14 @@ class TestEvaluateRulesMultiCondition:
         assert result.matched_rules == []
 
     def test_rule_with_missing_condition_skipped(self) -> None:
-        rule = StrategyRule(
+        # Use model_construct to bypass Pydantic validation for the unknown indicator
+        unknown_cond = StrategyCondition.model_construct(
+            indicator="unknown_indicator", operator="gt", value=0.0, value_upper=None,
+        )
+        rule = StrategyRule.model_construct(
             conditions=[
                 StrategyCondition(indicator="rsi", operator="lt", value=30.0),
-                StrategyCondition(indicator="unknown_indicator", operator="gt", value=0.0),
+                unknown_cond,
             ],
             action="buy",
             weight=1.0,

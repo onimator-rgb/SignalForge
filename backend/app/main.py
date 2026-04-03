@@ -27,6 +27,9 @@ from app.strategy.router import router as strategy_router
 from app.backtest.router import router as backtest_router
 from app.strategies.router import router as strategies_router
 from app.strategies.marketplace import router as marketplace_router
+from app.llm.llm_router_api import router as llm_router
+from app.ai_traders.router import router as arena_router
+from app.news.router import router as news_router
 
 
 @asynccontextmanager
@@ -130,6 +133,9 @@ def create_app() -> FastAPI:
     app.include_router(backtest_router)
     app.include_router(strategies_router)
     app.include_router(marketplace_router)
+    app.include_router(llm_router)
+    app.include_router(arena_router)
+    app.include_router(news_router)
 
     return app
 

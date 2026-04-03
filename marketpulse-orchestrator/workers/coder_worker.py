@@ -388,6 +388,16 @@ def execute_task(
             model_calls_used = caller.call_count
             model_generated_files = result.get("files", [])
 
+            if not model_generated_files:
+                # Model returned no files — log as warning and treat as a soft failure
+                # so the orchestrator can retry with a fresh prompt
+                summary = result.get("summary", "no summary")
+                logger.warning(f"Model returned 0 files: {summary[:200]}")
+                commands_run.append({
+                    "cmd": "model_call", "exit_code": 1,
+                    "stdout": f"Model returned empty file list: {summary[:500]}"
+                })
+
             if model_generated_files:
                 # Dry-run: apply to temp copy, run checks
                 dr_pass, dr_results, blocked = dry_run_checks(

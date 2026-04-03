@@ -7,7 +7,6 @@ from pydantic import BaseModel, Field
 
 from app.strategies.models import (
     Strategy,
-    StrategyAction,
     StrategyCondition,
     StrategyRule,
     StrategyStore,
@@ -24,8 +23,9 @@ store = StrategyStore()
 
 
 class RuleInput(BaseModel):
-    condition: StrategyCondition
-    action: StrategyAction
+    conditions: list[StrategyCondition] = Field(min_length=1)
+    action: str = "buy"
+    weight: float = Field(default=1.0, ge=0, le=2)
     description: str = ""
 
 
@@ -45,8 +45,9 @@ class CreateStrategyRequest(BaseModel):
 def create_strategy(body: CreateStrategyRequest) -> Strategy:
     rules = [
         StrategyRule(
-            condition=r.condition,
+            conditions=r.conditions,
             action=r.action,
+            weight=r.weight,
             description=r.description,
         )
         for r in body.rules
