@@ -20,6 +20,9 @@ from app.config import settings
 from app.database import async_session
 from app.ingestion.service import run_ingestion
 from app.logging_config import get_logger
+from app.ai_traders.arena import run_evaluation_round, take_daily_snapshots
+from app.ai_traders.exit_manager import check_hard_exits
+from app.news.aggregator import NewsAggregator
 
 log = get_logger(__name__)
 
@@ -147,6 +150,32 @@ async def start_scheduler() -> None:
     )
     _tasks.append(task)
 
+    # ── AI Trader Arena ──────────────────────────────────
+    # Hard exits check: every 5 min (stop-loss/take-profit, FREE — no LLM cost)
+    task = asyncio.create_task(
+        _arena_exit_loop(5 * 60)
+    )
+    _tasks.append(task)
+
+    # Full evaluation round: every 30 min (LLM calls — pre-filter saves ~60% cost)
+    task = asyncio.create_task(
+        _arena_eval_loop(30 * 60)
+    )
+    _tasks.append(task)
+
+    # Daily snapshots: every 6 hours (4x/day)
+    task = asyncio.create_task(
+        _arena_snapshot_loop(6 * 3600)
+    )
+    _tasks.append(task)
+
+    # ── News fetching ─────────────────────────────────
+    # Fetch and verify news: every 15 min (Finnhub allows 60 req/min)
+    task = asyncio.create_task(
+        _news_fetch_loop(15 * 60)
+    )
+    _tasks.append(task)
+
     log.info(
         "scheduler_started",
         crypto_interval_sec=interval_sec,
@@ -155,8 +184,127 @@ async def start_scheduler() -> None:
             "ingest_crypto_1h", "ingest_stock_1h",
             "ingest_crypto_4h", "ingest_stock_4h",
             "ingest_crypto_1d", "ingest_stock_1d",
+            "arena_exit_check", "arena_evaluation", "arena_snapshots",
+            "news_fetch",
         ],
     )
+
+
+# ── Arena loops ────────────────────────────────────────
+
+async def _arena_exit_loop(interval_seconds: int) -> None:
+    """Check stop-loss/take-profit exits periodically (no LLM cost)."""
+    await asyncio.sleep(60)  # Wait for initial data ingestion
+    while True:
+        try:
+            stats = _job_stats.setdefault("arena_exit_check", {"run_count": 0, "error_count": 0})
+            stats["run_count"] += 1
+            stats["last_started_at"] = datetime.now(timezone.utc)
+
+            async with async_session() as db:
+                exits = await check_hard_exits(db)
+                await db.commit()
+
+            stats["last_completed_at"] = datetime.now(timezone.utc)
+            if exits:
+                log.info("scheduler.arena_exits", count=len(exits))
+
+        except asyncio.CancelledError:
+            return
+        except Exception as e:
+            stats["error_count"] = stats.get("error_count", 0) + 1
+            log.error("scheduler.arena_exit_error", error=str(e))
+
+        await asyncio.sleep(interval_seconds)
+
+
+async def _arena_eval_loop(interval_seconds: int) -> None:
+    """Run full AI trader evaluation round periodically."""
+    await asyncio.sleep(120)  # Wait for data + news to be ready
+    while True:
+        try:
+            stats = _job_stats.setdefault("arena_evaluation", {"run_count": 0, "error_count": 0})
+            stats["run_count"] += 1
+            stats["last_started_at"] = datetime.now(timezone.utc)
+
+            log.info("scheduler.arena_eval_started", run_count=stats["run_count"])
+            t_start = _time.monotonic()
+
+            async with async_session() as db:
+                result = await run_evaluation_round(db)
+                await db.commit()
+
+            duration_ms = int((_time.monotonic() - t_start) * 1000)
+            stats["last_completed_at"] = datetime.now(timezone.utc)
+
+            log.info(
+                "scheduler.arena_eval_done",
+                traders=result.get("traders_evaluated", 0),
+                llm_calls=result.get("llm_calls", 0),
+                pre_filtered=result.get("pre_filtered", 0),
+                trades=result.get("trades_executed", 0),
+                duration_ms=duration_ms,
+            )
+
+        except asyncio.CancelledError:
+            return
+        except Exception as e:
+            stats["error_count"] = stats.get("error_count", 0) + 1
+            log.error("scheduler.arena_eval_error", error=str(e))
+
+        await asyncio.sleep(interval_seconds)
+
+
+async def _arena_snapshot_loop(interval_seconds: int) -> None:
+    """Take daily performance snapshots."""
+    await asyncio.sleep(300)  # Wait for first eval to complete
+    while True:
+        try:
+            stats = _job_stats.setdefault("arena_snapshots", {"run_count": 0, "error_count": 0})
+            stats["run_count"] += 1
+
+            async with async_session() as db:
+                snapshots = await take_daily_snapshots(db)
+                await db.commit()
+
+            stats["last_completed_at"] = datetime.now(timezone.utc)
+            log.info("scheduler.arena_snapshots", count=len(snapshots))
+
+        except asyncio.CancelledError:
+            return
+        except Exception as e:
+            stats["error_count"] = stats.get("error_count", 0) + 1
+            log.error("scheduler.arena_snapshot_error", error=str(e))
+
+        await asyncio.sleep(interval_seconds)
+
+
+async def _news_fetch_loop(interval_seconds: int) -> None:
+    """Fetch and verify news from all sources periodically."""
+    await asyncio.sleep(30)  # Quick start
+    while True:
+        try:
+            stats = _job_stats.setdefault("news_fetch", {"run_count": 0, "error_count": 0})
+            stats["run_count"] += 1
+            stats["last_started_at"] = datetime.now(timezone.utc)
+
+            aggregator = NewsAggregator()
+            items = await aggregator.get_verified_news(limit=15)
+
+            async with async_session() as db:
+                saved = await aggregator.save_to_db(db, items)
+                await db.commit()
+
+            stats["last_completed_at"] = datetime.now(timezone.utc)
+            log.info("scheduler.news_fetched", verified=len(items), saved=saved)
+
+        except asyncio.CancelledError:
+            return
+        except Exception as e:
+            stats["error_count"] = stats.get("error_count", 0) + 1
+            log.error("scheduler.news_error", error=str(e))
+
+        await asyncio.sleep(interval_seconds)
 
 
 def stop_scheduler() -> None:
