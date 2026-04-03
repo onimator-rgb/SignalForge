@@ -6,6 +6,7 @@ Components tracked:
 """
 
 import asyncio
+import json
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import text, select
@@ -34,12 +35,13 @@ _watchdog_task = None
 async def heartbeat(db: AsyncSession, component: str, meta: dict | None = None) -> None:
     """Update heartbeat for a component (upsert)."""
     now = datetime.now(timezone.utc)
+    meta_json = json.dumps(meta) if meta is not None else None
     await db.execute(text(
         "INSERT INTO runtime_heartbeats (component, status, last_seen_at, meta, updated_at) "
-        "VALUES (:c, 'ok', :now, :meta, :now) "
+        "VALUES (:c, 'ok', :now, CAST(:meta AS jsonb), :now) "
         "ON CONFLICT (component) DO UPDATE SET "
-        "status = 'ok', last_seen_at = :now, meta = :meta, updated_at = :now"
-    ), {"c": component, "now": now, "meta": meta})
+        "status = 'ok', last_seen_at = :now, meta = CAST(:meta AS jsonb), updated_at = :now"
+    ), {"c": component, "now": now, "meta": meta_json})
     await db.commit()
 
 

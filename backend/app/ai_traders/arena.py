@@ -84,15 +84,19 @@ async def initialize_arena(db: AsyncSession) -> list[dict]:
     return results
 
 
-async def run_evaluation_round(db: AsyncSession) -> dict:
-    """Run one evaluation round: all traders analyze all active assets.
+async def run_evaluation_round(db: AsyncSession, *, trader_slugs: list[str] | None = None) -> dict:
+    """Run one evaluation round: all (or filtered) traders analyze all active assets.
+
+    Args:
+        trader_slugs: If provided, only evaluate traders with these slugs.
 
     Returns summary of decisions and executions.
     """
     # Get active traders
-    traders_result = await db.execute(
-        select(AITrader).where(AITrader.is_active.is_(True))
-    )
+    query = select(AITrader).where(AITrader.is_active.is_(True))
+    if trader_slugs is not None:
+        query = query.where(AITrader.slug.in_(trader_slugs))
+    traders_result = await db.execute(query)
     db_traders = traders_result.scalars().all()
 
     if not db_traders:

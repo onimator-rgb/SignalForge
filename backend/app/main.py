@@ -30,6 +30,7 @@ from app.strategies.marketplace import router as marketplace_router
 from app.llm.llm_router_api import router as llm_router
 from app.ai_traders.router import router as arena_router
 from app.news.router import router as news_router
+from app.ai_assistant.router import router as ai_assistant_router
 
 
 @asynccontextmanager
@@ -106,7 +107,7 @@ def create_app() -> FastAPI:
     app.add_middleware(RequestTraceMiddleware)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173", "http://localhost:3000"],
+        allow_origins=["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -136,6 +137,7 @@ def create_app() -> FastAPI:
     app.include_router(llm_router)
     app.include_router(arena_router)
     app.include_router(news_router)
+    app.include_router(ai_assistant_router)
 
     return app
 

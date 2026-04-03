@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: signalforge-db
+    environment:
+      POSTGRES_USER: marketpulse
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-marketpulse_prod_2026}
+      POSTGRES_DB: marketpulse
+    volumes:
+      - sf_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marketpulse"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - signalforge
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: signalforge-backend
+    env_file:
+      - .env.prod
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - signalforge
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    container_name: signalforge-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - signalforge
+
+volumes:
+  sf_postgres_data:
+
+networks:
+  signalforge:
+    name: signalforge_network

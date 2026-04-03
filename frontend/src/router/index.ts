@@ -23,6 +23,7 @@ const router = createRouter({
     { path: '/arena/:slug', name: 'trader-detail', component: () => import('../views/TraderDetailView.vue') },
     { path: '/academy', name: 'academy', component: () => import('../views/AcademyView.vue') },
     { path: '/bots', name: 'bots', component: () => import('../views/PresetBotsView.vue') },
+    { path: '/assistant', name: 'assistant', component: () => import('../views/AiAssistantView.vue') },
   ],
 })
 

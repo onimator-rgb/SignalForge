@@ -29,6 +29,21 @@ log = get_logger(__name__)
 _tasks: list[asyncio.Task] = []
 _job_stats: dict[str, dict] = {}
 
+# Trader tiers — free models can run more frequently
+FREE_TRADER_SLUGS = [
+    "momentum_hunter",      # groq
+    "scalper_quant",        # openrouter (free)
+    "whale_follower",       # openrouter (free)
+    "fibonacci_trader",     # openrouter (free)
+    "news_sentiment",       # cerebras
+]
+PAID_TRADER_SLUGS = [
+    "conservative_quant",   # gemini flash
+    "mean_reversion",       # mistral small
+    "sentiment_contrarian", # gemini flash lite
+    "balanced_hybrid",      # gemini flash
+]
+
 
 def _get_provider(asset_class: str):
     """Return the appropriate provider for an asset class."""
@@ -112,6 +127,9 @@ async def start_scheduler() -> None:
         log.info("scheduler_disabled", hint="Set SCHEDULER_ENABLED=true in .env")
         return
 
+    from app.system.runtime import heartbeat_quick
+    await heartbeat_quick("scheduler", {"status": "starting"})
+
     interval_sec = settings.INGESTION_INTERVAL_MINUTES * 60
 
     # Crypto: every N minutes
@@ -157,9 +175,15 @@ async def start_scheduler() -> None:
     )
     _tasks.append(task)
 
-    # Full evaluation round: every 30 min (LLM calls — pre-filter saves ~60% cost)
+    # Free-model traders: every 2 min (no token cost, only rate-limit constrained)
     task = asyncio.create_task(
-        _arena_eval_loop(30 * 60)
+        _arena_eval_loop(2 * 60, trader_slugs=FREE_TRADER_SLUGS, label="free")
+    )
+    _tasks.append(task)
+
+    # Paid-model traders: every 15 min (token cost — pre-filter saves ~60%)
+    task = asyncio.create_task(
+        _arena_eval_loop(15 * 60, trader_slugs=PAID_TRADER_SLUGS, label="paid")
     )
     _tasks.append(task)
 
@@ -184,7 +208,9 @@ async def start_scheduler() -> None:
             "ingest_crypto_1h", "ingest_stock_1h",
             "ingest_crypto_4h", "ingest_stock_4h",
             "ingest_crypto_1d", "ingest_stock_1d",
-            "arena_exit_check", "arena_evaluation", "arena_snapshots",
+            "arena_exit_check",
+            "arena_eval_free (2min)", "arena_eval_paid (15min)",
+            "arena_snapshots",
             "news_fetch",
         ],
     )
@@ -206,6 +232,8 @@ async def _arena_exit_loop(interval_seconds: int) -> None:
                 await db.commit()
 
             stats["last_completed_at"] = datetime.now(timezone.utc)
+            from app.system.runtime import heartbeat_quick
+            await heartbeat_quick("scheduler", {"job": "arena_exit_check"})
             if exits:
                 log.info("scheduler.arena_exits", count=len(exits))
 
@@ -218,27 +246,37 @@ async def _arena_exit_loop(interval_seconds: int) -> None:
         await asyncio.sleep(interval_seconds)
 
 
-async def _arena_eval_loop(interval_seconds: int) -> None:
-    """Run full AI trader evaluation round periodically."""
+async def _arena_eval_loop(
+    interval_seconds: int,
+    *,
+    trader_slugs: list[str] | None = None,
+    label: str = "all",
+) -> None:
+    """Run AI trader evaluation round periodically for a subset of traders."""
+    job_name = f"arena_eval_{label}"
     await asyncio.sleep(120)  # Wait for data + news to be ready
     while True:
         try:
-            stats = _job_stats.setdefault("arena_evaluation", {"run_count": 0, "error_count": 0})
+            stats = _job_stats.setdefault(job_name, {"run_count": 0, "error_count": 0})
             stats["run_count"] += 1
             stats["last_started_at"] = datetime.now(timezone.utc)
 
-            log.info("scheduler.arena_eval_started", run_count=stats["run_count"])
+            log.info("scheduler.arena_eval_started", tier=label, run_count=stats["run_count"])
             t_start = _time.monotonic()
 
             async with async_session() as db:
-                result = await run_evaluation_round(db)
+                result = await run_evaluation_round(db, trader_slugs=trader_slugs)
                 await db.commit()
 
             duration_ms = int((_time.monotonic() - t_start) * 1000)
             stats["last_completed_at"] = datetime.now(timezone.utc)
 
+            from app.system.runtime import heartbeat_quick
+            await heartbeat_quick("scheduler", {"job": job_name})
+
             log.info(
                 "scheduler.arena_eval_done",
+                tier=label,
                 traders=result.get("traders_evaluated", 0),
                 llm_calls=result.get("llm_calls", 0),
                 pre_filtered=result.get("pre_filtered", 0),
@@ -250,7 +288,7 @@ async def _arena_eval_loop(interval_seconds: int) -> None:
             return
         except Exception as e:
             stats["error_count"] = stats.get("error_count", 0) + 1
-            log.error("scheduler.arena_eval_error", error=str(e))
+            log.error("scheduler.arena_eval_error", tier=label, error=str(e))
 
         await asyncio.sleep(interval_seconds)
 
@@ -296,6 +334,8 @@ async def _news_fetch_loop(interval_seconds: int) -> None:
                 await db.commit()
 
             stats["last_completed_at"] = datetime.now(timezone.utc)
+            from app.system.runtime import heartbeat_quick
+            await heartbeat_quick("scheduler", {"job": "news_fetch"})
             log.info("scheduler.news_fetched", verified=len(items), saved=saved)
 
         except asyncio.CancelledError:

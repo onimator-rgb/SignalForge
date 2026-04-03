@@ -1,6 +1,6 @@
 """Tests for scheduler multi-timeframe ingestion loops.
 
-Verifies that start_scheduler creates 6 tasks (1h, 4h, 1d for crypto and stock),
+Verifies that start_scheduler creates 10 tasks (6 ingestion + 3 arena + 1 news),
 get_scheduler_status reports on all of them, and stop_scheduler cancels all.
 
 Task: marketpulse-task-2026-04-01-0005
@@ -33,9 +33,16 @@ def _clear_scheduler_state():
     scheduler._job_stats.clear()
 
 
+@pytest.fixture(autouse=True)
+def _mock_heartbeat():
+    """Mock heartbeat_quick to avoid DB calls in tests."""
+    with patch("app.system.runtime.heartbeat_quick", new_callable=AsyncMock):
+        yield
+
+
 @pytest.mark.asyncio
-async def test_start_scheduler_creates_six_tasks():
-    """start_scheduler() should create exactly 6 asyncio tasks."""
+async def test_start_scheduler_creates_ten_tasks():
+    """start_scheduler() should create exactly 10 asyncio tasks (6 ingestion + 3 arena + 1 news)."""
     created_coroutines: list = []
 
     def fake_create_task(coro):
@@ -55,7 +62,7 @@ async def test_start_scheduler_creates_six_tasks():
         from app.scheduler import start_scheduler, _tasks
         await start_scheduler()
 
-        assert len(_tasks) == 6, f"Expected 6 tasks, got {len(_tasks)}"
+        assert len(_tasks) == 10, f"Expected 10 tasks, got {len(_tasks)}"
 
 
 @pytest.mark.asyncio
