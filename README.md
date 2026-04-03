@@ -1,8 +1,8 @@
 <p align="center">
   <h1 align="center">SignalForge</h1>
   <p align="center">
-    <strong>Multi-asset market intelligence &amp; paper trading platform</strong><br>
-    Crypto &amp; Stocks &bull; 15+ Indicators &bull; Anomaly Detection &bull; AI Reports &bull; Autonomous Agent System
+    <strong>AI-powered market intelligence &amp; autonomous trading arena</strong><br>
+    9 AI Traders &bull; Multi-Model LLM &bull; 15+ Indicators &bull; News Intelligence &bull; Paper Trading Competition
   </p>
 </p>
 
@@ -20,11 +20,13 @@
 
 ## Overview
 
-SignalForge is a full-stack market intelligence platform that monitors **cryptocurrencies and US stocks**, detects anomalies, generates AI-powered reports, produces scored recommendations, and runs a demo paper trading portfolio with advanced trailing mechanisms — all through a modern dashboard.
+SignalForge is a full-stack market intelligence platform with an **AI Trader Arena** — 9 autonomous AI traders, each powered by a different LLM model and trading strategy, competing in real-time paper trading on crypto and US stocks.
 
-It combines 15+ quantitative technical indicators with Z-score anomaly detection and AI-generated insights to help analysts understand market behavior. The autonomous agent system (Orchestrator + Coder + Validator) continuously extends the platform using Claude MAX subscription at zero API cost.
+The platform monitors **30+ assets** (16 crypto + 14 stocks), runs 15+ technical indicators, detects anomalies, aggregates verified news from 3 sources, and lets AI traders make autonomous buy/sell decisions. A leaderboard tracks which AI model + strategy combination performs best.
 
-> **Paper trading only** — this is an educational/demo tool. Not investment advice.
+Built with a **multi-provider LLM router** that routes to the cheapest available model (Gemini, Groq, Cerebras, SambaNova, Mistral, OpenRouter) — 4 of 9 traders run on **completely free models** ($0 cost).
+
+> **Paper trading only** — educational/research tool. Not investment advice.
 
 ---
 
@@ -48,15 +50,60 @@ It combines 15+ quantitative technical indicators with Z-score anomaly detection
 | **Live prices** | Binance WebSocket (crypto), Yahoo polling (stocks), SSE broadcast |
 | **Dashboard** | Command center with strategy params, regime indicator, live positions |
 
-### Autonomous Agent System
+### AI Trader Arena
+
+9 autonomous AI traders compete in real-time paper trading, each with a unique strategy, risk profile, and LLM model:
+
+| Trader | Strategy | LLM Model | Cost |
+|--------|----------|-----------|------|
+| **Conservative Quant** | Risk-averse, 3+ signal confirmation, tight stops | Gemini 2.5 Flash | cheap |
+| **Momentum Hunter** | Trend-following, breakout-hunting, large positions | Groq Llama 3.3 | cheap |
+| **Mean Reversion** | Buys oversold dips, sells overbought rallies | Mistral Small | cheap |
+| **Sentiment Contrarian** | Trades against crowd emotions, anomaly-driven | Gemini 2.5 Flash Lite | ultra-cheap |
+| **Balanced Hybrid** | Adapts to market regime (momentum/reversion/defensive) | Gemini 2.5 Flash | cheap |
+| **Scalper Quant** | Quick in/out, 3-5% gains, high turnover | OpenRouter Nemotron 120B | **FREE** |
+| **Whale Follower** | Follows smart money via volume spike analysis | OpenRouter Gemma 12B | **FREE** |
+| **Fibonacci Trader** | Trades Fibonacci support/resistance levels | OpenRouter Llama 3.3 | **FREE** |
+| **News Sentiment** | Trades exclusively on cross-verified news signals | Cerebras Llama 3.1 | **FREE** |
+
+**Cost optimization:**
+- Pre-filter system eliminates 50-80% unnecessary LLM calls
+- Rule-based Exit Manager handles stop-loss/take-profit without LLM
+- Estimated cost: **~$0.50-2.00/month** for all 9 traders
+
+### News Intelligence (Anti-Fake-News)
+
+| Source | Type | Free Tier |
+|--------|------|-----------|
+| **Finnhub** | Stocks + Crypto + AI Sentiment | 60 req/min |
+| **MarketAux** | 80+ global markets, 5000+ sources | 100 req/day |
+| **Alpha Vantage** | AI-powered sentiment analysis | 25 req/day |
+
+Pipeline: Fetch parallel → Deduplicate → Cross-source verify (2+ sources = verified) → Reliability scoring → Trusted domain boost → Rank
+
+### Multi-Provider LLM Router
+
+Intelligent routing to cheapest available model with automatic fallback:
+
+```
+TRIVIAL  → Cerebras FREE → Groq → Gemini Lite
+SIMPLE   → Cerebras FREE → Groq → SambaNova FREE → Gemini
+MODERATE → Gemini → Cerebras → Groq → Mistral
+COMPLEX  → Gemini → Mistral → Claude Haiku
+CRITICAL → Claude Haiku → Gemini → Claude Sonnet
+```
+
+Supports 8 providers: Gemini, Groq, Cerebras, SambaNova, OpenRouter, Mistral, Anthropic, Ollama (local).
+
+### Autonomous Dev Agent System
 
 | Agent | Role |
 |-------|------|
-| **Orchestrator** | Tech lead brain — researches project, selects features from roadmap, generates task specs, manages Coder/Validator loop |
+| **Orchestrator** | Tech lead — researches project, selects features, generates task specs |
 | **Coder Worker** | Implements features via Claude CLI (MAX subscription), runs tests, commits |
 | **Validator** | Validates code against task specs, checks tests/mypy/commit format |
 
-The agents use **Claude MAX subscription** via CLI — **$0 API cost**. They've autonomously implemented 25+ features including indicators, trailing mechanisms, frontend views, and risk management.
+The dev agents use **Claude MAX subscription** via CLI — **$0 API cost**.
 
 ---
 
@@ -69,20 +116,23 @@ The agents use **Claude MAX subscription** via CLI — **$0 API cost**. They've 
 │   :5173             │     │  Assets | Indicators | Anomalies     │     │  :5432       │
 └─────────────────────┘     │  Alerts | Reports | Recommendations  │     └──────────────┘
                             │  Portfolio | Watchlists | Live        │
-                            │  Strategy | Diagnostics | Dashboard   │
-                            └─────────┬──────────┬───────┬─────────┘
-                                      │          │       │
-                           ┌──────────▼──┐  ┌────▼────┐  ┌▼──────────┐
-                           │ Binance API │  │ Yahoo   │  │ Local LLM │
-                           │ (crypto)    │  │ Finance │  │ Templates │
-                           └─────────────┘  │ (stocks)│  └───────────┘
-                                            └─────────┘
-
-┌──────────────────────────────────────────────────────────────┐
-│              Autonomous Agent System                          │
-│  Orchestrator → Coder Worker → Validator → Orchestrator ...  │
-│  (Claude MAX CLI, $0 cost, auto-discovers new features)      │
-└──────────────────────────────────────────────────────────────┘
+                            │  Strategy | AI Arena | News           │
+                            └────┬──────────┬───────┬──────┬───────┘
+                                 │          │       │      │
+                     ┌───────────▼──┐  ┌────▼────┐  │  ┌───▼──────────────┐
+                     │ Binance API  │  │ Yahoo   │  │  │  News Sources    │
+                     │ (crypto)     │  │ Finance │  │  │  Finnhub|MktAux  │
+                     └──────────────┘  └─────────┘  │  └──────────────────┘
+                            ┌───────────────────────▼───────────────────┐
+                            │       Multi-Provider LLM Router           │
+                            │  Gemini | Groq | Cerebras | SambaNova    │
+                            │  Mistral | OpenRouter | Claude | Ollama  │
+                            └───────────────────────┬───────────────────┘
+                            ┌───────────────────────▼───────────────────┐
+                            │         AI Trader Arena (9 traders)        │
+                            │  Pre-filter → LLM Decision → Execute      │
+                            │  Leaderboard → Performance Comparison     │
+                            └───────────────────────────────────────────┘
 ```
 
 ---
@@ -96,10 +146,12 @@ The agents use **Claude MAX subscription** via CLI — **$0 API cost**. They've 
 | **Database** | PostgreSQL 16 |
 | **Crypto data** | Binance public API (OHLCV + WebSocket live stream) |
 | **Stock data** | Yahoo Finance via `yfinance` (delayed ~15min) |
-| **AI/LLM** | Local template engine (default) or Anthropic Claude API (optional) |
-| **Analysis** | pandas, 15+ indicators, Z-score anomaly detection, 9-signal scoring |
-| **Agents** | Custom Orchestrator/Coder/Validator using Claude CLI (MAX subscription) |
-| **Testing** | pytest + pytest-asyncio (213 tests) |
+| **AI/LLM** | Multi-provider router: Gemini, Groq, Cerebras, SambaNova, Mistral, OpenRouter, Claude, Ollama |
+| **AI Traders** | 9 autonomous trading agents with unique strategies and LLM models |
+| **News** | Finnhub (60 req/min), MarketAux, Alpha Vantage — anti-fake-news pipeline |
+| **Analysis** | pandas, 15+ indicators, Z-score anomaly detection, 11-signal scoring |
+| **Dev Agents** | Orchestrator/Coder/Validator using Claude CLI (MAX subscription) |
+| **Testing** | pytest + pytest-asyncio (313+ tests) |
 
 ---
 
