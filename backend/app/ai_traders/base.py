@@ -38,6 +38,7 @@ class TradeDecision:
     target_entry_price: float | None = None
     stop_loss_price: float | None = None
     take_profit_price: float | None = None
+    exit_pct: float = 1.0  # 0.25, 0.5, 0.75, or 1.0 (for SELL only)
     model_used: str = ""
     cost_usd: float = 0.0
     latency_ms: int = 0
@@ -53,7 +54,8 @@ You MUST respond with ONLY a valid JSON object (no markdown, no explanation outs
   "reasoning": "2-4 sentences explaining your decision based on the data",
   "position_size_pct": 0.0 to 0.25 (fraction of portfolio, only for buy),
   "stop_loss_price": number or null,
-  "take_profit_price": number or null
+  "take_profit_price": number or null,
+  "exit_pct": 1.0  // fraction of position to close: 0.25, 0.5, 0.75, or 1.0 (sell only, default 1.0)
 }
 """
 
@@ -109,6 +111,25 @@ class BaseAITrader(ABC):
             parts.append(json.dumps(anomalies, indent=2, default=str))
             parts.append("")
 
+        # Market regime
+        regime = asset_context.get("market_regime")
+        if regime:
+            parts.append("### Market Regime")
+            parts.append(f"Current: {regime.get('regime', 'unknown').upper()}")
+            parts.append(f"BTC 7d: {regime.get('btc_7d_change_pct', 'N/A')}% | Avg Score: {regime.get('avg_composite_score', 'N/A')} | Volatility: {regime.get('volatility_index', 'N/A')}")
+            parts.append("")
+
+        # Consensus
+        consensus = asset_context.get("consensus")
+        if consensus and consensus.get("total_traders", 0) > 0:
+            parts.append("### Trader Consensus (Previous Round)")
+            parts.append(f"BUY: {consensus['buy']}/{consensus['total_traders']} | SELL: {consensus['sell']}/{consensus['total_traders']} | HOLD: {consensus['hold']}/{consensus['total_traders']}")
+            if consensus.get("bullish_pct", 0) > 0.7:
+                parts.append("Strong bullish consensus — high confidence but watch for crowded trades.")
+            elif consensus.get("bullish_pct", 0) < 0.3:
+                parts.append("Weak bullish consensus — most traders cautious.")
+            parts.append("")
+
         news = asset_context.get("news", [])
         if news:
             parts.append("### Recent Verified News (last 24h)")
@@ -126,6 +147,19 @@ class BaseAITrader(ABC):
         if portfolio:
             parts.append("### Portfolio State")
             parts.append(json.dumps(portfolio, indent=2, default=str))
+            parts.append("")
+
+        # Trader memory
+        memory = asset_context.get("trader_memory")
+        if memory:
+            stats = memory.get("overall_stats", {})
+            parts.append("### Your Recent Performance")
+            parts.append(f"Win Rate: {stats.get('win_rate', 'N/A')}% ({stats.get('wins', 0)}W / {stats.get('losses', 0)}L)")
+            recent = memory.get("recent_trades", [])
+            if recent:
+                parts.append("Last closed trades:")
+                for t in recent[:5]:
+                    parts.append(f"  PnL: {t['realized_pnl_pct']}% | Exit: {t['close_reason']}")
             parts.append("")
 
         parts.append("### Your Task")
@@ -237,6 +271,15 @@ class BaseAITrader(ABC):
             except (ValueError, TypeError):
                 return None
 
+        raw_exit = data.get("exit_pct", 1.0)
+        try:
+            exit_pct_val = float(raw_exit) if raw_exit else 1.0
+        except (ValueError, TypeError):
+            exit_pct_val = 1.0
+        exit_pct_val = max(0.25, min(1.0, exit_pct_val))
+        valid_steps = [0.25, 0.5, 0.75, 1.0]
+        exit_pct_val = min(valid_steps, key=lambda x: abs(x - exit_pct_val))
+
         return TradeDecision(
             action=action,
             confidence=confidence,
@@ -245,4 +288,5 @@ class BaseAITrader(ABC):
             target_entry_price=_safe_float(data.get("target_entry_price")),
             stop_loss_price=_safe_float(data.get("stop_loss_price")),
             take_profit_price=_safe_float(data.get("take_profit_price")),
+            exit_pct=exit_pct_val,
         )

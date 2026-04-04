@@ -19,6 +19,7 @@ from app.recommendations.models import Recommendation
 from app.portfolio.models import Portfolio, PortfolioPosition
 from app.logging_config import get_logger
 from app.news.aggregator import get_news_for_asset
+from .models import AITrader, AITraderDecision, AITraderSnapshot
 
 log = get_logger(__name__)
 
@@ -27,6 +28,7 @@ async def build_asset_context(
     db: AsyncSession,
     asset_id: uuid.UUID,
     portfolio_id: uuid.UUID | None = None,
+    trader_id: uuid.UUID | None = None,
 ) -> dict:
     """Build comprehensive market context for a single asset."""
     now = datetime.now(timezone.utc)
@@ -175,7 +177,171 @@ async def build_asset_context(
             )
             ctx["portfolio"]["open_positions_count"] = count_result.scalar_one()
 
+    # Trader memory — recent performance on this asset
+    if trader_id:
+        try:
+            # Recent decisions on this asset
+            decisions_result = await db.execute(
+                select(AITraderDecision)
+                .where(
+                    AITraderDecision.trader_id == trader_id,
+                    AITraderDecision.asset_id == asset_id,
+                )
+                .order_by(AITraderDecision.created_at.desc())
+                .limit(10)
+            )
+            recent_decisions = [
+                {
+                    "action": d.action,
+                    "confidence": float(d.confidence) if d.confidence else 0,
+                    "executed": d.executed,
+                    "created_at": d.created_at.isoformat() if d.created_at else None,
+                }
+                for d in decisions_result.scalars().all()
+            ]
+
+            # Recent closed trades
+            recent_trades = []
+            if portfolio_id:
+                trades_result = await db.execute(
+                    select(PortfolioPosition)
+                    .where(
+                        PortfolioPosition.portfolio_id == portfolio_id,
+                        PortfolioPosition.status == "closed",
+                    )
+                    .order_by(PortfolioPosition.closed_at.desc())
+                    .limit(10)
+                )
+                recent_trades = [
+                    {
+                        "realized_pnl_pct": round(float(p.realized_pnl_pct), 2) if p.realized_pnl_pct else 0,
+                        "close_reason": p.close_reason or "unknown",
+                    }
+                    for p in trades_result.scalars().all()
+                ]
+
+            # Overall stats
+            trader_obj = await db.get(AITrader, trader_id)
+            total_trades = (trader_obj.win_count + trader_obj.loss_count) if trader_obj else 0
+            win_rate = round(trader_obj.win_count / total_trades * 100, 1) if total_trades > 0 else 0
+
+            ctx["trader_memory"] = {
+                "recent_decisions": recent_decisions,
+                "recent_trades": recent_trades,
+                "overall_stats": {
+                    "win_rate": win_rate,
+                    "total_trades": total_trades,
+                    "wins": trader_obj.win_count if trader_obj else 0,
+                    "losses": trader_obj.loss_count if trader_obj else 0,
+                },
+            }
+        except Exception:
+            pass  # Non-critical — proceed without memory
+
     return ctx
+
+
+async def calc_market_regime(db: AsyncSession) -> dict:
+    """Determine current market regime from BTC price action and overall scores."""
+    import statistics
+
+    regime = {"regime": "unknown", "btc_7d_change_pct": 0, "avg_composite_score": 50, "volatility_index": 0}
+
+    try:
+        # Find BTC asset
+        btc_result = await db.execute(
+            select(Asset).where(Asset.symbol.in_(["BTC", "BTCUSDT"]))
+        )
+        btc = btc_result.scalar_one_or_none()
+
+        if btc:
+            cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+            bars_result = await db.execute(
+                select(PriceBar)
+                .where(
+                    PriceBar.asset_id == btc.id,
+                    PriceBar.interval == "1h",
+                    PriceBar.time >= cutoff,
+                )
+                .order_by(PriceBar.time.asc())
+            )
+            bars = bars_result.scalars().all()
+
+            if len(bars) >= 24:
+                closes = [float(b.close) for b in bars]
+                oldest = closes[0]
+                newest = closes[-1]
+                regime["btc_7d_change_pct"] = round((newest - oldest) / oldest * 100, 2)
+
+                # Volatility: stddev of hourly returns
+                returns = [(closes[i] - closes[i-1]) / closes[i-1] for i in range(1, len(closes))]
+                regime["volatility_index"] = round(statistics.stdev(returns) * 100, 4) if len(returns) > 1 else 0
+
+        # Average composite score across all recent recommendations
+        from app.recommendations.models import Recommendation
+        score_result = await db.execute(
+            select(func.avg(Recommendation.score))
+            .where(Recommendation.generated_at >= datetime.now(timezone.utc) - timedelta(hours=24))
+        )
+        avg_score = score_result.scalar_one_or_none()
+        if avg_score:
+            regime["avg_composite_score"] = round(float(avg_score), 1)
+
+        # Classify regime
+        btc_change = regime["btc_7d_change_pct"]
+        vol = regime["volatility_index"]
+        avg_sc = regime["avg_composite_score"]
+
+        if vol > 1.5:
+            regime["regime"] = "volatile"
+        elif btc_change > 5 and avg_sc > 55:
+            regime["regime"] = "trending_up"
+        elif btc_change < -5 and avg_sc < 45:
+            regime["regime"] = "trending_down"
+        else:
+            regime["regime"] = "ranging"
+
+    except Exception:
+        pass  # Non-critical
+
+    return regime
+
+
+async def calc_consensus(db: AsyncSession, asset_id: uuid.UUID) -> dict:
+    """Calculate trader consensus for an asset based on most recent decisions."""
+    result = await db.execute(
+        select(AITrader).where(AITrader.is_active.is_(True))
+    )
+    traders = result.scalars().all()
+
+    counts = {"buy": 0, "sell": 0, "hold": 0, "skip": 0}
+    total = 0
+
+    for trader in traders:
+        dec_result = await db.execute(
+            select(AITraderDecision)
+            .where(
+                AITraderDecision.trader_id == trader.id,
+                AITraderDecision.asset_id == asset_id,
+            )
+            .order_by(AITraderDecision.created_at.desc())
+            .limit(1)
+        )
+        dec = dec_result.scalar_one_or_none()
+        if dec and dec.action in counts:
+            counts[dec.action] += 1
+            total += 1
+
+    bullish_pct = counts["buy"] / total if total > 0 else 0
+
+    return {
+        "total_traders": total,
+        "buy": counts["buy"],
+        "sell": counts["sell"],
+        "hold": counts["hold"],
+        "skip": counts["skip"],
+        "bullish_pct": round(bullish_pct, 2),
+    }
 
 
 async def build_multi_asset_context(

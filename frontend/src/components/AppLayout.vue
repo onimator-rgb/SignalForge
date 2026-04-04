@@ -10,7 +10,6 @@ let badgeTimer: ReturnType<typeof setInterval>
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: '📊', badge: false },
-  { to: '/assistant', label: 'AI Asystent', icon: '🤖', badge: false, highlight: true },
   { to: '/arena', label: 'AI Arena', icon: '🏟️', badge: false, highlight: true },
   { to: '/assets', label: 'Aktywa', icon: '💰', badge: false },
   { to: '/anomalies', label: 'Anomalie', icon: '⚠️', badge: false },

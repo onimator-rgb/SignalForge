@@ -24,7 +24,7 @@ from app.logging_config import get_logger
 from app.portfolio.models import Portfolio, PortfolioPosition, PortfolioTransaction
 
 from .base import BaseAITrader, TradeAction, TradeDecision
-from .context import build_asset_context
+from .context import build_asset_context, calc_market_regime, calc_consensus
 from .exit_manager import check_hard_exits
 from .models import AITrader, AITraderDecision, AITraderSnapshot
 from .pre_filter import apply_pre_filter
@@ -35,6 +35,17 @@ log = get_logger(__name__)
 # Arena constants
 INITIAL_CAPITAL = 10_000.00
 MIN_TRADE_VALUE_USD = 10.00
+
+SLIPPAGE_BPS = {
+    "crypto": 15,   # 0.15%
+    "stock": 5,     # 0.05%
+    "default": 10,  # 0.10%
+}
+
+def _apply_slippage(price: float, asset_class: str, side: str) -> float:
+    bps = SLIPPAGE_BPS.get(asset_class, SLIPPAGE_BPS["default"])
+    slip = price * bps / 10_000
+    return price + slip if side == "buy" else price - slip
 
 
 async def initialize_arena(db: AsyncSession) -> list[dict]:
@@ -127,6 +138,9 @@ async def run_evaluation_round(db: AsyncSession, *, trader_slugs: list[str] | No
     hard_exits = await check_hard_exits(db)
     summary["hard_exits"] = len(hard_exits)
 
+    # Phase 1.5: Calculate market regime (once per round)
+    market_regime = await calc_market_regime(db)
+
     # Phase 2: LLM-driven analysis (with pre-filtering)
     trader_instances = {t.slug: t for t in get_all_traders()}
 
@@ -141,10 +155,13 @@ async def run_evaluation_round(db: AsyncSession, *, trader_slugs: list[str] | No
             summary["assets_evaluated"] += 1
 
             # Build context
-            ctx = await build_asset_context(db, asset.id, db_trader.portfolio_id)
+            ctx = await build_asset_context(db, asset.id, db_trader.portfolio_id, trader_id=db_trader.id)
 
             if ctx.get("error") or not ctx.get("price", {}).get("current"):
                 continue
+
+            ctx["market_regime"] = market_regime
+            ctx["consensus"] = await calc_consensus(db, asset.id)
 
             # Pre-filter: skip obvious non-trades WITHOUT calling LLM
             filter_result = apply_pre_filter(db_trader.slug, ctx)
@@ -216,6 +233,109 @@ async def run_evaluation_round(db: AsyncSession, *, trader_slugs: list[str] | No
     return summary
 
 
+async def _calc_portfolio_heat(db: AsyncSession, portfolio_id: uuid.UUID, initial_capital: float) -> float:
+    """Calculate total % of capital at risk in open positions."""
+    result = await db.execute(
+        select(func.coalesce(func.sum(PortfolioPosition.entry_value_usd), 0))
+        .where(
+            PortfolioPosition.portfolio_id == portfolio_id,
+            PortfolioPosition.status == "open",
+        )
+    )
+    total_at_risk = float(result.scalar_one())
+    return total_at_risk / initial_capital if initial_capital > 0 else 0.0
+
+
+async def _count_same_class_exposure(db: AsyncSession, portfolio_id: uuid.UUID, asset_class: str) -> int:
+    """Count open positions in the same asset class."""
+    result = await db.execute(
+        select(func.count())
+        .select_from(PortfolioPosition)
+        .join(Asset, PortfolioPosition.asset_id == Asset.id)
+        .where(
+            PortfolioPosition.portfolio_id == portfolio_id,
+            PortfolioPosition.status == "open",
+            Asset.asset_class == asset_class,
+        )
+    )
+    return result.scalar_one()
+
+
+async def _calc_risk_multiplier(db: AsyncSession, db_trader: AITrader) -> float:
+    """Scale position size based on recent trading performance."""
+    if not db_trader.portfolio_id:
+        return 1.0
+
+    result = await db.execute(
+        select(PortfolioPosition)
+        .where(
+            PortfolioPosition.portfolio_id == db_trader.portfolio_id,
+            PortfolioPosition.status == "closed",
+        )
+        .order_by(PortfolioPosition.closed_at.desc())
+        .limit(10)
+    )
+    recent = result.scalars().all()
+
+    if len(recent) < 3:
+        return 1.0
+
+    # Check consecutive losses (most recent first)
+    consecutive_losses = 0
+    for pos in recent:
+        if pos.realized_pnl_usd and float(pos.realized_pnl_usd) < 0:
+            consecutive_losses += 1
+        else:
+            break
+
+    if consecutive_losses >= 3:
+        log.info("risk.reducing_after_losses", trader=db_trader.slug, losses=consecutive_losses)
+        return 0.5
+
+    # Check consecutive wins
+    consecutive_wins = 0
+    for pos in recent:
+        if pos.realized_pnl_usd and float(pos.realized_pnl_usd) > 0:
+            consecutive_wins += 1
+        else:
+            break
+
+    if consecutive_wins >= 3:
+        return 1.2
+
+    # Check drawdown from peak
+    portfolio = await db.get(Portfolio, db_trader.portfolio_id)
+    if portfolio:
+        current_value = float(portfolio.current_cash)
+        # Add open positions value approximation
+        open_result = await db.execute(
+            select(PortfolioPosition).where(
+                PortfolioPosition.portfolio_id == db_trader.portfolio_id,
+                PortfolioPosition.status == "open",
+            )
+        )
+        for pos in open_result.scalars().all():
+            current_value += float(pos.entry_value_usd)
+
+        peak = float(portfolio.initial_capital)
+        # Check snapshots for peak
+        snap_result = await db.execute(
+            select(func.max(AITraderSnapshot.portfolio_value_usd))
+            .where(AITraderSnapshot.trader_id == db_trader.id)
+        )
+        snap_peak = snap_result.scalar_one_or_none()
+        if snap_peak:
+            peak = max(peak, float(snap_peak))
+
+        if peak > 0:
+            drawdown = (peak - current_value) / peak
+            if drawdown > 0.15:
+                log.info("risk.reducing_after_drawdown", trader=db_trader.slug, drawdown=round(drawdown, 3))
+                return 0.5
+
+    return 1.0
+
+
 async def _execute_buy(
     db: AsyncSession,
     db_trader: AITrader,
@@ -234,11 +354,16 @@ async def _execute_buy(
     current_price = ctx["price"]["current"]
     if not current_price or current_price <= 0:
         return False
+    current_price = _apply_slippage(current_price, asset.asset_class, "buy")
 
     # Check cash and position limits
     max_positions = decision.position_size_pct or 0.15
     position_value = float(portfolio.current_cash) * max_positions
     position_value = min(position_value, float(portfolio.current_cash) * 0.90)  # keep 10% min
+
+    # Dynamic risk adjustment
+    risk_mult = await _calc_risk_multiplier(db, db_trader)
+    position_value *= risk_mult
 
     if position_value < MIN_TRADE_VALUE_USD:
         return False
@@ -254,6 +379,17 @@ async def _execute_buy(
     open_count = count_result.scalar_one()
     if open_count >= max_open:
         return False
+
+    # Portfolio heat check
+    heat = await _calc_portfolio_heat(db, db_trader.portfolio_id, float(portfolio.initial_capital))
+    if heat >= 0.60:
+        log.info("arena.buy_blocked_heat", trader=db_trader.slug, asset=asset.symbol, heat=round(heat, 2))
+        return False
+
+    # Reduce position if same asset class overexposed
+    same_class = await _count_same_class_exposure(db, db_trader.portfolio_id, asset.asset_class)
+    if same_class >= 2:
+        position_value *= 0.5
 
     # Check if already holding this asset
     existing = await db.execute(
@@ -336,55 +472,92 @@ async def _execute_sell(
     current_price = ctx["price"]["current"]
     if not current_price or current_price <= 0:
         return False
+    current_price = _apply_slippage(current_price, asset.asset_class, "sell")
 
     portfolio = await db.get(Portfolio, db_trader.portfolio_id)
     if not portfolio:
         return False
 
     now = datetime.now(timezone.utc)
-    exit_value = float(position.quantity) * current_price
-    realized_pnl = exit_value - float(position.entry_value_usd)
-    realized_pnl_pct = realized_pnl / float(position.entry_value_usd) * 100
+    exit_pct = decision.exit_pct if hasattr(decision, 'exit_pct') else 1.0
 
-    # Close position
-    position.exit_price = current_price
-    position.exit_value_usd = exit_value
-    position.closed_at = now
-    position.close_reason = f"ai_sell:{db_trader.slug}"
-    position.realized_pnl_usd = realized_pnl
-    position.realized_pnl_pct = realized_pnl_pct
-    position.status = "closed"
+    if exit_pct < 1.0:
+        # Partial exit — reduce position, keep it open
+        sell_quantity = float(position.quantity) * exit_pct
+        sell_entry_value = float(position.entry_value_usd) * exit_pct
+        exit_value = sell_quantity * current_price
+        realized_pnl = exit_value - sell_entry_value
 
-    tx = PortfolioTransaction(
-        portfolio_id=db_trader.portfolio_id,
-        position_id=position.id,
-        tx_type="sell",
-        asset_id=asset.id,
-        price=current_price,
-        quantity=float(position.quantity),
-        value_usd=exit_value,
-        executed_at=now,
-    )
-    db.add(tx)
+        position.quantity = float(position.quantity) - sell_quantity
+        position.entry_value_usd = float(position.entry_value_usd) - sell_entry_value
+        # Position stays open
 
-    portfolio.current_cash = float(portfolio.current_cash) + exit_value
+        tx = PortfolioTransaction(
+            portfolio_id=db_trader.portfolio_id,
+            position_id=position.id,
+            tx_type="sell",
+            asset_id=asset.id,
+            price=current_price,
+            quantity=sell_quantity,
+            value_usd=exit_value,
+            executed_at=now,
+        )
+        db.add(tx)
+        portfolio.current_cash = float(portfolio.current_cash) + exit_value
+        await db.flush()
 
-    # Update win/loss counters
-    if realized_pnl > 0:
-        db_trader.win_count += 1
+        log.info(
+            "arena.partial_sell",
+            trader=db_trader.slug,
+            asset=asset.symbol,
+            exit_pct=exit_pct,
+            pnl_usd=round(realized_pnl, 2),
+        )
+        return True
     else:
-        db_trader.loss_count += 1
+        # Full exit — close position completely
+        exit_value = float(position.quantity) * current_price
+        realized_pnl = exit_value - float(position.entry_value_usd)
+        realized_pnl_pct = realized_pnl / float(position.entry_value_usd) * 100
 
-    await db.flush()
+        position.exit_price = current_price
+        position.exit_value_usd = exit_value
+        position.closed_at = now
+        position.close_reason = f"ai_sell:{db_trader.slug}"
+        position.realized_pnl_usd = realized_pnl
+        position.realized_pnl_pct = realized_pnl_pct
+        position.status = "closed"
 
-    log.info(
-        "arena.sell_executed",
-        trader=db_trader.slug,
-        asset=asset.symbol,
-        pnl_usd=round(realized_pnl, 2),
-        pnl_pct=round(realized_pnl_pct, 2),
-    )
-    return True
+        tx = PortfolioTransaction(
+            portfolio_id=db_trader.portfolio_id,
+            position_id=position.id,
+            tx_type="sell",
+            asset_id=asset.id,
+            price=current_price,
+            quantity=float(position.quantity),
+            value_usd=exit_value,
+            executed_at=now,
+        )
+        db.add(tx)
+
+        portfolio.current_cash = float(portfolio.current_cash) + exit_value
+
+        # Update win/loss counters
+        if realized_pnl > 0:
+            db_trader.win_count += 1
+        else:
+            db_trader.loss_count += 1
+
+        await db.flush()
+
+        log.info(
+            "arena.sell_executed",
+            trader=db_trader.slug,
+            asset=asset.symbol,
+            pnl_usd=round(realized_pnl, 2),
+            pnl_pct=round(realized_pnl_pct, 2),
+        )
+        return True
 
 
 async def take_daily_snapshots(db: AsyncSession) -> list[dict]:
