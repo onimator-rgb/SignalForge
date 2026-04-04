@@ -17,7 +17,9 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /opt/signalforge
+            git stash --quiet 2>/dev/null || true
             git pull origin main
+            git stash pop --quiet 2>/dev/null || true
             docker compose -f docker-compose.prod.yml build
             docker compose -f docker-compose.prod.yml up -d
             sleep 10
