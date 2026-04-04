@@ -59,6 +59,26 @@ async def check_hard_exits(db: AsyncSession) -> list[dict]:
 
             current_price = float(price_data.close)
             entry_price = float(pos.entry_price)
+
+            # Trailing stop-loss: update stop_loss if price moved favorably
+            if pos.stop_loss_price and current_price > entry_price:
+                pnl_from_entry = (current_price - entry_price) / entry_price
+                # If position is up >3%, trail the stop to lock in at least 50% of gains
+                if pnl_from_entry > 0.03:
+                    # Trail stop = entry_price + 50% of unrealized gain
+                    new_stop = entry_price + (current_price - entry_price) * 0.5
+                    old_stop = float(pos.stop_loss_price)
+                    if new_stop > old_stop:
+                        pos.stop_loss_price = new_stop
+                        log.info(
+                            "exit_manager.trailing_stop_updated",
+                            trader=db_trader.slug,
+                            asset_id=str(pos.asset_id),
+                            old_stop=round(old_stop, 4),
+                            new_stop=round(new_stop, 4),
+                            current_price=round(current_price, 4),
+                        )
+
             pnl_pct = (current_price - entry_price) / entry_price
 
             close_reason = None

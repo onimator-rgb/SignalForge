@@ -84,6 +84,50 @@ async def build_asset_context(
     else:
         ctx["price"] = {"current": None, "note": "No recent price data"}
 
+    # Multi-timeframe: 4h bars for medium-term trend
+    bars_4h_result = await db.execute(
+        select(PriceBar)
+        .where(
+            PriceBar.asset_id == asset_id,
+            PriceBar.interval == "4h",
+            PriceBar.time >= since,
+        )
+        .order_by(PriceBar.time.desc())
+        .limit(42)  # 7 days * 6 bars/day
+    )
+    bars_4h = bars_4h_result.scalars().all()
+    if bars_4h:
+        closes_4h = [round(float(b.close), 2) for b in bars_4h[:12]]  # last 2 days
+        ctx["price"]["closes_4h"] = closes_4h
+        if len(bars_4h) >= 6:
+            ctx["price"]["change_4h_pct"] = round(
+                (float(bars_4h[0].close) - float(bars_4h[5].close)) / float(bars_4h[5].close) * 100, 2
+            )
+
+    # Multi-timeframe: 1d bars for long-term trend
+    bars_1d_result = await db.execute(
+        select(PriceBar)
+        .where(
+            PriceBar.asset_id == asset_id,
+            PriceBar.interval == "1d",
+            PriceBar.time >= now - timedelta(days=30),
+        )
+        .order_by(PriceBar.time.desc())
+        .limit(30)
+    )
+    bars_1d = bars_1d_result.scalars().all()
+    if bars_1d:
+        closes_1d = [round(float(b.close), 2) for b in bars_1d[:14]]  # last 2 weeks
+        ctx["price"]["closes_1d"] = closes_1d
+        if len(bars_1d) >= 7:
+            ctx["price"]["change_7d_pct"] = round(
+                (float(bars_1d[0].close) - float(bars_1d[6].close)) / float(bars_1d[6].close) * 100, 2
+            )
+        if len(bars_1d) >= 30:
+            ctx["price"]["change_30d_pct"] = round(
+                (float(bars_1d[0].close) - float(bars_1d[29].close)) / float(bars_1d[29].close) * 100, 2
+            )
+
     # Indicators (from latest recommendation if available)
     rec_result = await db.execute(
         select(Recommendation)

@@ -345,14 +345,17 @@ async def _execute_buy(
 ) -> bool:
     """Execute a buy order for the AI trader."""
     if not db_trader.portfolio_id:
+        log.info("arena.buy_skip", trader=db_trader.slug, asset=asset.symbol, reason="no_portfolio")
         return False
 
     portfolio = await db.get(Portfolio, db_trader.portfolio_id)
     if not portfolio:
+        log.info("arena.buy_skip", trader=db_trader.slug, asset=asset.symbol, reason="portfolio_not_found")
         return False
 
     current_price = ctx["price"]["current"]
     if not current_price or current_price <= 0:
+        log.info("arena.buy_skip", trader=db_trader.slug, asset=asset.symbol, reason="no_price")
         return False
     current_price = _apply_slippage(current_price, asset.asset_class, "buy")
 
@@ -366,6 +369,7 @@ async def _execute_buy(
     position_value *= risk_mult
 
     if position_value < MIN_TRADE_VALUE_USD:
+        log.info("arena.buy_skip", trader=db_trader.slug, asset=asset.symbol, reason="below_min_value", value=round(position_value, 2), risk_mult=risk_mult)
         return False
 
     # Check max open positions from risk params
@@ -378,6 +382,7 @@ async def _execute_buy(
     )
     open_count = count_result.scalar_one()
     if open_count >= max_open:
+        log.info("arena.buy_skip", trader=db_trader.slug, asset=asset.symbol, reason="max_positions", open=open_count, max=max_open)
         return False
 
     # Portfolio heat check
@@ -400,6 +405,7 @@ async def _execute_buy(
         )
     )
     if existing.scalar_one_or_none():
+        log.info("arena.buy_skip", trader=db_trader.slug, asset=asset.symbol, reason="already_holding")
         return False
 
     # Execute
